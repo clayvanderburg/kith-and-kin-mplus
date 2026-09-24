@@ -1101,10 +1101,15 @@ body {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.45rem 0.65rem;
+  padding: 0.55rem 0.75rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+.party-member-row:hover {
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .party-member-row.role-tank {
@@ -1120,8 +1125,8 @@ body {
 }
 
 .slot-role-tag {
-  font-size: 0.95rem;
-  width: 24px;
+  font-size: 1.15rem;
+  width: 26px;
   text-align: center;
   flex-shrink: 0;
 }
@@ -1130,29 +1135,43 @@ body {
   flex-grow: 1;
   min-width: 0;
   display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.slot-top-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
-.slot-name-class {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  overflow: hidden;
+.slot-player-name {
+  font-weight: 800;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.slot-player-name {
-  font-weight: 700;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.slot-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.slot-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
 .slot-key-range {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+  font-size: 0.74rem;
+  color: var(--keystone-cyan);
+  font-weight: 600;
   white-space: nowrap;
 }
 

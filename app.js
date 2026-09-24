@@ -1011,14 +1011,18 @@
           <div class="party-member-row role-tank">
             <span class="slot-role-tag" title="Tank">🛡️</span>
             <div class="slot-player-details">
-              <div class="slot-name-class">
+              <div class="slot-top-row">
                 <span class="slot-player-name" style="color: ${tankClass.color};">${escapeHtml(grp.tank.name)}</span>
-                <span class="class-tag" style="color: ${tankClass.color}; border: 1px solid ${tankClass.color}44;">${escapeHtml(grp.tank.className)}</span>
-                ${renderMemberVibeBadges(grp.tank)}
-                <span class="slot-stat-badge ilvl">${grp.tank.ilvl || 620} iLvl</span>
-                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.tank.io)};">${(grp.tank.io || 0).toLocaleString()} IO</span>
+                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.tank.io)}; border: 1px solid ${getIoColor(grp.tank.io)}77;">${(grp.tank.io || 0).toLocaleString()} IO</span>
               </div>
-              <span class="slot-key-range">+${grp.tank.keyMin}-+${grp.tank.keyMax}</span>
+              <div class="slot-bottom-row">
+                <div class="slot-meta-left">
+                  <span class="class-tag" style="color: ${tankClass.color}; border: 1px solid ${tankClass.color}44;">${escapeHtml(grp.tank.className)}</span>
+                  <span class="slot-stat-badge ilvl">${grp.tank.ilvl || 320} iLvl</span>
+                  ${renderMemberVibeBadges(grp.tank)}
+                </div>
+                <span class="slot-key-range">+${grp.tank.keyMin} – +${grp.tank.keyMax}</span>
+              </div>
             </div>
           </div>
 
@@ -1026,14 +1030,18 @@
           <div class="party-member-row role-healer">
             <span class="slot-role-tag" title="Healer">💚</span>
             <div class="slot-player-details">
-              <div class="slot-name-class">
+              <div class="slot-top-row">
                 <span class="slot-player-name" style="color: ${healerClass.color};">${escapeHtml(grp.healer.name)}</span>
-                <span class="class-tag" style="color: ${healerClass.color}; border: 1px solid ${healerClass.color}44;">${escapeHtml(grp.healer.className)}</span>
-                ${renderMemberVibeBadges(grp.healer)}
-                <span class="slot-stat-badge ilvl">${grp.healer.ilvl || 620} iLvl</span>
-                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.healer.io)};">${(grp.healer.io || 0).toLocaleString()} IO</span>
+                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.healer.io)}; border: 1px solid ${getIoColor(grp.healer.io)}77;">${(grp.healer.io || 0).toLocaleString()} IO</span>
               </div>
-              <span class="slot-key-range">+${grp.healer.keyMin}-+${grp.healer.keyMax}</span>
+              <div class="slot-bottom-row">
+                <div class="slot-meta-left">
+                  <span class="class-tag" style="color: ${healerClass.color}; border: 1px solid ${healerClass.color}44;">${escapeHtml(grp.healer.className)}</span>
+                  <span class="slot-stat-badge ilvl">${grp.healer.ilvl || 320} iLvl</span>
+                  ${renderMemberVibeBadges(grp.healer)}
+                </div>
+                <span class="slot-key-range">+${grp.healer.keyMin} – +${grp.healer.keyMax}</span>
+              </div>
             </div>
           </div>
 
@@ -1044,14 +1052,18 @@
               <div class="party-member-row role-dps">
                 <span class="slot-role-tag" title="DPS">⚔️</span>
                 <div class="slot-player-details">
-                  <div class="slot-name-class">
+                  <div class="slot-top-row">
                     <span class="slot-player-name" style="color: ${dpsClass.color};">${escapeHtml(dps.name)}</span>
-                    <span class="class-tag" style="color: ${dpsClass.color}; border: 1px solid ${dpsClass.color}44;">${escapeHtml(dps.className)}</span>
-                    ${renderMemberVibeBadges(dps)}
-                    <span class="slot-stat-badge ilvl">${dps.ilvl || 620} iLvl</span>
-                    <span class="slot-stat-badge io" style="color: ${getIoColor(dps.io)};">${(dps.io || 0).toLocaleString()} IO</span>
+                    <span class="slot-stat-badge io" style="color: ${getIoColor(dps.io)}; border: 1px solid ${getIoColor(dps.io)}77;">${(dps.io || 0).toLocaleString()} IO</span>
                   </div>
-                  <span class="slot-key-range">+${dps.keyMin}-+${dps.keyMax}</span>
+                  <div class="slot-bottom-row">
+                    <div class="slot-meta-left">
+                      <span class="class-tag" style="color: ${dpsClass.color}; border: 1px solid ${dpsClass.color}44;">${escapeHtml(dps.className)}</span>
+                      <span class="slot-stat-badge ilvl">${dps.ilvl || 320} iLvl</span>
+                      ${renderMemberVibeBadges(dps)}
+                    </div>
+                    <span class="slot-key-range">+${dps.keyMin} – +${dps.keyMax}</span>
+                  </div>
                 </div>
               </div>
             `;
