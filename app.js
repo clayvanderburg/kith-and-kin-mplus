@@ -60,23 +60,23 @@
     'Out of Line of Sight'
   ];
 
-  // Default sample guild roster for Kith and Kin
+  // Default sample guild roster for Kith and Kin (with realistic TWW ilvl & IO scores)
   const SAMPLE_ROSTER = [
-    { id: 'kk-1', name: 'MadKing', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +10', attending: true },
-    { id: 'kk-2', name: 'Addie', className: 'Priest', roles: ['Healer'], keyMin: 5, keyMax: 10, ownedKey: 'Stonevault +8', attending: true },
-    { id: 'kk-3', name: 'Steven', className: 'Hunter', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: '', attending: true },
-    { id: 'kk-4', name: 'Naela', className: 'Mage', roles: ['DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Ara-Kara +9', attending: true },
-    { id: 'kk-5', name: 'Grokdor', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 4, keyMax: 9, ownedKey: 'Mists +7', attending: true },
-    { id: 'kk-6', name: 'Ironbear', className: 'Druid', roles: ['Tank', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: 'Dawnbreaker +6', attending: true },
-    { id: 'kk-7', name: 'Mistweaver', className: 'Monk', roles: ['Healer', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: '', attending: true },
-    { id: 'kk-8', name: 'Shadowfang', className: 'Rogue', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Necrotic Wake +8', attending: true },
-    { id: 'kk-9', name: 'Totemcaller', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 4, keyMax: 8, ownedKey: 'Siege +5', attending: true },
-    { id: 'kk-10', name: 'Chaosbolt', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: '', attending: true },
-    { id: 'kk-11', name: 'Deathchill', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 8, keyMax: 13, ownedKey: 'City of Threads +11', attending: true },
-    { id: 'kk-12', name: 'Dragonwing', className: 'Evoker', roles: ['Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', attending: true },
-    { id: 'kk-13', name: 'Glaivespin', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +8', attending: true },
-    { id: 'kk-14', name: 'PewPewKitten', className: 'Druid', roles: ['DPS'], keyMin: 4, keyMax: 8, ownedKey: '', attending: true },
-    { id: 'kk-15', name: 'Lightbringer', className: 'Paladin', roles: ['Healer', 'DPS'], keyMin: 5, keyMax: 9, ownedKey: '', attending: true }
+    { id: 'kk-1', name: 'MadKing', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +10', realm: 'Area 52', region: 'us', ilvl: 634, io: 2540, attending: true },
+    { id: 'kk-2', name: 'Addie', className: 'Priest', roles: ['Healer'], keyMin: 5, keyMax: 10, ownedKey: 'Stonevault +8', realm: 'Area 52', region: 'us', ilvl: 626, io: 2320, attending: true },
+    { id: 'kk-3', name: 'Steven', className: 'Hunter', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 629, io: 2410, attending: true },
+    { id: 'kk-4', name: 'Naela', className: 'Mage', roles: ['DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Ara-Kara +9', realm: 'Area 52', region: 'us', ilvl: 633, io: 2590, attending: true },
+    { id: 'kk-5', name: 'Grokdor', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 4, keyMax: 9, ownedKey: 'Mists +7', realm: 'Area 52', region: 'us', ilvl: 621, io: 2160, attending: true },
+    { id: 'kk-6', name: 'Ironbear', className: 'Druid', roles: ['Tank', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: 'Dawnbreaker +6', realm: 'Area 52', region: 'us', ilvl: 625, io: 2280, attending: true },
+    { id: 'kk-7', name: 'Mistweaver', className: 'Monk', roles: ['Healer', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 631, io: 2490, attending: true },
+    { id: 'kk-8', name: 'Shadowfang', className: 'Rogue', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Necrotic Wake +8', realm: 'Area 52', region: 'us', ilvl: 628, io: 2380, attending: true },
+    { id: 'kk-9', name: 'Totemcaller', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 4, keyMax: 8, ownedKey: 'Siege +5', realm: 'Area 52', region: 'us', ilvl: 618, io: 1980, attending: true },
+    { id: 'kk-10', name: 'Chaosbolt', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 623, io: 2240, attending: true },
+    { id: 'kk-11', name: 'Deathchill', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 8, keyMax: 13, ownedKey: 'City of Threads +11', realm: 'Area 52', region: 'us', ilvl: 637, io: 2680, attending: true },
+    { id: 'kk-12', name: 'Dragonwing', className: 'Evoker', roles: ['Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 629, io: 2420, attending: true },
+    { id: 'kk-13', name: 'Glaivespin', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +8', realm: 'Area 52', region: 'us', ilvl: 634, io: 2550, attending: true },
+    { id: 'kk-14', name: 'PewPewKitten', className: 'Druid', roles: ['DPS'], keyMin: 4, keyMax: 8, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 616, io: 1940, attending: true },
+    { id: 'kk-15', name: 'Lightbringer', className: 'Paladin', roles: ['Healer', 'DPS'], keyMin: 5, keyMax: 9, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 622, io: 2210, attending: true }
   ];
 
   // --- App State ---
@@ -263,6 +263,37 @@
     document.getElementById('maxGroupsCount').textContent = maxPossibleGroups;
   }
 
+  // --- Raider.IO API & Score Styling ---
+  function getIoColor(score) {
+    if (!score || score <= 0) return '#94a3b8';
+    if (score >= 2800) return '#e28bf0'; // Mythic Pink / Title
+    if (score >= 2500) return '#ff8000'; // Legendary Orange
+    if (score >= 2000) return '#a335ee'; // Epic Purple
+    if (score >= 1500) return '#0070dd'; // Rare Blue
+    if (score >= 1000) return '#1eff00'; // Uncommon Green
+    return '#f8fafc';
+  }
+
+  async function fetchCharacterRaiderIo(name, realm = 'Area 52', region = 'us') {
+    if (!name || !name.trim()) throw new Error('Character name is required');
+    const cleanName = encodeURIComponent(name.trim());
+    const cleanRealm = encodeURIComponent(realm.trim().toLowerCase().replace(/\s+/g, '-').replace(/'/g, ''));
+    const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${cleanRealm}&name=${cleanName}&fields=gear,mythic_plus_scores_by_season:current`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Character "${name}" not found on ${realm} (${region.toUpperCase()})`);
+    }
+    const data = await res.json();
+    return {
+      name: data.name,
+      className: data.class,
+      ilvl: Math.round(data.gear?.item_level_equipped || 0),
+      io: Math.round(data.mythic_plus_scores_by_season?.[0]?.scores?.all || 0),
+      avatar: data.thumbnail_url || null,
+      profileUrl: data.profile_url || null
+    };
+  }
+
   // --- Roster Rendering ---
   function renderRoster() {
     const container = document.getElementById('rosterList');
@@ -275,6 +306,12 @@
     const sorted = [...state.players].sort((a, b) => {
       if (state.sortField === 'name') {
         return a.name.localeCompare(b.name);
+      }
+      if (state.sortField === 'io') {
+        return (b.io || 0) - (a.io || 0);
+      }
+      if (state.sortField === 'ilvl') {
+        return (b.ilvl || 0) - (a.ilvl || 0);
       }
       if (state.sortField === 'role') {
         const roleScore = p => (p.roles.includes('Tank') ? 3 : 0) + (p.roles.includes('Healer') ? 2 : 0) + (p.roles.includes('DPS') ? 1 : 0);
@@ -298,15 +335,19 @@
       const hasTank = player.roles.includes('Tank');
       const hasHealer = player.roles.includes('Healer');
       const hasDps = player.roles.includes('DPS');
+      const ioColor = getIoColor(player.io);
 
       row.innerHTML = `
         <label class="player-attend-check" title="Toggle Attendance for Tonight">
           <input type="checkbox" data-id="${player.id}" class="attend-checkbox" ${player.attending ? 'checked' : ''}>
         </label>
+        ${player.avatar ? `<img class="player-avatar" src="${player.avatar}" alt="" loading="lazy">` : `<div class="player-avatar-placeholder" title="Character">${hasTank ? '🛡️' : (hasHealer ? '💚' : '⚔️')}</div>`}
         <div class="player-info">
           <div class="player-name-row">
             <span class="player-name" style="color: ${classInfo.color};">${escapeHtml(player.name)}</span>
             <span class="class-tag" style="color: ${classInfo.color}; border: 1px solid ${classInfo.color}44;">${escapeHtml(player.className)}</span>
+            <span class="ilvl-pill" title="Item Level">${player.ilvl || 620} iLvl</span>
+            <span class="io-badge" style="color: ${ioColor}; border-color: ${ioColor}77;" title="Mythic+ Score">${(player.io || 0).toLocaleString()} IO</span>
           </div>
           <div class="player-details-row">
             <div class="role-badge-group">
@@ -399,7 +440,7 @@
    * Intelligently builds 5-man groups (1 Tank, 1 Healer, 3 DPS)
    * Handles multi-role flex players and balances key levels or class variety.
    */
-  function solveGroups({ strategy, dungeonPoolMode, avoidClassDupes, ensureLust = true, ensureBrez = true, lockedGroups = [] }) {
+  function solveGroups({ strategy, dungeonPoolMode, avoidClassDupes, ensureLust = true, ensureBrez = true, balanceIo = true, lockedGroups = [] }) {
     const attendees = state.players.filter(p => p.attending);
 
     // Identify players already locked into existing preserved groups
@@ -428,7 +469,7 @@
     // Randomized constraint solver / optimizer
     let bestResult = null;
     let bestScore = -Infinity;
-    const NUM_SOLVER_ATTEMPTS = 350;
+    const NUM_SOLVER_ATTEMPTS = 400;
 
     for (let attempt = 0; attempt < NUM_SOLVER_ATTEMPTS; attempt++) {
       // Shuffle available pool for stochastic variation
@@ -550,6 +591,19 @@
         }
       });
 
+      // Equalize Average Group M+ Score (IO) across all teams
+      if (balanceIo && candidateGroups.length > 1) {
+        const groupAvgIos = candidateGroups.map(grp => {
+          const members = [grp.tank, grp.healer, ...grp.dps];
+          const total = members.reduce((sum, m) => sum + (m.io || 0), 0);
+          return total / members.length;
+        });
+        const maxAvg = Math.max(...groupAvgIos);
+        const minAvg = Math.min(...groupAvgIos);
+        const ioSpread = maxAvg - minAvg;
+        score -= (ioSpread * 0.28);
+      }
+
       if (score > bestScore || bestResult === null) {
         bestScore = score;
         const benched = availablePool.filter(p => !assignedIds.has(p.id));
@@ -618,12 +672,19 @@
       const lustMember = members.find(m => WOW_CLASSES[m.className]?.lust);
       const brezMember = members.find(m => WOW_CLASSES[m.className]?.brez);
 
+      const totalIo = members.reduce((sum, m) => sum + (m.io || 0), 0);
+      const totalIlvl = members.reduce((sum, m) => sum + (m.ilvl || 0), 0);
+      const avgIo = Math.round(totalIo / members.length);
+      const avgIlvl = Math.round((totalIlvl / members.length) * 10) / 10;
+
       finalGroups.push({
         id: 'group-' + Date.now() + '-' + idx,
         number: finalGroups.length + 1,
         name: shuffledNames[idx % shuffledNames.length],
         targetKeyStr: keyRangeStr,
         dungeon: assignedDungeon,
+        avgIo,
+        avgIlvl,
         tank: grp.tank,
         healer: grp.healer,
         dps: grp.dps,
@@ -649,6 +710,7 @@
     const avoidClassDupes = document.getElementById('avoidClassDupes').checked;
     const ensureLust = document.getElementById('ensureLustCheck').checked;
     const ensureBrez = document.getElementById('ensureBrezCheck').checked;
+    const balanceIo = document.getElementById('balanceIoCheck').checked;
 
     const locked = rerollUnlockedOnly ? state.formedGroups.filter(g => g.isLocked) : [];
 
@@ -658,6 +720,7 @@
       avoidClassDupes,
       ensureLust,
       ensureBrez,
+      balanceIo,
       lockedGroups: locked
     });
 
@@ -747,6 +810,11 @@
           </span>
         </div>
 
+        <div class="party-metrics-bar">
+          <span class="party-avg-io">⭐ Avg IO: <strong>${(grp.avgIo || 0).toLocaleString()}</strong></span>
+          <span class="party-avg-ilvl">🛡️ Avg iLvl: <strong>${grp.avgIlvl || 620}</strong></span>
+        </div>
+
         <div class="party-members">
           <!-- Tank -->
           <div class="party-member-row role-tank">
@@ -755,6 +823,8 @@
               <div class="slot-name-class">
                 <span class="slot-player-name" style="color: ${tankClass.color};">${escapeHtml(grp.tank.name)}</span>
                 <span class="class-tag" style="color: ${tankClass.color}; border: 1px solid ${tankClass.color}44;">${escapeHtml(grp.tank.className)}</span>
+                <span class="slot-stat-badge ilvl">${grp.tank.ilvl || 620} iLvl</span>
+                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.tank.io)};">${(grp.tank.io || 0).toLocaleString()} IO</span>
               </div>
               <span class="slot-key-range">+${grp.tank.keyMin}-+${grp.tank.keyMax}</span>
             </div>
@@ -767,6 +837,8 @@
               <div class="slot-name-class">
                 <span class="slot-player-name" style="color: ${healerClass.color};">${escapeHtml(grp.healer.name)}</span>
                 <span class="class-tag" style="color: ${healerClass.color}; border: 1px solid ${healerClass.color}44;">${escapeHtml(grp.healer.className)}</span>
+                <span class="slot-stat-badge ilvl">${grp.healer.ilvl || 620} iLvl</span>
+                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.healer.io)};">${(grp.healer.io || 0).toLocaleString()} IO</span>
               </div>
               <span class="slot-key-range">+${grp.healer.keyMin}-+${grp.healer.keyMax}</span>
             </div>
@@ -782,6 +854,8 @@
                   <div class="slot-name-class">
                     <span class="slot-player-name" style="color: ${dpsClass.color};">${escapeHtml(dps.name)}</span>
                     <span class="class-tag" style="color: ${dpsClass.color}; border: 1px solid ${dpsClass.color}44;">${escapeHtml(dps.className)}</span>
+                    <span class="slot-stat-badge ilvl">${dps.ilvl || 620} iLvl</span>
+                    <span class="slot-stat-badge io" style="color: ${getIoColor(dps.io)};">${(dps.io || 0).toLocaleString()} IO</span>
                   </div>
                   <span class="slot-key-range">+${dps.keyMin}-+${dps.keyMax}</span>
                 </div>
@@ -842,6 +916,8 @@
         pill.innerHTML = `
           <strong style="color: ${pClass.color};">${escapeHtml(p.name)}</strong>
           <span style="color: var(--text-muted); font-size: 0.75rem;">(${p.roles.join('/')})</span>
+          <span class="slot-stat-badge ilvl">${p.ilvl || 620} iLvl</span>
+          <span class="slot-stat-badge io" style="color: ${getIoColor(p.io)};">${(p.io || 0).toLocaleString()} IO</span>
           <span class="key-range-pill">+${p.keyMin}-+${p.keyMax}</span>
         `;
         benchList.appendChild(pill);
@@ -869,13 +945,14 @@
       text += `\n🛡️ **Group ${idx + 1}: ${grp.name}**\n`;
       text += `🎯 **Keys:** ${grp.targetKeyStr}\n`;
       text += `🏰 **Dungeon:** ${grp.dungeon}\n`;
+      text += `📊 **Team Stats:** Avg IO: **${(grp.avgIo || 0).toLocaleString()}** | Avg iLvl: **${grp.avgIlvl || 620}**\n`;
       const lustStr = grp.hasLust ? `⚡ ${grp.lustProvider}` : `⚠️ Lust: None (Bring drums!)`;
       const brezStr = grp.hasBrez ? `🔄 ${grp.brezProvider}` : `⚠️ BRez: None (Engi brez)`;
       text += `✨ **Utility:** ${lustStr} | ${brezStr}\n`;
-      text += `• 🛡️ Tank: **${grp.tank.name}** (${grp.tank.className})\n`;
-      text += `• 💚 Healer: **${grp.healer.name}** (${grp.healer.className})\n`;
+      text += `• 🛡️ Tank: **${grp.tank.name}** (${grp.tank.className} • ${grp.tank.ilvl || 620} iLvl • ${(grp.tank.io || 0).toLocaleString()} IO)\n`;
+      text += `• 💚 Healer: **${grp.healer.name}** (${grp.healer.className} • ${grp.healer.ilvl || 620} iLvl • ${(grp.healer.io || 0).toLocaleString()} IO)\n`;
       grp.dps.forEach(d => {
-        text += `• ⚔️ DPS: **${d.name}** (${d.className})\n`;
+        text += `• ⚔️ DPS: **${d.name}** (${d.className} • ${d.ilvl || 620} iLvl • ${(d.io || 0).toLocaleString()} IO)\n`;
       });
     });
 
@@ -928,6 +1005,10 @@
       title.textContent = 'Edit Guild Member';
       document.getElementById('playerId').value = p.id;
       document.getElementById('playerNameInput').value = p.name;
+      document.getElementById('playerRealmInput').value = p.realm || 'Area 52';
+      document.getElementById('playerRegionSelect').value = p.region || 'us';
+      document.getElementById('playerIlvlInput').value = p.ilvl || 625;
+      document.getElementById('playerIoInput').value = p.io || 2200;
       document.getElementById('playerClassSelect').value = p.className;
       document.getElementById('roleTank').checked = p.roles.includes('Tank');
       document.getElementById('roleHealer').checked = p.roles.includes('Healer');
@@ -938,6 +1019,10 @@
     } else {
       title.textContent = 'Add Guild Member';
       document.getElementById('playerId').value = '';
+      document.getElementById('playerRealmInput').value = 'Area 52';
+      document.getElementById('playerRegionSelect').value = 'us';
+      document.getElementById('playerIlvlInput').value = 625;
+      document.getElementById('playerIoInput').value = 2200;
       document.getElementById('roleDps').checked = true;
       document.getElementById('keyMinInput').value = 4;
       document.getElementById('keyMaxInput').value = 10;
@@ -950,10 +1035,84 @@
     document.getElementById('playerModal').classList.remove('is-open');
   }
 
+  async function handleModalLookupRaiderIo() {
+    const name = document.getElementById('playerNameInput').value.trim();
+    const realm = document.getElementById('playerRealmInput').value.trim() || 'Area 52';
+    const region = document.getElementById('playerRegionSelect').value;
+    const btn = document.getElementById('lookupRaiderIoBtn');
+
+    if (!name) {
+      alert('Please enter a character name first!');
+      return;
+    }
+
+    const origText = btn.innerHTML;
+    btn.innerHTML = '<span>⏳ Looking up...</span>';
+    btn.disabled = true;
+
+    try {
+      const data = await fetchCharacterRaiderIo(name, realm, region);
+      document.getElementById('playerClassSelect').value = data.className;
+      document.getElementById('playerIlvlInput').value = data.ilvl;
+      document.getElementById('playerIoInput').value = data.io;
+      showToast(`Found ${data.name}! ${data.ilvl} iLvl, ${data.io.toLocaleString()} IO`);
+      playSound('fanfare');
+    } catch (err) {
+      alert(err.message || 'Character not found on Raider.IO');
+    } finally {
+      btn.innerHTML = origText;
+      btn.disabled = false;
+    }
+  }
+
+  async function handleSyncAllRaiderIo() {
+    const attendees = state.players.filter(p => p.attending);
+    if (attendees.length === 0) {
+      showToast('No attending members to sync!');
+      return;
+    }
+
+    const btn = document.getElementById('syncRaiderIoBtn');
+    const origText = btn.innerHTML;
+    btn.disabled = true;
+
+    let successCount = 0;
+    let notFoundCount = 0;
+
+    for (let i = 0; i < attendees.length; i++) {
+      const p = attendees[i];
+      btn.textContent = `⏳ Syncing (${i + 1}/${attendees.length})...`;
+      try {
+        const data = await fetchCharacterRaiderIo(p.name, p.realm || 'Area 52', p.region || 'us');
+        p.ilvl = data.ilvl || p.ilvl;
+        p.io = data.io || p.io;
+        p.avatar = data.avatar || p.avatar;
+        if (data.className && WOW_CLASSES[data.className]) {
+          p.className = data.className;
+        }
+        successCount++;
+      } catch (e) {
+        notFoundCount++;
+      }
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    savePlayers();
+    renderRoster();
+    btn.innerHTML = origText;
+    btn.disabled = false;
+    playSound('fanfare');
+    showToast(`Raider.IO sync complete! (${successCount} updated${notFoundCount ? ', ' + notFoundCount + ' not found' : ''})`);
+  }
+
   function handleSavePlayer(e) {
     e.preventDefault();
     const id = document.getElementById('playerId').value;
     const name = document.getElementById('playerNameInput').value.trim();
+    const realm = document.getElementById('playerRealmInput').value.trim() || 'Area 52';
+    const region = document.getElementById('playerRegionSelect').value;
+    const ilvl = parseInt(document.getElementById('playerIlvlInput').value, 10) || 620;
+    const io = parseInt(document.getElementById('playerIoInput').value, 10) || 2000;
     const className = document.getElementById('playerClassSelect').value;
     const roles = [];
     if (document.getElementById('roleTank').checked) roles.push('Tank');
@@ -974,6 +1133,10 @@
       const p = state.players.find(x => x.id === id);
       if (p) {
         p.name = name;
+        p.realm = realm;
+        p.region = region;
+        p.ilvl = ilvl;
+        p.io = io;
         p.className = className;
         p.roles = roles;
         p.keyMin = Math.min(keyMin, keyMax);
@@ -986,6 +1149,10 @@
       const newPlayer = {
         id: 'kk-' + Date.now(),
         name,
+        realm,
+        region,
+        ilvl,
+        io,
         className,
         roles,
         keyMin: Math.min(keyMin, keyMax),
@@ -1151,6 +1318,10 @@
     document.getElementById('closePlayerModalBtn').addEventListener('click', closePlayerModal);
     document.getElementById('cancelPlayerModalBtn').addEventListener('click', closePlayerModal);
     document.getElementById('playerForm').addEventListener('submit', handleSavePlayer);
+    document.getElementById('lookupRaiderIoBtn').addEventListener('click', handleModalLookupRaiderIo);
+
+    // Sync All Raider.IO trigger
+    document.getElementById('syncRaiderIoBtn').addEventListener('click', handleSyncAllRaiderIo);
 
     // Import / Export triggers
     document.getElementById('openImportBtn').addEventListener('click', openImportExportModal);

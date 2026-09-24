@@ -11,15 +11,19 @@ A themed World of Warcraft web application tailored for the guild **Kith and Kin
   - Official WoW class colors for all 13 classes (Death Knight through Warrior).
   - Procedural sound effects powered by the Web Audio API (Keystone socket chime, fanfare, locks, and clicks — no external audio assets needed).
 
-- **🛡️ Roster & Role Flexibility**:
+- **🛡️ Roster, Raider.IO API & Gear Stats**:
+  - Live character lookups powered by the free public **Raider.IO REST API** (no key required!).
+  - Displays **Equipped Item Level** (e.g. `634 iLvl`) and **Mythic+ Score / IO** with official rating tier color brackets.
+  - Character portrait avatars automatically pulled from the Blizzard / Raider.IO render service.
+  - One-click **"🔄 Sync Raider.IO"** button to bulk update ratings and item levels for all attending guild members.
   - Add, edit, and remove guild members with support for multi-role players (e.g. Tank + DPS, Healer + DPS).
-  - Set key comfort ranges (e.g. `+4` to `+10`) and optionally record their in-game keystone.
+  - Configurable Realm & Region (defaults to `Area 52`, `US`).
+  - Set key comfort ranges (e.g. `+4` to `+10`) and record in-game keystones.
   - Quick attendance checkboxes so you can keep your full guild roster saved without deleting absent players.
-  - One-click bulk Import/Export format to easily paste rosters from or to Discord.
 
 - **⚡ Intelligent Group Solver**:
   - Assembles standard 5-man parties (1 Tank, 1 Healer, 3 DPS).
-  - Maximizes the number of full parties by flexing multi-role players into whatever the roster needs most.
+  - **⚖️ Equalize Average Group M+ Score (IO)**: Balances veterans and newer members across teams so every group has a balanced, comparable average rating.
   - **⚡ Bloodlust / Heroism Priority**: Intelligently spreads Mages, Shamans, Hunters, and Evokers across teams so every party has Lust.
   - **🔄 Battle Resurrection Priority**: Distributes Druids, Paladins, Death Knights, and Warlocks so every team has an in-combat rez.
   - Multiple matching modes:

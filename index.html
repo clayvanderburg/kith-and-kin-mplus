@@ -43,6 +43,7 @@
             <span class="badge" id="rosterCountBadge">0 Attending</span>
           </div>
           <div class="panel-toolbar">
+            <button id="syncRaiderIoBtn" class="btn btn-sm btn-accent" title="Fetch item level & Mythic+ score from Raider.IO for all attending members">🔄 Sync Raider.IO</button>
             <button id="openAddModalBtn" class="btn btn-sm btn-primary">➕ Add Member</button>
             <button id="openImportBtn" class="btn btn-sm btn-secondary" title="Paste roster list">📋 Import / Export</button>
             <button id="resetSampleBtn" class="btn btn-sm btn-ghost" title="Load sample guild members">↺ Load Defaults</button>
@@ -75,6 +76,8 @@
             <label for="rosterSort">Sort:</label>
             <select id="rosterSort" class="form-select-sm">
               <option value="name">Name (A-Z)</option>
+              <option value="io" selected>M+ Score / IO (High &gt; Low)</option>
+              <option value="ilvl">Item Level (High &gt; Low)</option>
               <option value="role">Role (T &gt; H &gt; D)</option>
               <option value="key">Key Level</option>
               <option value="class">Class</option>
@@ -117,6 +120,13 @@
               <option value="all_tww">All Current Khaz Algar Dungeons</option>
               <option value="none">No Dungeon Assignment (Keys Only)</option>
             </select>
+          </div>
+
+          <div class="setting-item checkbox-item">
+            <label class="checkbox-label" title="Balance high-IO and lower-IO players so all groups have a comparable average rating">
+              <input type="checkbox" id="balanceIoCheck" checked>
+              <span>⚖️ Equalize Average Group M+ Score (IO)</span>
+            </label>
           </div>
 
           <div class="setting-item checkbox-item">
@@ -207,9 +217,42 @@
       <form id="playerForm">
         <input type="hidden" id="playerId">
         
-        <div class="form-group">
-          <label for="playerNameInput">Character / Player Name *</label>
-          <input type="text" id="playerNameInput" class="form-input" placeholder="e.g. MadKing, Thrall, Jaina" required maxlength="24">
+        <div class="form-row">
+          <div class="form-group" style="flex: 2;">
+            <label for="playerNameInput">Character Name *</label>
+            <input type="text" id="playerNameInput" class="form-input" placeholder="e.g. MadKing" required maxlength="24">
+          </div>
+          <div class="form-group" style="flex: 2;">
+            <label for="playerRealmInput">Realm *</label>
+            <input type="text" id="playerRealmInput" class="form-input" placeholder="e.g. Area 52, Illidan" value="Area 52">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="playerRegionSelect">Region</label>
+            <select id="playerRegionSelect" class="form-select">
+              <option value="us" selected>US</option>
+              <option value="eu">EU</option>
+              <option value="kr">KR</option>
+              <option value="tw">TW</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.1rem; display: flex; align-items: center; justify-content: space-between;">
+          <span class="form-hint" style="margin: 0;">Auto-fetch gear &amp; rating from Raider.IO:</span>
+          <button type="button" id="lookupRaiderIoBtn" class="btn btn-sm btn-accent">
+            <span class="btn-text">🔍 Fetch Raider.IO</span>
+          </button>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-half">
+            <label for="playerIlvlInput">Equipped Item Level</label>
+            <input type="number" id="playerIlvlInput" class="form-input" min="0" max="750" placeholder="e.g. 628" value="625">
+          </div>
+          <div class="form-group col-half">
+            <label for="playerIoInput">Mythic+ Score (IO)</label>
+            <input type="number" id="playerIoInput" class="form-input" min="0" max="5000" step="1" placeholder="e.g. 2450" value="2200">
+          </div>
         </div>
 
         <div class="form-group">
