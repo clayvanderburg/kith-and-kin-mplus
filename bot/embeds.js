@@ -83,8 +83,8 @@ function getNextFridayTimestamp() {
 }
 
 function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = 'MadKing') {
-  const attending = players.filter(p => p.attending);
-  const absent = players.filter(p => !p.attending);
+  const attending = (players || []).filter(p => p.attending === true);
+  const absent = (players || []).filter(p => p.absent === true && !p.attending);
   const tanks = attending.filter(p => (p.roles || []).includes('Tank')).length;
   const healers = attending.filter(p => (p.roles || []).includes('Healer')).length;
   const dps = attending.filter(p => (p.roles || []).includes('DPS')).length;
@@ -326,15 +326,21 @@ function createSignupFormComponents({ players = [], defaultName = '', player = n
 
   uniquePlayers.sort((a, b) => a.name.localeCompare(b.name));
 
+  let defaultSelectedName = player ? player.name.toLowerCase() : null;
+  if (!defaultSelectedName && defaultName) {
+    const matched = uniquePlayers.find(p => p.name.toLowerCase() === defaultName.toLowerCase());
+    if (matched) defaultSelectedName = matched.name.toLowerCase();
+  }
+
   const charOptions = uniquePlayers.slice(0, 24).map(p => {
     const rolesStr = (p.roles || ['DPS']).join('/');
     const keyStr = p.ownedKey ? `+${p.ownedKey.split('+')[1] || 10}` : '+10';
-    const isSelected = player ? player.name.toLowerCase() === p.name.toLowerCase() : defaultName.toLowerCase().includes(p.name.toLowerCase());
+    const isSelected = defaultSelectedName === p.name.toLowerCase();
     return {
       label: `${p.name} (${p.className || 'WoW'})`,
       value: p.name,
       description: `${rolesStr} • ${p.io ? (p.io / 1000).toFixed(1) + 'k IO' : (p.ilvl || 320) + 'ilvl'} • ${keyStr}`,
-      default: !!isSelected
+      default: isSelected
     };
   });
 

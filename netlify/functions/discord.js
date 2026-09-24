@@ -27,9 +27,47 @@ function loadModule(name) {
 const solver = loadModule('solver');
 const embeds = loadModule('embeds');
 
+let getStore = null;
+try {
+  getStore = require('@netlify/blobs').getStore;
+} catch (e) {}
+
 const TMP_FILE = path.join('/tmp', 'kk_mplus_state.json');
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '66f468e2962fddf5f6c25d675f66df3970d481be92cc350c30358a12dfe527bb';
 const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
+
+// 29-player Kith and Kin guild roster - all start with attending: false
+const INITIAL_ROSTER = [
+  { id: 'kk-adrenaline', name: 'Adrenaline', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 14, keyMax: 18, ownedKey: 'Murder Row +16', realm: 'Perenolde', region: 'us', ilvl: 322, io: 3236, rank: 0, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-bungulator', name: 'Bungulator', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 14, keyMax: 18, ownedKey: 'Murder Row +16', realm: 'Korgath', region: 'us', ilvl: 324, io: 3290, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-glaiven', name: 'Glaiven', className: 'Demon Hunter', roles: ['DPS', 'Tank'], keyMin: 10, keyMax: 14, ownedKey: "Kings' Rest +12", realm: 'Perenolde', region: 'us', ilvl: 323, io: 3138, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-shocktherapy', name: 'Shockthêràpy', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Altar of Fangs +14', realm: 'Perenolde', region: 'us', ilvl: 321, io: 3230, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-meanssa', name: 'Meanssa', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Voidscar Arena +14', realm: 'Frostmane', region: 'us', ilvl: 321, io: 3118, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-stirlingskat', name: 'Stirlingskat', className: 'Druid', roles: ['Healer', 'Tank', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Ruby Life Pools +14', realm: 'Moon Guard', region: 'us', ilvl: 317, io: 3118, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-sploosh', name: 'Splõõsh', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +13', realm: 'Korgath', region: 'us', ilvl: 322, io: 3104, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-noxxicc', name: 'Noxxicc', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 8, keyMax: 12, ownedKey: 'Murder Row +10', realm: 'Korgath', region: 'us', ilvl: 317, io: 2939, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-avaryn', name: 'Avaryn', className: 'Druid', roles: ['Healer', 'DPS', 'Tank'], keyMin: 10, keyMax: 14, ownedKey: "Kings' Rest +12", realm: 'Perenolde', region: 'us', ilvl: 319, io: 2931, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-tiblock', name: 'Tiblock', className: 'Warlock', roles: ['DPS'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +13', realm: 'Korgath', region: 'us', ilvl: 323, io: 2883, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-khaiduus', name: 'Khaiduus', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 9, keyMax: 13, ownedKey: 'Voidscar Arena +11', realm: 'Cairne', region: 'us', ilvl: 318, io: 2845, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-ravenlight', name: 'Ravenlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +14', realm: 'Perenolde', region: 'us', ilvl: 319, io: 1457, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-tyberia', name: 'Tyberia', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 9, keyMax: 13, ownedKey: 'Altar of Fangs +12', realm: 'Korgath', region: 'us', ilvl: 311, io: 1359, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-engorged', name: 'Engorged', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: 'Den of Nalorakk +4', realm: 'Perenolde', region: 'us', ilvl: 118, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-holyscheisse', name: 'Holyscheisse', className: 'Druid', roles: ['DPS', 'Healer', 'Tank'], keyMin: 2, keyMax: 7, ownedKey: 'The Blinding Vale +5', realm: 'Korgath', region: 'us', ilvl: 291, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
+  { id: 'kk-myssa', name: 'Myssa', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 9, keyMax: 13, ownedKey: 'Temple of Sethraliss +11', realm: 'Frostmane', region: 'us', ilvl: 297, io: 2788, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-bearackobama', name: 'Bearackobamà', className: 'Druid', roles: ['DPS', 'Tank', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: 'Voidscar Arena +4', realm: 'Perenolde', region: 'us', ilvl: 260, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-charliestar', name: 'Charliestar', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 143, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-gredic', name: 'Gredic', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 295, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-khaidylock', name: 'Khaidylock', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Cairne', region: 'us', ilvl: 263, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-knightlight', name: 'Kníghtlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 276, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-veralith', name: 'Veralith', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 269, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-azerite', name: 'Azerite', className: 'Hunter', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 274, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-haiyu', name: 'Haiyu', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 135, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-valkyrin', name: 'Valkyrin', className: 'Paladin', roles: ['Healer', 'Tank', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 248, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-sylana', name: 'Sylana', className: 'Warrior', roles: ['DPS', 'Tank'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 271, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-azernasty', name: 'Azernasty', className: 'Death Knight', roles: ['DPS', 'Tank'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 293, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-ayahuasca', name: 'Ayahuascå', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 311, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+  { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Frostmane', region: 'us', ilvl: 293, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false }
+];
 
 // Fast in-memory cache for warm lambdas
 let memoryState = null;
@@ -39,6 +77,22 @@ async function loadState() {
     return memoryState;
   }
 
+  // 1. Read from Netlify Blobs if available (direct & fast)
+  if (getStore) {
+    try {
+      const store = getStore({ name: 'mplus-state' });
+      const raw = await store.get('current_state');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.players) && parsed.players.length > 0) {
+          memoryState = parsed;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Read from /tmp filesystem
   const fs = require('fs');
   if (fs.existsSync(TMP_FILE)) {
     try {
@@ -50,48 +104,33 @@ async function loadState() {
     } catch (e) {}
   }
 
-  // Fast fetch from /api/state with strict 1.2s timeout
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1200);
-    const res = await fetch(`${WEB_URL}/api/state`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.players) && data.players.length > 0) {
-        memoryState = data;
-        return data;
-      }
-    }
-  } catch (e) {}
-
-  return memoryState || { players: [], formedGroups: [], benchedPlayers: [] };
+  // 3. Fallback clean state with empty attending roster
+  memoryState = {
+    players: JSON.parse(JSON.stringify(INITIAL_ROSTER)),
+    formedGroups: [],
+    benchedPlayers: [],
+    lastUpdated: new Date().toISOString()
+  };
+  return memoryState;
 }
 
 async function saveState(data) {
   memoryState = data;
   data.lastUpdated = new Date().toISOString();
 
-  const fs = require('fs');
+  // 1. Write to /tmp immediately (<2ms)
   try {
+    const fs = require('fs');
     fs.writeFileSync(TMP_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (e) {}
 
-  // Sync to /api/state in background with 1.2s timeout
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1200);
-    await fetch(`${WEB_URL}/api/state`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-sync-secret': 'kith_and_kin_mythic_key_2026'
-      },
-      body: JSON.stringify(data),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-  } catch (e) {}
+  // 2. Write to Netlify Blobs directly (<30ms)
+  if (getStore) {
+    try {
+      const store = getStore({ name: 'mplus-state' });
+      await store.set('current_state', JSON.stringify(data));
+    } catch (e) {}
+  }
 }
 
 /**
@@ -449,6 +488,33 @@ exports.handler = async (event, context) => {
     const customId = interaction.data.custom_id;
     const discordUser = interaction.member?.user || interaction.user;
     const defaultName = discordUser?.global_name || discordUser?.username || 'Player';
+    let player = (state.players || []).find(p =>
+      (p.discordId && p.discordId === discordUser.id) ||
+      (defaultName && p.name.toLowerCase() === defaultName.toLowerCase())
+    );
+
+    // Absent Button
+    if (customId === 'btn_absent') {
+      if (player) {
+        player.attending = false;
+        player.absent = true;
+        await saveState(state);
+        return jsonResponse({
+          type: 4,
+          data: {
+            content: `💤 Marked **${player.name}** as absent for Friday night. We'll catch you next time!`,
+            flags: 64
+          }
+        });
+      }
+      return jsonResponse({
+        type: 4,
+        data: {
+          content: `Could not find an active sign-up for you. Click **[Sign Up / Edit RSVP 📝]** if you need to register!`,
+          flags: 64
+        }
+      });
+    }
 
     // 1. Open Interactive Sign-Up Form (Dropdowns)
     if (customId === 'btn_open_signup') {
@@ -503,9 +569,8 @@ exports.handler = async (event, context) => {
 
       let targetPlayer = (state.players || []).find(p => p.name.toLowerCase() === (selected || '').toLowerCase());
       if (targetPlayer) {
-        targetPlayer.attending = true;
         targetPlayer.discordId = discordUser.id;
-        await saveState(state);
+        saveState(state).catch(() => {});
       }
 
       const components = embeds ? embeds.createSignupFormComponents({
@@ -526,15 +591,15 @@ exports.handler = async (event, context) => {
     // 3. Select Role(s) Multi-Select
     if (customId === 'select_roles') {
       const selectedRoles = interaction.data.values || ['DPS'];
-      if (player) {
-        player.roles = selectedRoles;
-        player.attending = true;
-        await saveState(state);
+      let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
+      if (targetPlayer) {
+        targetPlayer.roles = selectedRoles;
+        saveState(state).catch(() => {});
       }
       const components = embeds ? embeds.createSignupFormComponents({
         players: state.players || [],
         defaultName,
-        player
+        player: targetPlayer
       }) : [];
       return jsonResponse({
         type: 7,
@@ -549,21 +614,21 @@ exports.handler = async (event, context) => {
     if (customId === 'select_key_range') {
       const range = interaction.data.values?.[0] || '12-15';
       const parts = range.split('-');
-      if (player && parts.length === 2) {
-        player.keyMin = parseInt(parts[0], 10);
-        player.keyMax = parseInt(parts[1], 10);
-        player.attending = true;
-        await saveState(state);
+      let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
+      if (targetPlayer && parts.length === 2) {
+        targetPlayer.keyMin = parseInt(parts[0], 10);
+        targetPlayer.keyMax = parseInt(parts[1], 10);
+        saveState(state).catch(() => {});
       }
       const components = embeds ? embeds.createSignupFormComponents({
         players: state.players || [],
         defaultName,
-        player
+        player: targetPlayer
       }) : [];
       return jsonResponse({
         type: 7,
         data: {
-          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Comfortable Key Range set to: **+${player?.keyMin || parts[0]} to +${player?.keyMax || parts[1]}**`,
+          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Comfortable Key Range set to: **+${targetPlayer?.keyMin || parts[0]} to +${targetPlayer?.keyMax || parts[1]}**`,
           components
         }
       });
@@ -572,25 +637,25 @@ exports.handler = async (event, context) => {
     // 5. Select Squad Vibes & Preferences (Multi-Select)
     if (customId === 'select_vibes') {
       const vibes = interaction.data.values || [];
-      if (player) {
-        player.isLeader = vibes.includes('vibe_leader');
-        player.isReserve = vibes.includes('vibe_reserve');
-        player.carryPreference = vibes.includes('vibe_need_carry') ? 'need_carry' : (vibes.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
-        player.isShitter = vibes.includes('vibe_shitter');
-        player.attending = true;
-        await saveState(state);
+      let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
+      if (targetPlayer) {
+        targetPlayer.isLeader = vibes.includes('vibe_leader');
+        targetPlayer.isReserve = vibes.includes('vibe_reserve');
+        targetPlayer.carryPreference = vibes.includes('vibe_need_carry') ? 'need_carry' : (vibes.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
+        targetPlayer.isShitter = vibes.includes('vibe_shitter');
+        saveState(state).catch(() => {});
       }
       const components = embeds ? embeds.createSignupFormComponents({
         players: state.players || [],
         defaultName,
-        player
+        player: targetPlayer
       }) : [];
       let vibeTags = [];
-      if (player?.isLeader) vibeTags.push('👑 Born Leader');
-      if (player?.isReserve) vibeTags.push('🍺 Reserve');
-      if (player?.carryPreference === 'need_carry') vibeTags.push('🎒 Needs Carry');
-      if (player?.carryPreference === 'willing_carry') vibeTags.push('🏋️ Stronk Back');
-      if (player?.isShitter) vibeTags.push('💩 Shitter');
+      if (targetPlayer?.isLeader) vibeTags.push('👑 Born Leader');
+      if (targetPlayer?.isReserve) vibeTags.push('🍺 Reserve');
+      if (targetPlayer?.carryPreference === 'need_carry') vibeTags.push('🎒 Needs Carry');
+      if (targetPlayer?.carryPreference === 'willing_carry') vibeTags.push('🏋️ Stronk Back');
+      if (targetPlayer?.isShitter) vibeTags.push('💩 Shitter');
 
       return jsonResponse({
         type: 7,
@@ -603,7 +668,8 @@ exports.handler = async (event, context) => {
 
     // 6. Confirm & Save RSVP Button
     if (customId === 'btn_confirm_rsvp') {
-      if (!player) {
+      let rsvpPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
+      if (!rsvpPlayer) {
         return jsonResponse({
           type: 7,
           data: {
@@ -612,8 +678,9 @@ exports.handler = async (event, context) => {
           }
         });
       }
-      player.attending = true;
-      player.discordId = discordUser.id;
+      rsvpPlayer.attending = true;
+      rsvpPlayer.absent = false;
+      rsvpPlayer.discordId = discordUser.id;
       await saveState(state);
 
       let badges = [];

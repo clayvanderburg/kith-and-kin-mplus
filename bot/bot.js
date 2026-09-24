@@ -343,6 +343,7 @@ async function handleButtonInteraction(interaction) {
     }
 
     player.attending = true;
+    player.absent = false;
     player.discordId = interaction.user.id;
     await pushRemoteState(state);
 
@@ -597,7 +598,6 @@ async function handleSelectMenuInteraction(interaction) {
 
     let targetPlayer = (state.players || []).find(p => p.name.toLowerCase() === (selected || '').toLowerCase());
     if (targetPlayer) {
-      targetPlayer.attending = true;
       targetPlayer.discordId = interaction.user.id;
       userCharacterMap.set(interaction.user.id, targetPlayer.name);
       await pushRemoteState(state);
