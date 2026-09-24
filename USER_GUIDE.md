@@ -1,147 +1,110 @@
-# 🏰 Kith & Kin — Friday Mythic+ Night User Guide
+# 🏰 Kith & Kin — Mythic+ Night Complete User Guide
 
-Welcome to the **Kith & Kin Mythic+ Night** bot and web companion! This guide shows how Friday Night sign-ups, Raid-Helper style cards, and automated party balancing work.
-
----
-
-## 📸 The Friday Event Window (Raid-Helper Style)
-
-Whenever you post `/mplus post-signup`, the bot posts an interactive Friday Night event card in your Discord channel:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 🏰 Friday Mythic+ Keystone Night                            │
-│ Conquer Midnight Season 2 keystones! Match IO ranges,      │
-│ balance Bloodlust & BRez, pair carries, and form parties.  │
-│                                                             │
-│ 👑 Host: MadKing  •  👥 Attending: 14 (+1 absent)           │
-│ 📅 Event: Every Friday  •  ⏰ Time: 8:00 PM EST             │
-│ ⏳ Kickoff: in 18 hours (<t:TIMESTAMP:R>)                    │
-│ ─────────────────────────────────────────────────────────── │
-│ 🛡️ Tanks: 3  •  💚 Healers: 3  •  ⚔️ DPS: 8  •  🏰 Groups: 3│
-│ ─────────────────────────────────────────────────────────── │
-│                                                             │
-│ ⚔️ Death Knight (2)     🪓 Warrior (1)        🌿 Druid (1)   │
-│ 🛡️ 1. MadKing (3.1k•+14) 🛡️ 1. Adrenaline(2.9k) 💚 1. Holy (2.9k)│
-│ ⚔️ 2. Azerite (2.8k•+12)                                    │
-│                                                             │
-│ 🛡️ Paladin (2)          🏹 Hunter (2)         🔥 Warlock (1) │
-│ ⚔️ 1. KingRaven (2.7k)   ⚔️ 1. Starkatt (2.9k) ⚔️ 1. Sloppy (2.5k)│
-│ 💚 2. Athene (2.6k)      ⚔️ 2. Towlie (2.6k)                 │
-│                                                             │
-│ 🎭 Squad Preferences & Vibe:                                │
-│ 🎒 Needs Carry (2): Totess, Logic                           │
-│ 🏋️ Back is Stronk (2): MadKing, Starkatt                    │
-│ 💩 Shitter Alt Squad (3): Sloppy, Azerite, Towlie           │
-│ 💤 Absent (1): Tyberia                                      │
-└─────────────────────────────────────────────────────────────┘
-  [Tank 🛡️]   [Healer 💚]   [DPS ⚔️]   [Can't Make It 💤]
-  [Need Carry 🎒]  [Stronk Back 🏋️]  [Shitter Alt 💩]  [Form Groups 🏰]  [Web View 🌐]
-```
+> **Live Web App:** [https://knkmplus.netlify.app](https://knkmplus.netlify.app)  
+> **Bot Invite Link:** [Click to Invite Bot to Discord](https://discord.com/oauth2/authorize?client_id=1552791262447280128&permissions=277025507392&scope=bot%20applications.commands)  
+> **Event Kickoff:** Every Friday @ 8:00 PM EST
 
 ---
 
-## 🙋‍♂️ For Guild Members (How to Sign Up in 5 Seconds)
+## ⚡ Quick Slash Commands Cheat Sheet
 
-### 1. Click Your Role Button
-At the bottom of the Friday event card, click your role:
-- `[Tank 🛡️]`
-- `[Healer 💚]`
-- `[DPS ⚔️]`
-
-### 2. Confirm Character Name
-A small popup window will appear:
-- **Character Name**: Type your WoW character name (defaults to your Discord name).
-- **Key Range**: e.g., `8-14` (what key levels you want to run tonight).
-- Click **Submit**!
-
-> ⚡ **Raider.IO Magic**: The bot automatically checks Raider.IO to fetch your real item level, Midnight Season 2 IO score, and active keystone!
-
-### 3. (Optional) Pick Your Vibe
-Click any of the second-row buttons:
-- `[Need Carry 🎒]`: Alerts the group generator to pair you with high-IO carries.
-- `[Stronk Back 🏋️]`: Marks you willing to anchor and carry members needing keys.
-- `[Shitter Alt 💩]`: Marks you for the "Shitter Alt Squad" so you run with other chill/alt keys.
-- `[Can't Make It 💤]`: If something comes up and you can no longer attend.
+| Command | Who Uses It | What It Does | Example |
+| :--- | :---: | :--- | :--- |
+| **`/mplus post-signup`** | 👑 Officers | Posts the interactive Friday RSVP event card with 1-click buttons. | `/mplus post-signup` |
+| **`/mplus form`** | 👑 Officers | Solves and builds balanced 5-man groups (Lust/BRez/IO/Carries). | `/mplus form` or `/mplus form strategy:balanced` |
+| **`/mplus roll-key`** | 🎲 Anyone | Rolls a random keystone, checks who holds it, and respects banned dungeons. | `/mplus roll-key source:pool level:12` |
+| **`/mplus sync-keys`** | 🔑 Anyone | Queries Raider.IO to update attending members' active bag keys. | `/mplus sync-keys` |
+| **`/mplus roster`** | 👥 Anyone | Displays the current sign-ups grouped by class and role count. | `/mplus roster` |
+| **`/mplus signup`** | 🙋‍♂️ Members | Manual typed sign-up (alternative to clicking the buttons). | `/mplus signup character:MadKing role:Tank min_key:10 max_key:16` |
+| **`/mplus clear`** | 👑 Officers | Clears tonight's parties when done (keeps player sign-ups). | `/mplus clear` |
+| **`/mplus web`** | 🌐 Anyone | Posts the direct link to the live interactive web dashboard. | `/mplus web` |
 
 ---
 
-## 👑 For Officers / MadKing (Managing the Event)
+## 🎛️ Interactive Discord Buttons (No Typing Needed!)
 
-### 1. Post the Sign-up Card for Friday
-In your `#mythic-plus` or `#announcements` channel:
+Whenever `/mplus post-signup` is posted in your Discord channel, members can run everything with **1 click**:
+
+### Row 1: Role RSVP
+- `[Tank 🛡️]`: Sign up as a Tank. Pops open a quick window to verify character name & comfortable key range.
+- `[Healer 💚]`: Sign up as a Healer.
+- `[DPS ⚔️]`: Sign up as a DPS.
+- `[Can’t Make It 💤]`: Marks yourself absent if plans change.
+
+### Row 2: Vibe & Group Actions
+- `[Need Carry 🎒]`: Flags your sign-up so the optimizer automatically pairs you with a high-IO guildie.
+- `[Stronk Back 🏋️]`: Flags yourself willing to carry keys and anchor groups.
+- `[Shitter Alt 💩]`: Opt-in to the **Shitter Alt Squad** (bundles under-geared alts together for zero-stress keys).
+- `[Form Groups 🏰]`: Instantly runs the solver and posts balanced parties.
+- `[Web View 🌐]`: Opens the live web app in your browser.
+
+### Row 3: Keystone & Sync Tools
+- `[Roll Key 🎲]`: Rolls a random allowed keystone and shows who in the raid holds it.
+- `[Sync Keys 🔑]`: Pulls live bag keys and recent runs from Raider.IO for attendees.
+- `[Refresh 🔄]`: Updates the embed with the latest sign-up numbers.
+
+---
+
+## 📅 The 3-Step Friday Night Workflow
+
+### Step 1: Post Sign-ups Early in the Week
+An officer types in `#mythic-plus`:
 ```
 /mplus post-signup
 ```
-This drops the interactive Friday event card with live countdown and one-click buttons.
+Members click `[Tank 🛡️]`, `[Healer 💚]`, or `[DPS ⚔️]` to register. The bot automatically checks Raider.IO to grab their real **Midnight Season 2 IO score**, item level, and current keystone!
 
-### 2. Form Groups with One Click
-When it's time to play (or when you have enough people):
-- Click `[Form Groups 🏰]` on the embed, or type:
-  ```
-  /mplus form
-  ```
-The solver instantly builds optimal 5-man parties considering:
-- **1 Tank, 1 Healer, 3 DPS** per party.
+### Step 2: At 8:00 PM EST, Form Groups
+When everyone is in voice, click **`[Form Groups 🏰]`** or type:
+```
+/mplus form
+```
+The solver automatically builds 5-man parties ensuring:
+- Exactly **1 Tank, 1 Healer, 3 DPS** per party.
 - **Bloodlust & Battle Res** guaranteed in every group.
-- **Balanced Average IO**: No single stacked group while others struggle.
-- **Carry Pairing**: Matches "Need Carry" members with "Stronk Back" veterans.
-- **Shitter Alt Isolation**: Bundles all "Shitter" opt-ins together into their own squad.
-- **Keystone Assignment**: Matches group comfort with dungeons from Midnight Season 2.
+- **Balanced Average IO** across teams.
+- "Need Carry" players paired with "Stronk Back" veterans.
+- "Shitter" alts placed together in their own fun squad.
 
-### 3. Clear Groups for Next Week
-```
-/mplus clear
-```
-Clears the generated groups while preserving your roster.
-
-### 4. Direct Slash Command Sign-up (Alternative to Buttons)
-Members can also sign up with a single typed command:
-```
-/mplus signup character:MadKing role:Tank min_key:10 max_key:16 carry_pref:willing_carry
-```
+### Step 3: Roll or Assign Keystones
+- Click **`[Roll Key 🎲]`** to roll a random dungeon for the night.
+- Or head over to the [Live Web Dashboard](https://knkmplus.netlify.app) to drag/drop players, exclude hated dungeons, or reroll keys per party.
 
 ---
 
-## 🎲 Keystone Roulette, Dungeon Pool & Key Sync (New!)
+## 🎲 Keystone Roulette & Dungeon Exclusions (Web Dashboard)
 
-### 1. Active Dungeon Pool & Exclusions
-Don't want to run a specific dungeon tonight (e.g. everyone hates *Kings' Rest* or you already did *Voidscar Arena*)?
-- In the **Active Dungeon Pool** section on the web dashboard, simply **click any dungeon chip** to toggle it:
-  - 🟩 **Green (Active)**: Eligible to be rolled and assigned.
-  - 🟥 **Red / Strikethrough (Excluded)**: Completely excluded from group generation, random rolls, and party suggestions!
-- Quick actions: Click **"Include All"** or **"Reset"** to restore all 8 Midnight Season 2 dungeons.
+On [https://knkmplus.netlify.app](https://knkmplus.netlify.app):
+
+### 1. Active Dungeon Pool (Exclude Hated Keys)
+- Every Midnight Season 2 dungeon has an interactive chip at the top.
+- **Click any chip to toggle it**:
+  - 🟩 **Green (Active)**: Eligible to be picked.
+  - 🟥 **Red / Strikethrough (Excluded)**: Completely banned from party assignments and random rolls!
+- Use **"Include All"** or **"Reset"** to restore.
 
 ### 2. Keystone Roulette & Quick Assign
-Roll a keystone on the fly and immediately assign it to your parties:
 - **Source**:
-  - `🎲 Random from Allowed Pool`: Picks an un-excluded dungeon at random.
-  - `🔑 Random from Held Keys`: Picks randomly from keystones your attending members actually hold in their bags!
-  - `🎯 Specific Dungeon (Manual)`: Select a specific dungeon directly.
-- **Key Level**: Set the target difficulty (e.g., `+12`).
+  - `🎲 Random from Allowed Pool`: Picks an unbanned dungeon.
+  - `🔑 Random from Held Keys`: Picks randomly from keys attending players *actually hold in their bags*.
+  - `🎯 Specific Dungeon (Manual)`: Select a dungeon directly.
+- **Key Level**: Choose target level (e.g. `+12`).
 - **Assign To**: Choose **All Formed Groups** or a specific party (**Party 1**, **Party 2**, etc.).
-- Hit **"🎲 Roll Keystone!"** — it plays a fanfare, shows who is holding the key, and updates the party card.
+- Click **"🎲 Roll Keystone!"** — updates the parties and shows who holds the key!
 
-### 3. Quick Reroll & Manual Pick per Party Card
-On every formed group card:
-- Click the **`🎲 Roll`** button next to the dungeon name to reroll a key specifically for that party from the allowed pool.
-- Use the **inline dungeon dropdown** to manually switch that party's dungeon at any time.
+### 3. Party Card Quick Controls
+- Each party card has its own **`🎲 Roll`** button to reroll a key just for that team.
+- An **inline dropdown** lets you manually change a party's dungeon anytime.
 
 ### 4. 🔑 Sync Keys Button
-- Click the **`🔑 Sync Keys`** button in the Roster toolbar to automatically query Raider.IO for all attending members, pulling their latest bags/completed keystones and updating their key ranges in real time.
-- In Discord: Click `[Sync Keys 🔑]` on the event card, or use `/mplus sync-keys`.
-
-### 5. Discord Keystone Commands
-- `/mplus roll-key`: Rolls a random keystone (optional `source:pool|held`, `level:12`, `exclude:Kings' Rest`).
-- `/mplus sync-keys`: Refreshes attending members' keys from Raider.IO.
-- `[Roll Key 🎲]` and `[Sync Keys 🔑]` buttons right on the Discord sign-up message!
+- In the Roster toolbar, click **`🔑 Sync Keys`** to batch-refresh all attending members directly from Raider.IO.
 
 ---
 
-## 🌐 Live Two-Way Web Dashboard
+## 💡 Pro Tips for Officers
 
-You can manage groups in Discord or on the website — they stay 100% in sync!
-- **URL**: [https://knkmplus.netlify.app](https://knkmplus.netlify.app)
-- Click `[Web View 🌐]` directly on the Discord card.
-- In the web app, you can manually drag/drop players between groups, lock players into specific parties, reroll unlocked spots, or import the entire 690+ member guild roster.
-- Any change made on the web dashboard updates Discord, and any Discord button click updates the website.
+1. **Locking Players**: On the website, click the 🔒 lock icon on any player to lock them into their party. When you hit "Reroll Unlocked", only unlocked spots will change!
+2. **Drag & Drop**: In the web app, you can freely drag players between parties or swap roles on the fly.
+3. **Full Guild Sync**: Click **`⚡ Live Guild Sync`** on the website to import the entire 690+ member Kith and Kin guild roster from Blizzard/Raider.IO.
+4. **Everything Stays in Sync**: Anything changed on the website updates Discord, and anything clicked in Discord updates the website in real time.
+
