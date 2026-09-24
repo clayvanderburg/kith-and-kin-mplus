@@ -31,7 +31,7 @@ With this setup, when a guild member runs `/mplus ...` or clicks an RSVP button 
 2. Find the field labeled **"Interactions Endpoint URL"**.
 3. Enter your live Netlify endpoint:
    ```
-   https://kith-and-kin-mplus.netlify.app/api/discord
+   https://knkmplus.netlify.app/api/discord
    ```
 4. Click **Save Changes**. Discord will send an automated validation ping to Netlify. Because your function handles `type: 1` verification, Discord will immediately verify and save with a green checkmark!
 
@@ -69,7 +69,7 @@ If you ever prefer running a traditional persistent bot process on your computer
    DISCORD_TOKEN=your_bot_token
    CLIENT_ID=your_client_id
    GUILD_ID=your_guild_id
-   API_URL=https://kith-and-kin-mplus.netlify.app/api/state
+   API_URL=https://knkmplus.netlify.app/api/state
    SYNC_SECRET=kith_and_kin_mythic_key_2026
    ```
 2. Start the bot:

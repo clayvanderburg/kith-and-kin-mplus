@@ -42,7 +42,7 @@ function getNextFridayTimestamp() {
   return Math.floor(target.getTime() / 1000);
 }
 
-function createRosterEmbed(players, webUrl = 'https://kith-and-kin-mplus.netlify.app', hostName = 'MadKing') {
+function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = 'MadKing') {
   const attending = players.filter(p => p.attending);
   const absent = players.filter(p => !p.attending);
   const tanks = attending.filter(p => (p.roles || []).includes('Tank')).length;
@@ -147,7 +147,7 @@ function createRosterEmbed(players, webUrl = 'https://kith-and-kin-mplus.netlify
   return embed;
 }
 
-function createGroupEmbeds(groups, benched, webUrl = 'https://kith-and-kin-mplus.netlify.app') {
+function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.app') {
   const embeds = [];
 
   groups.forEach((grp, idx) => {
@@ -215,7 +215,7 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://kith-and-kin-mplus
   return embeds;
 }
 
-function createSignupButtons(webUrl = 'https://kith-and-kin-mplus.netlify.app') {
+function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
   // Row 1: Quick Role Sign-up Buttons (Primary)
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()

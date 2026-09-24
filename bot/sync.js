@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const LOCAL_CACHE_FILE = path.join(__dirname, 'state-cache.json');
-const API_URL = process.env.API_URL || 'https://kith-and-kin-mplus.netlify.app/api/state';
+const API_URL = process.env.API_URL || 'https://knkmplus.netlify.app/api/state';
 const SYNC_SECRET = process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
 
 // In-memory fallback

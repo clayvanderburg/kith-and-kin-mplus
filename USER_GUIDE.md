@@ -106,7 +106,7 @@ Members can also sign up with a single typed command:
 ## 🌐 Live Two-Way Web Dashboard
 
 You can manage groups in Discord or on the website — they stay 100% in sync!
-- **URL**: [https://kith-and-kin-mplus.netlify.app](https://kith-and-kin-mplus.netlify.app)
+- **URL**: [https://knkmplus.netlify.app](https://knkmplus.netlify.app)
 - Click `[Web View 🌐]` directly on the Discord card.
 - In the web app, you can manually drag/drop players between groups, lock players into specific parties, reroll unlocked spots, or import the entire 690+ member guild roster.
 - Any change made on the web dashboard updates Discord, and any Discord button click updates the website.

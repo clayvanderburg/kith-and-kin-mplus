@@ -13,7 +13,7 @@ const { fetchRemoteState, pushRemoteState, lookupRaiderIo } = require('./sync');
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
-const WEB_URL = process.env.WEB_URL || 'https://kith-and-kin-mplus.netlify.app';
+const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
 
 if (!TOKEN || !CLIENT_ID) {
   console.warn('⚠️ WARNING: DISCORD_TOKEN or CLIENT_ID is not configured in .env. Bot cannot start until configured.');

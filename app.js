@@ -254,7 +254,7 @@
   // --- Discord & Cloud State Synchronization ---
   const API_URL = (window.location.hostname.includes('netlify.app') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? '/api/state'
-    : 'https://kith-and-kin-mplus.netlify.app/api/state';
+    : 'https://knkmplus.netlify.app/api/state';
   const SYNC_SECRET = 'kith_and_kin_mythic_key_2026';
   let pushDebounceTimer = null;
   let isFetchingRemote = false;

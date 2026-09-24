@@ -7,20 +7,25 @@
 const crypto = require('crypto');
 const path = require('path');
 
-// Safe imports of solver and embeds
-let solver = null;
-let embeds = null;
-try {
-  solver = require('../../bot/solver');
-  embeds = require('../../bot/embeds');
-} catch (e) {
-  try {
-    solver = require('../bot/solver');
-    embeds = require('../bot/embeds');
-  } catch (err) {
-    console.error('Failed to import solver/embeds:', err);
+// Safe dynamic imports of solver and embeds across local and Netlify Lambda environments
+function loadModule(name) {
+  const possiblePaths = [
+    path.join(__dirname, '..', '..', 'bot', name),
+    path.join(__dirname, '..', 'bot', name),
+    path.join(__dirname, 'bot', name),
+    path.join(process.cwd(), 'bot', name),
+    path.join(__dirname, name)
+  ];
+  for (const p of possiblePaths) {
+    try {
+      return require(p);
+    } catch (e) {}
   }
+  return null;
 }
+
+const solver = loadModule('solver');
+const embeds = loadModule('embeds');
 
 // Netlify Blobs support if configured
 let getStore = null;
@@ -30,7 +35,7 @@ try {
 
 const TMP_FILE = path.join('/tmp', 'kk_mplus_state.json');
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY;
-const WEB_URL = process.env.WEB_URL || 'https://kith-and-kin-mplus.netlify.app';
+const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
 
 // In-memory fallback
 let memoryState = null;
@@ -76,8 +81,11 @@ async function saveState(data) {
  */
 function verifyDiscordSignature(rawBody, signature, timestamp, clientPublicKey) {
   if (!clientPublicKey) {
-    console.warn('[Discord Endpoint] DISCORD_PUBLIC_KEY not set in environment!');
-    return true; // allow in local dev if unset
+    console.warn('[Discord Endpoint] DISCORD_PUBLIC_KEY is not configured in Netlify environment variables.');
+    return false;
+  }
+  if (!signature || !timestamp) {
+    return false;
   }
   try {
     const pubKey = crypto.createPublicKey({
@@ -154,13 +162,18 @@ exports.handler = async (event, context) => {
   const timestamp = event.headers['x-signature-timestamp'];
   const rawBody = event.body || '';
 
-  // 1. Verify Request
+  // 1. Verify Request Signature from Discord
   const isValid = verifyDiscordSignature(rawBody, signature, timestamp, DISCORD_PUBLIC_KEY);
   if (!isValid) {
     return { statusCode: 401, body: 'Invalid request signature' };
   }
 
-  const interaction = JSON.parse(rawBody);
+  let interaction;
+  try {
+    interaction = JSON.parse(rawBody);
+  } catch (e) {
+    return { statusCode: 400, body: 'Invalid JSON payload' };
+  }
 
   // 2. Discord PING Check (Type 1)
   if (interaction.type === 1) {
