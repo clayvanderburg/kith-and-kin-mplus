@@ -26,6 +26,31 @@ function loadModule(name) {
 
 const solver = loadModule('solver');
 const embeds = loadModule('embeds');
+const rosterSearch = loadModule('roster-search');
+
+function bindSignupCharacter(state, discordUser, rawName) {
+  if (!rosterSearch) return null;
+  return rosterSearch.attachCharacter(state, discordUser?.id, rawName);
+}
+
+function signupPreferencesMessage(player) {
+  return {
+    content: `### 📝 Friday Mythic+ Night Sign-Up\nCharacter: **${player.name}** (${player.className}${player.realm ? ` — ${player.realm}` : ''})\nPick one or more roles, key goals (**6-8 Hero Crest**, **10-12 Vault**, **Higher than 12 IO**), and vibes, then **Save My RSVP**.`,
+    components: embeds ? embeds.createSignupFormComponents({ player }) : []
+  };
+}
+
+function signupMatchMessage(result) {
+  const count = result?.matchCount || 0;
+  const label = result?.typedName ? `**${result.typedName}**` : 'that name';
+  return {
+    content: count
+      ? `### 📝 Find Your Character\n${count} guild match${count === 1 ? '' : 'es'} for ${label}. Pick one, or use the name even if they are not in the guild.`
+      : `### 📝 Find Your Character\nNo guild match for ${label}. Pick **not in guild** to sign that name up anyway, or search again.`,
+    components: embeds ? embeds.createCharacterMatchComponents(result?.matches || [], result?.typedName || '') : [],
+    flags: 64
+  };
+}
 
 let getStore = null;
 try {
@@ -281,47 +306,20 @@ exports.handler = async (event, context) => {
       }
     }
 
-    const query = (focusedOption?.value || '').trim().toLowerCase();
+    const query = focusedOption?.value || '';
     let choices = [];
 
     try {
-      const rosterData = require('../../bot/guild-roster.json');
-      if (Array.isArray(rosterData)) {
-        if (!query) {
-          choices = rosterData.slice(0, 25).map(c => ({
-            name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
-            value: c.name
-          }));
-        } else {
-          const exactMatches = [];
-          const prefixMatches = [];
-          const includesMatches = [];
-
-          for (const c of rosterData) {
-            const lowerName = c.name.toLowerCase();
-            if (lowerName === query) {
-              exactMatches.push(c);
-            } else if (lowerName.startsWith(query)) {
-              prefixMatches.push(c);
-            } else if (lowerName.includes(query)) {
-              includesMatches.push(c);
-            }
-          }
-
-          const combined = [...exactMatches, ...prefixMatches, ...includesMatches];
-          choices = combined.slice(0, 24).map(c => ({
-            name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
-            value: c.name
-          }));
-
-          // If typed query doesn't exactly match someone, offer custom/alt choice
-          if (!exactMatches.length && focusedOption?.value) {
-            choices.unshift({
-              name: `➕ "${focusedOption.value}" (Custom / Not in Guild)`,
-              value: focusedOption.value
-            });
-          }
-        }
+      const result = rosterSearch ? rosterSearch.searchGuildRoster(query, 24) : { matches: [], exact: null, typedName: query };
+      choices = (result.matches || []).map(entry => ({
+        name: `${entry.name} (${entry.className || 'Player'} - ${entry.realm || 'Guild'})`.slice(0, 100),
+        value: entry.name.slice(0, 100)
+      }));
+      if (result.typedName && !result.exact) {
+        choices.unshift({
+          name: `➕ "${result.typedName}" (not in guild)`.slice(0, 100),
+          value: result.typedName.slice(0, 100)
+        });
       }
     } catch (err) {
       console.error('[Discord Autocomplete] Error loading roster:', err);
@@ -354,7 +352,7 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'roster') {
-        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL).toJSON() : { title: 'Roster' };
+        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
         return jsonResponse({
           type: 4,
           data: { embeds: [embed] }
@@ -362,7 +360,7 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'post-signup') {
-        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL).toJSON() : { title: 'Roster' };
+        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
         const buttons = embeds ? embeds.createSignupButtons().map(r => r.toJSON()) : [];
         return jsonResponse({
           type: 4,
@@ -599,91 +597,54 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // 1. Open Interactive Sign-Up Form (Dropdowns)
-    if (customId === 'btn_open_signup') {
-      const components = embeds ? embeds.createSignupFormComponents({
-        players: state.players || [],
-        defaultName,
-        player
-      }) : [];
-
+    // 1. Open character search. Discord selects cap at 25, so typing filters the full roster.
+    if (customId === 'btn_open_signup' || customId === 'btn_search_again' || customId === 'btn_custom_modal') {
+      const prefill = player?.name || '';
       return jsonResponse({
-        type: 4,
-        data: {
-          content: `### 📝 Friday Mythic+ Night Sign-Up\nSelect your character from the guild roster, choose your role(s), key range, and preferences below:\n*(Only you can see this form)*`,
-          components,
-          flags: 64
+        type: 9,
+        data: rosterSearch ? rosterSearch.characterSearchModal(prefill) : {
+          custom_id: 'modal_char_search',
+          title: 'Find Your Character',
+          components: [{
+            type: 1,
+            components: [{
+              type: 4,
+              custom_id: 'char_query',
+              label: 'Type a guild name, or any alt',
+              style: 1,
+              required: true
+            }]
+          }]
         }
       });
     }
 
-    // 2. Select Character Dropdown
+    // 2. Pick a filtered match, or a name that is not in the guild.
     if (customId === 'select_character') {
-      const selected = interaction.data.values?.[0];
+      const selected = interaction.data.values?.[0] || '';
       if (selected === '__custom__') {
         return jsonResponse({
-          type: 9, // Modal for custom character name
-          data: {
-            custom_id: 'modal_signup_custom',
-            title: 'Sign Up Custom / Alt Character',
-            components: [
-              {
-                type: 1,
-                components: [
-                  { type: 4, custom_id: 'char_name', label: 'WoW Character Name (Perenolde)', style: 1, required: true }
-                ]
-              },
-              {
-                type: 1,
-                components: [
-                  { type: 4, custom_id: 'char_roles', label: 'Roles: Tank, Healer, DPS (comma separated)', style: 1, value: 'DPS', required: true }
-                ]
-              },
-              {
-                type: 1,
-                components: [
-                  { type: 4, custom_id: 'key_range', label: 'Comfortable Key Range (e.g. 10-15)', style: 1, value: '12-15', required: false }
-                ]
-              }
-            ]
+          type: 9,
+          data: rosterSearch ? rosterSearch.characterSearchModal('') : {
+            custom_id: 'modal_char_search',
+            title: 'Find Your Character',
+            components: []
           }
         });
       }
 
-      let targetPlayer = (state.players || []).find(p => p.name.toLowerCase() === (selected || '').toLowerCase());
-      if (targetPlayer) {
-        targetPlayer.discordId = discordUser.id;
-        saveState(state).catch(() => {});
-      } else if (selected && selected !== '__custom__') {
-        targetPlayer = {
-          id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          name: selected,
-          className: 'Warrior',
-          realm: 'Cenarius',
-          roles: ['DPS'],
-          keyMin: 10,
-          keyMax: 12,
-          keyBrackets: ['10-12'],
-          attending: false,
-          discordId: discordUser.id
-        };
-        state.players = state.players || [];
-        state.players.push(targetPlayer);
-        saveState(state).catch(() => {});
+      const chosenName = selected.startsWith('__custom__:') ? selected.slice('__custom__:'.length) : selected;
+      const targetPlayer = bindSignupCharacter(state, discordUser, chosenName);
+      if (!targetPlayer) {
+        return jsonResponse({
+          type: 4,
+          data: { content: '⚠️ Type a character name to search the guild roster.', flags: 64 }
+        });
       }
-
-      const components = embeds ? embeds.createSignupFormComponents({
-        players: state.players || [],
-        defaultName: selected,
-        player: targetPlayer
-      }) : [];
-
+      saveState(state).catch(() => {});
       return jsonResponse({
-        type: 7, // UPDATE_MESSAGE
-        data: {
-          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Character selected: **${selected}**\nNow select your role(s), key range, and preferences:`,
-          components
-        }
+        type: 7,
+        data: signupPreferencesMessage(targetPlayer)
       });
     }
 
@@ -715,10 +676,11 @@ exports.handler = async (event, context) => {
       let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
       if (targetPlayer) {
         targetPlayer.keyBrackets = selectedBrackets;
-        let minKey = 10, maxKey = 12;
-        if (selectedBrackets.includes('6-8')) { minKey = 6; maxKey = Math.max(maxKey, 8); }
+        let minKey = 30;
+        let maxKey = 2;
+        if (selectedBrackets.includes('6-8')) { minKey = Math.min(minKey, 6); maxKey = Math.max(maxKey, 8); }
         if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 10); maxKey = Math.max(maxKey, 12); }
-        if (selectedBrackets.includes('12+')) { maxKey = Math.max(maxKey, 18); }
+        if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 13); maxKey = Math.max(maxKey, 18); }
         targetPlayer.keyMin = minKey;
         targetPlayer.keyMax = maxKey;
         saveState(state).catch(() => {});
@@ -776,7 +738,7 @@ exports.handler = async (event, context) => {
         return jsonResponse({
           type: 7,
           data: {
-            content: '⚠️ Please select a character from the first dropdown before confirming!',
+            content: '⚠️ Search for a character name before confirming!',
             components: embeds ? embeds.createSignupFormComponents({ players: state.players || [], defaultName, player: null }) : []
           }
         });
@@ -798,37 +760,6 @@ exports.handler = async (event, context) => {
         data: {
           content: `🎉 **RSVP Confirmed for ${rsvpPlayer.name}!**\n• Role(s): **${(rsvpPlayer.roles || []).join('/')}**\n• Keys: **+${rsvpPlayer.keyMin} to +${rsvpPlayer.keyMax}**${badges.length ? '\n• Preferences: ' + badges.join(', ') : ''}\n\nSynced to the [web dashboard](${WEB_URL})! Click **Refresh 🔄** on the main event card to view the updated roster lineup.`,
           components: []
-        }
-      });
-    }
-
-    // 7. Custom Alt Modal Button
-    if (customId === 'btn_custom_modal') {
-      return jsonResponse({
-        type: 9,
-        data: {
-          custom_id: 'modal_signup_custom',
-          title: 'Sign Up Custom / Alt Character',
-          components: [
-            {
-              type: 1,
-              components: [
-                { type: 4, custom_id: 'char_name', label: 'WoW Character Name', style: 1, required: true }
-              ]
-            },
-            {
-              type: 1,
-              components: [
-                { type: 4, custom_id: 'char_roles', label: 'Roles: Tank, Healer, DPS (comma separated)', style: 1, value: 'DPS', required: true }
-              ]
-            },
-            {
-              type: 1,
-              components: [
-                { type: 4, custom_id: 'key_range', label: 'Comfortable Key Range (e.g. 10-15)', style: 1, value: '12-15', required: false }
-              ]
-            }
-          ]
         }
       });
     }
@@ -857,12 +788,16 @@ exports.handler = async (event, context) => {
       state.benchedPlayers = result.benched;
       await saveState(state);
 
-      const groupEmbeds = embeds ? embeds.createGroupEmbeds(result.groups, result.benched, WEB_URL).map(e => e.toJSON()) : [];
+      const embed = embeds
+        ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', result.groups, result.benched).toJSON()
+        : { title: 'Groups formed' };
+      const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(row => row.toJSON()) : [];
       return jsonResponse({
-        type: 4,
+        type: 7,
         data: {
-          content: `🏰 **Formed ${result.groups.length} Mythic+ Group(s) for Friday Night!**`,
-          embeds: groupEmbeds
+          content: `🏰 **Formed ${result.groups.length} Mythic+ group(s).** Parties are on this card. Roll each party's key on the website.`,
+          embeds: [embed],
+          components: buttons
         }
       });
     }
@@ -935,7 +870,7 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'btn_refresh_roster') {
-      const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL).toJSON() : { title: 'Roster' };
+      const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
       const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : [];
       return jsonResponse({
         type: 7, // UPDATE_MESSAGE
@@ -958,6 +893,34 @@ exports.handler = async (event, context) => {
     const components = interaction.data.components || [];
     const getVal = (cid) => components.flatMap(c => c.components || []).find(x => x.custom_id === cid)?.value;
     const discordUser = interaction.member?.user || interaction.user;
+
+    if (customId === 'modal_char_search') {
+      const query = (getVal('char_query') || '').trim();
+      const result = rosterSearch
+        ? rosterSearch.searchGuildRoster(query, 24)
+        : { typedName: query, matches: [], exact: null, autoPick: null, matchCount: 0 };
+
+      if (result.autoPick || result.matchCount === 0) {
+        const chosen = result.autoPick?.name || result.typedName;
+        const targetPlayer = bindSignupCharacter(state, discordUser, chosen);
+        if (!targetPlayer) {
+          return jsonResponse({
+            type: 4,
+            data: { content: '⚠️ Type a character name to search the guild roster.', flags: 64 }
+          });
+        }
+        await saveState(state);
+        return jsonResponse({
+          type: 4,
+          data: { ...signupPreferencesMessage(targetPlayer), flags: 64 }
+        });
+      }
+
+      return jsonResponse({
+        type: 4,
+        data: signupMatchMessage(result)
+      });
+    }
 
     // Handle Custom / Alt Character Modal Submit
     if (customId === 'modal_signup_custom' || customId === 'modal_custom_signup') {

@@ -110,32 +110,36 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
       );
 
+    const ioLabel = (score) => `${(Number(score || 0) / 1000).toFixed(1)}k`;
+
     formedGroups.forEach((g, idx) => {
-      const leaderBadge = g.leaderName ? ` • 👑 Leader: **${g.leaderName}**` : '';
-      const keyBadge = g.keystone ? ` • 🔑 \`${g.keystone}\`` : '';
       const utilBadges = [];
       if (g.hasLust) utilBadges.push('⚡ Lust');
       if (g.hasBrez) utilBadges.push('🔄 BRez');
-      const utilStr = utilBadges.length ? ` • ${utilBadges.join(' ')}` : '';
+      const headerBits = [];
+      if (g.leaderName) headerBits.push(`👑 Leader: **${g.leaderName}**`);
+      if (g.keystone || g.dungeon) headerBits.push(`🔑 \`${g.keystone || g.dungeon}\``);
+      if (utilBadges.length) headerBits.push(utilBadges.join(' '));
 
       const lines = [];
-      if (g.tank) lines.push(`🛡️ **${g.tank.name}** (${g.tank.className} • ${(g.tank.io / 1000).toFixed(1)}k)`);
-      if (g.healer) lines.push(`💚 **${g.healer.name}** (${g.healer.className} • ${(g.healer.io / 1000).toFixed(1)}k)`);
+      if (g.tank) lines.push(`🛡️ **${g.tank.name}** (${g.tank.className} • ${ioLabel(g.tank.io)})`);
+      if (g.healer) lines.push(`💚 **${g.healer.name}** (${g.healer.className} • ${ioLabel(g.healer.io)})`);
       (g.dps || []).forEach(d => {
-        lines.push(`⚔️ **${d.name}** (${d.className} • ${(d.io / 1000).toFixed(1)}k)`);
+        lines.push(`⚔️ **${d.name}** (${d.className} • ${ioLabel(d.io)})`);
       });
 
+      const body = [headerBits.join(' • '), lines.join('\n')].filter(Boolean).join('\n') || 'Empty Party';
       embed.addFields({
-        name: `🏰 Group ${idx + 1}: ${g.name || 'Keystone Crew'} (Avg IO: ${g.avgIo || 3000})${leaderBadge}${keyBadge}${utilStr}`,
-        value: lines.join('\n') || 'Empty Party',
+        name: `🏰 Group ${idx + 1}: ${g.name || 'Keystone Crew'} (Avg IO: ${g.avgIo || 0})`.slice(0, 256),
+        value: body.slice(0, 1024),
         inline: false
       });
     });
 
     if (Array.isArray(benchedPlayers) && benchedPlayers.length > 0) {
       embed.addFields({
-        name: `🍺 Bench / Reserves (${benchedPlayers.length})`,
-        value: benchedPlayers.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')})${p.isReserve ? ' 🍺' : ''}`).join('\n'),
+        name: `🍺 Bench / Reserves (${benchedPlayers.length})`.slice(0, 256),
+        value: benchedPlayers.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')})${p.isReserve ? ' 🍺' : ''}`).join('\n').slice(0, 1024),
         inline: false
       });
     }
@@ -360,80 +364,67 @@ function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
 }
 
 /**
- * Generates interactive drop-down menus for the Discord Sign-Up popup
+ * Filtered guild matches. Discord select menus only hold 25 options,
+ * so this list is the search result, never the whole roster.
  */
-function createSignupFormComponents({ players = [], defaultName = '', player = null }) {
-  // 1. Character Dropdown
-  const uniquePlayers = [];
-  const seenNames = new Set();
-
-  (players || []).forEach(p => {
-    if (!p.name || seenNames.has(p.name.toLowerCase())) return;
-    seenNames.add(p.name.toLowerCase());
-    uniquePlayers.push(p);
-  });
-
-  // If roster list has fewer than 24, fill with synced guild members
-  try {
-    const guildRoster = require('./guild-roster.json');
-    if (Array.isArray(guildRoster)) {
-      for (const g of guildRoster) {
-        if (uniquePlayers.length >= 24) break;
-        if (!g.name || seenNames.has(g.name.toLowerCase())) continue;
-        seenNames.add(g.name.toLowerCase());
-        uniquePlayers.push({
-          name: g.name,
-          className: g.className || 'Player',
-          roles: [g.role || 'DPS'],
-          io: 0,
-          ilvl: 320,
-          ownedKey: ''
-        });
-      }
-    }
-  } catch (e) {}
-
-  uniquePlayers.sort((a, b) => a.name.localeCompare(b.name));
-
-  let defaultSelectedName = player ? player.name.toLowerCase() : null;
-  if (!defaultSelectedName && defaultName) {
-    const matched = uniquePlayers.find(p => p.name.toLowerCase() === defaultName.toLowerCase());
-    if (matched) defaultSelectedName = matched.name.toLowerCase();
+function createCharacterMatchComponents(matches = [], typedName = '') {
+  const options = [];
+  const seen = new Set();
+  for (const entry of matches) {
+    if (!entry?.name || seen.has(entry.name.toLowerCase())) continue;
+    seen.add(entry.name.toLowerCase());
+    options.push({
+      label: `${entry.name} (${entry.className || 'Player'})`.slice(0, 100),
+      value: entry.name.slice(0, 100),
+      description: `${entry.realm || 'Kith & Kin'}`.slice(0, 100)
+    });
+    if (options.length >= 24) break;
   }
 
-  const charOptions = uniquePlayers.slice(0, 24).map(p => {
-    const rolesStr = (p.roles || ['DPS']).join('/');
-    const keyStr = p.ownedKey ? `+${p.ownedKey.split('+')[1] || 10}` : '+10';
-    const isSelected = defaultSelectedName === p.name.toLowerCase();
-    return {
-      label: `${p.name} (${p.className || 'WoW'})`,
-      value: p.name,
-      description: `${rolesStr} • ${p.io ? (p.io / 1000).toFixed(1) + 'k IO' : (p.ilvl || 320) + 'ilvl'} • ${keyStr}`,
-      default: isSelected
-    };
-  });
+  const typed = String(typedName || '').trim().slice(0, 70);
+  const customValue = (typed ? `__custom__:${typed}` : '__custom__').slice(0, 100);
+  const alreadyListed = typed && options.some(opt => opt.value.toLowerCase() === typed.toLowerCase());
+  if (!alreadyListed) {
+    options.push({
+      label: (typed ? `➕ "${typed}" (not in guild)` : '➕ Name not in guild').slice(0, 100),
+      value: customValue,
+      description: 'Use this exact name even if they are not on the roster'
+    });
+  }
 
-  charOptions.push({
-    label: '➕ Type Custom / Unlisted Alt Name',
-    value: '__custom__',
-    description: 'Brings up a box to enter a character name not on the list'
-  });
+  const placeholder = typed
+    ? `Matches for "${typed}"`.slice(0, 150)
+    : 'Pick a character';
 
-  const rowChar = {
-    type: 1,
-    components: [
-      {
-        type: 3, // STRING_SELECT
-        custom_id: 'select_character',
-        placeholder: player ? `Selected: ${player.name} (${player.className})` : 'Choose your WoW Character from Guild...',
-        min_values: 1,
-        max_values: 1,
-        options: charOptions
-      }
-    ]
-  };
+  return [
+    {
+      type: 1,
+      components: [
+        {
+          type: 3,
+          custom_id: 'select_character',
+          placeholder,
+          min_values: 1,
+          max_values: 1,
+          options: options.slice(0, 25)
+        }
+      ]
+    },
+    {
+      type: 1,
+      components: [
+        { type: 2, style: 1, custom_id: 'btn_search_again', label: 'Search Again ✏️' },
+        { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
+      ]
+    }
+  ];
+}
 
-  // 2. Roles Multi-Select Dropdown
+/**
+ * Role, key-goal, and vibe picker shown after a character is chosen.
+ */
+function createSignupFormComponents({ player = null } = {}) {
+  // 1. Roles Multi-Select Dropdown
   const activeRoles = player?.roles || ['DPS'];
   const rowRoles = {
     type: 1,
@@ -505,17 +496,18 @@ function createSignupFormComponents({ players = [], defaultName = '', player = n
     type: 1,
     components: [
       { type: 2, style: 3, custom_id: 'btn_confirm_rsvp', label: 'Save My RSVP ✅' },
-      { type: 2, style: 1, custom_id: 'btn_custom_modal', label: 'Type Character Name ✏️' },
+      { type: 2, style: 1, custom_id: 'btn_search_again', label: 'Search Name Again ✏️' },
       { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
     ]
   };
 
-  return [rowChar, rowRoles, rowRange, rowVibes, rowActions];
+  return [rowRoles, rowRange, rowVibes, rowActions];
 }
 
 module.exports = {
   createRosterEmbed,
   createGroupEmbeds,
   createSignupButtons,
-  createSignupFormComponents
+  createSignupFormComponents,
+  createCharacterMatchComponents
 };

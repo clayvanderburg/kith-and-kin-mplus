@@ -368,7 +368,9 @@
         <div class="form-row">
           <div class="form-group" style="flex: 2;">
             <label for="playerNameInput">Character Name *</label>
-            <input type="text" id="playerNameInput" class="form-input" placeholder="e.g. MadKing" required maxlength="24">
+            <input type="text" id="playerNameInput" class="form-input" list="guildNameList" placeholder="Type to filter the guild roster, or any guest" required maxlength="24" autocomplete="off">
+            <datalist id="guildNameList"></datalist>
+            <span class="form-hint">Start typing to filter every synced Kith & Kin character. A name that is not on the roster still works.</span>
           </div>
           <div class="form-group" style="flex: 2;">
             <label for="playerRealmInput">Realm *</label>

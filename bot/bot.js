@@ -6,7 +6,8 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { registerCommands } = require('./commands');
-const { createRosterEmbed, createGroupEmbeds, createSignupButtons, createSignupFormComponents } = require('./embeds');
+const { createRosterEmbed, createGroupEmbeds, createSignupButtons, createSignupFormComponents, createCharacterMatchComponents } = require('./embeds');
+const { searchGuildRoster, attachCharacter } = require('./roster-search');
 const { solveGroups, rollKeystone, DUNGEONS_MIDNIGHT_S2, WOW_CLASSES } = require('./solver');
 const { fetchRemoteState, pushRemoteState, lookupRaiderIo } = require('./sync');
 
@@ -67,45 +68,46 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+function showCharacterSearch(interaction, prefill = '') {
+  const modal = new ModalBuilder()
+    .setCustomId('modal_char_search')
+    .setTitle('Find Your Character');
+  const input = new TextInputBuilder()
+    .setCustomId('char_query')
+    .setLabel('Type a guild name, or any alt')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMinLength(1)
+    .setMaxLength(32)
+    .setPlaceholder('MadKing, Shock, or a guest name');
+  const value = String(prefill || '').trim().slice(0, 32);
+  if (value) input.setValue(value);
+  modal.addComponents(new ActionRowBuilder().addComponents(input));
+  return interaction.showModal(modal);
+}
+
+function signupPreferencesPayload(player) {
+  return {
+    content: `### 📝 Friday Mythic+ Night Sign-Up\nCharacter: **${player.name}** (${player.className}${player.realm ? ` — ${player.realm}` : ''})\nPick one or more roles, key goals (**6-8 Hero Crest**, **10-12 Vault**, **Higher than 12 IO**), and vibes, then **Save My RSVP**.`,
+    components: createSignupFormComponents({ player }),
+    ephemeral: true
+  };
+}
+
 async function handleAutocomplete(interaction) {
   try {
     const focusedOption = interaction.options.getFocused(true);
     if (focusedOption.name === 'character') {
-      const query = (focusedOption.value || '').trim().toLowerCase();
-      let choices = [];
-      try {
-        const rosterData = require('./guild-roster.json');
-        if (Array.isArray(rosterData)) {
-          if (!query) {
-            choices = rosterData.slice(0, 25).map(c => ({
-              name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
-              value: c.name
-            }));
-          } else {
-            const exactMatches = [];
-            const prefixMatches = [];
-            const includesMatches = [];
-            for (const c of rosterData) {
-              const lower = c.name.toLowerCase();
-              if (lower === query) exactMatches.push(c);
-              else if (lower.startsWith(query)) prefixMatches.push(c);
-              else if (lower.includes(query)) includesMatches.push(c);
-            }
-            const combined = [...exactMatches, ...prefixMatches, ...includesMatches];
-            choices = combined.slice(0, 24).map(c => ({
-              name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
-              value: c.name
-            }));
-            if (!exactMatches.length && focusedOption.value) {
-              choices.unshift({
-                name: `➕ "${focusedOption.value}" (Custom / Not in Guild)`,
-                value: focusedOption.value
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[Bot Autocomplete] Error reading roster:', err);
+      const result = searchGuildRoster(focusedOption.value || '', 24);
+      const choices = result.matches.map(entry => ({
+        name: `${entry.name} (${entry.className || 'Player'} - ${entry.realm || 'Guild'})`.slice(0, 100),
+        value: entry.name.slice(0, 100)
+      }));
+      if (result.typedName && !result.exact) {
+        choices.unshift({
+          name: `➕ "${result.typedName}" (not in guild)`.slice(0, 100),
+          value: result.typedName.slice(0, 100)
+        });
       }
       await interaction.respond(choices.slice(0, 25));
     }
@@ -343,30 +345,18 @@ async function handleButtonInteraction(interaction) {
   if (customId === 'btn_refresh_roster') {
     await interaction.deferUpdate();
     const state = await fetchRemoteState();
-    const embed = createRosterEmbed(state.players || [], WEB_URL);
-    return interaction.editReply({ embeds: [embed] });
+    const embed = createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []);
+    return interaction.editReply({
+      embeds: [embed],
+      components: createSignupButtons(WEB_URL)
+    });
   }
 
-  // 1. Open Interactive Sign-Up Form (Dropdowns)
-  if (customId === 'btn_open_signup') {
+  // 1. Type-to-filter the full guild roster. Selects cannot hold 600+ names.
+  if (customId === 'btn_open_signup' || customId === 'btn_search_again' || customId === 'btn_custom_modal') {
     const state = await fetchRemoteState();
-    const defaultName = userCharacterMap.get(interaction.user.id) || interaction.member?.displayName || interaction.user.username;
-    const player = (state.players || []).find(p =>
-      p.discordId === interaction.user.id ||
-      p.name.toLowerCase() === defaultName.toLowerCase()
-    );
-
-    const components = createSignupFormComponents({
-      players: state.players || [],
-      defaultName,
-      player
-    });
-
-    return interaction.reply({
-      content: `### 📝 Friday Mythic+ Night Sign-Up\nSelect your character from the guild roster, choose your role(s), key range, and preferences below:\n*(Only you can see this form)*`,
-      components,
-      ephemeral: true
-    });
+    const player = (state.players || []).find(p => p.discordId === interaction.user.id);
+    return showCharacterSearch(interaction, player?.name || '');
   }
 
   if (customId === 'btn_dismiss_form') {
@@ -407,40 +397,6 @@ async function handleButtonInteraction(interaction) {
       content: `🎉 **RSVP Confirmed for ${player.name}!**\n• Role(s): **${(player.roles || []).join('/')}**\n• Keys: **+${player.keyMin} to +${player.keyMax}**${badges.length ? '\n• Preferences: ' + badges.join(', ') : ''}\n\nSynced to the [web dashboard](${WEB_URL})! Click **Refresh 🔄** on the main event card to view the updated roster lineup.`,
       components: []
     });
-  }
-
-  if (customId === 'btn_custom_modal') {
-    const modal = new ModalBuilder()
-      .setCustomId('modal_signup_custom')
-      .setTitle('Sign Up Custom / Alt Character');
-
-    const nameInput = new TextInputBuilder()
-      .setCustomId('char_name')
-      .setLabel('WoW Character Name')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    const rolesInput = new TextInputBuilder()
-      .setCustomId('char_roles')
-      .setLabel('Roles (Tank, Healer, DPS)')
-      .setStyle(TextInputStyle.Short)
-      .setValue('DPS')
-      .setRequired(true);
-
-    const keyRangeInput = new TextInputBuilder()
-      .setCustomId('key_range')
-      .setLabel('Comfortable Key Range (e.g. 10-15)')
-      .setStyle(TextInputStyle.Short)
-      .setValue('12-15')
-      .setRequired(false);
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(nameInput),
-      new ActionRowBuilder().addComponents(rolesInput),
-      new ActionRowBuilder().addComponents(keyRangeInput)
-    );
-
-    return interaction.showModal(modal);
   }
 
   // Quick RSVP legacy role buttons fallback
@@ -486,12 +442,15 @@ async function handleButtonInteraction(interaction) {
   }
 
   if (customId === 'btn_form_groups') {
-    await interaction.deferReply();
+    await interaction.deferUpdate();
     const state = await fetchRemoteState();
     const attending = (state.players || []).filter(p => p.attending);
 
     if (attending.length < 5) {
-      return interaction.editReply(`⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Click [Sign Up / Edit RSVP 📝] to register!`);
+      return interaction.followUp({
+        content: `⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Click [Sign Up / Edit RSVP 📝] to register!`,
+        ephemeral: true
+      });
     }
 
     const { solveGroups } = require('./solver');
@@ -500,10 +459,11 @@ async function handleButtonInteraction(interaction) {
     state.benchedPlayers = result.benched;
     await pushRemoteState(state);
 
-    const groupEmbeds = createGroupEmbeds(result.groups, result.benched, WEB_URL);
+    const embed = createRosterEmbed(state.players || [], WEB_URL, 'MadKing', result.groups, result.benched);
     return interaction.editReply({
-      content: `🏰 **Formed ${result.groups.length} Mythic+ Group(s) for Friday Night!**`,
-      embeds: groupEmbeds
+      content: `🏰 **Formed ${result.groups.length} Mythic+ group(s).** Parties are on this card. Roll each party's key on the website.`,
+      embeds: [embed],
+      components: createSignupButtons(WEB_URL)
     });
   }
 
@@ -610,58 +570,19 @@ async function handleSelectMenuInteraction(interaction) {
   );
 
   if (customId === 'select_character') {
-    const selected = interaction.values[0];
+    const selected = interaction.values[0] || '';
     if (selected === '__custom__') {
-      const modal = new ModalBuilder()
-        .setCustomId('modal_signup_custom')
-        .setTitle('Sign Up Custom / Alt Character');
-
-      const nameInput = new TextInputBuilder()
-        .setCustomId('char_name')
-        .setLabel('WoW Character Name')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-
-      const rolesInput = new TextInputBuilder()
-        .setCustomId('char_roles')
-        .setLabel('Roles (Tank, Healer, DPS)')
-        .setStyle(TextInputStyle.Short)
-        .setValue('DPS')
-        .setRequired(true);
-
-      const keyRangeInput = new TextInputBuilder()
-        .setCustomId('key_range')
-        .setLabel('Comfortable Key Range (e.g. 10-15)')
-        .setStyle(TextInputStyle.Short)
-        .setValue('12-15')
-        .setRequired(false);
-
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(nameInput),
-        new ActionRowBuilder().addComponents(rolesInput),
-        new ActionRowBuilder().addComponents(keyRangeInput)
-      );
-
-      return interaction.showModal(modal);
+      return showCharacterSearch(interaction, '');
     }
-
-    let targetPlayer = (state.players || []).find(p => p.name.toLowerCase() === (selected || '').toLowerCase());
-    if (targetPlayer) {
-      targetPlayer.discordId = interaction.user.id;
-      userCharacterMap.set(interaction.user.id, targetPlayer.name);
-      await pushRemoteState(state);
+    const chosenName = selected.startsWith('__custom__:') ? selected.slice('__custom__:'.length) : selected;
+    const targetPlayer = attachCharacter(state, interaction.user.id, chosenName);
+    if (!targetPlayer) {
+      return interaction.reply({ content: '⚠️ Type a character name to search the guild roster.', ephemeral: true });
     }
-
-    const components = createSignupFormComponents({
-      players: state.players || [],
-      defaultName: selected,
-      player: targetPlayer
-    });
-
-    return interaction.update({
-      content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Character selected: **${selected}**\nNow select your role(s), key range, and preferences:`,
-      components
-    });
+    userCharacterMap.set(interaction.user.id, targetPlayer.name);
+    await pushRemoteState(state);
+    const payload = signupPreferencesPayload(targetPlayer);
+    return interaction.update({ content: payload.content, components: payload.components });
   }
 
   if (customId === 'select_roles') {
@@ -683,21 +604,21 @@ async function handleSelectMenuInteraction(interaction) {
   }
 
   if (customId === 'select_key_range') {
-    const range = interaction.values[0] || '12-15';
-    const parts = range.split('-');
-    if (player && parts.length === 2) {
-      player.keyMin = parseInt(parts[0], 10);
-      player.keyMax = parseInt(parts[1], 10);
-      player.attending = true;
+    const selectedBrackets = interaction.values?.length ? interaction.values : ['10-12'];
+    if (player) {
+      player.keyBrackets = selectedBrackets;
+      let minKey = 30;
+      let maxKey = 2;
+      if (selectedBrackets.includes('6-8')) { minKey = Math.min(minKey, 6); maxKey = Math.max(maxKey, 8); }
+      if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 10); maxKey = Math.max(maxKey, 12); }
+      if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 13); maxKey = Math.max(maxKey, 18); }
+      player.keyMin = minKey;
+      player.keyMax = maxKey;
       await pushRemoteState(state);
     }
-    const components = createSignupFormComponents({
-      players: state.players || [],
-      defaultName,
-      player
-    });
+    const components = createSignupFormComponents({ player });
     return interaction.update({
-      content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Comfortable Key Range set to: **+${player?.keyMin || parts[0]} to +${player?.keyMax || parts[1]}**`,
+      content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Key goals set to: **${selectedBrackets.join(', ')}** (+${player?.keyMin || 10} to +${player?.keyMax || 12})`,
       components
     });
   }
@@ -732,6 +653,30 @@ async function handleSelectMenuInteraction(interaction) {
 }
 
 async function handleModalSubmit(interaction) {
+  if (interaction.customId === 'modal_char_search') {
+    const query = interaction.fields.getTextInputValue('char_query').trim();
+    const result = searchGuildRoster(query, 24);
+    const state = await fetchRemoteState();
+
+    if (result.autoPick || result.matchCount === 0) {
+      const chosen = result.autoPick?.name || result.typedName;
+      const targetPlayer = attachCharacter(state, interaction.user.id, chosen);
+      if (!targetPlayer) {
+        return interaction.reply({ content: '⚠️ Type a character name to search the guild roster.', ephemeral: true });
+      }
+      userCharacterMap.set(interaction.user.id, targetPlayer.name);
+      await pushRemoteState(state);
+      const payload = signupPreferencesPayload(targetPlayer);
+      return interaction.reply({ content: payload.content, components: payload.components, ephemeral: true });
+    }
+
+    return interaction.reply({
+      content: `### 📝 Find Your Character\n${result.matchCount} guild matches for **${result.typedName}**. Pick one, or use the name even if they are not in the guild.`,
+      components: createCharacterMatchComponents(result.matches, result.typedName),
+      ephemeral: true
+    });
+  }
+
   if (interaction.customId === 'modal_signup_custom' || interaction.customId === 'modal_custom_signup') {
     await interaction.deferReply({ ephemeral: true });
     const charName = interaction.fields.getTextInputValue('char_name').trim();

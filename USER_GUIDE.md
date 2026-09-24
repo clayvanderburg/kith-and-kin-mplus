@@ -26,13 +26,13 @@
 Whenever `/mplus post-signup` is posted in your Discord channel, members click **`[Sign Up / Edit RSVP 📝]`** to open an interactive sign-up form (visible only to them):
 
 ### 📋 The Dropdown Sign-Up Form
-1. **Character Select (Synced Guild Roster)**:
-   - Pick your character directly from the synced Kith & Kin guild roster (over 24+ members).
-   - Or select `[➕ Sign Up Different Alt...]` to type in an alt character.
+1. **Character Search (Full Guild Roster)**:
+   - Type a name. Discord filters the synced Kith & Kin roster (every character, not a 25-name cap).
+   - If several people match, pick the right one. If they are not in the guild, choose **not in guild** and the typed name is used.
 2. **Multi-Role Select (`🛡️ Tank`, `💚 Healer`, `⚔️ DPS`)**:
    - Select **multiple roles** at once if you flex (e.g. Tank + DPS, or Healer + DPS).
-3. **Comfortable Key Range**:
-   - Quick selection from `+2-6`, `+7-11`, `+12-15`, `+16-18`, or `+19+`.
+3. **Key Goals (multi-select)**:
+   - `6-8 (Hero Crest Farm)`, `10-12 (Vault Fill)`, and `Higher than 12 (IO Farming)`. Pick any combination.
 4. **Squad Vibes & Preferences (Multi-Select)**:
    - `👑 Born Leader (willing to lead group)`: Willing to lead and guide a 5-man party. The solver will assign you as the party leader!
    - `🍺 Bench / Reserve (willing to rotate out)`: Happy to sit reserve or rotate out if we have surplus members. The optimizer prioritizes non-reserves for active groups and places voluntary reserves first on the bench.

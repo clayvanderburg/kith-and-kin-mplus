@@ -510,6 +510,12 @@
           state.excludedDungeons = data.excludedDungeons;
         }
 
+        if (state.currentEventId && state.events?.[state.currentEventId]) {
+          state.events[state.currentEventId].players = state.players;
+          state.events[state.currentEventId].formedGroups = state.formedGroups;
+          state.events[state.currentEventId].benchedPlayers = state.benchedPlayers;
+        }
+
         savePlayersLocal();
         saveGroupsLocal();
         saveEventsLocal();
@@ -1920,6 +1926,52 @@
     });
   }
 
+  // --- Guild name typeahead (full synced roster, guests still allowed) ---
+  let guildRosterIndex = [];
+
+  function foldCharacterName(value) {
+    return String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+  }
+
+  async function loadGuildNameList() {
+    try {
+      const res = await fetch('bot/guild-roster.json', { cache: 'force-cache' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!Array.isArray(data)) return;
+      guildRosterIndex = data.filter(entry => entry && entry.name);
+      const list = document.getElementById('guildNameList');
+      if (!list) return;
+      list.innerHTML = guildRosterIndex.map(entry =>
+        `<option value="${escapeHtml(entry.name)}">${escapeHtml(entry.className || 'Player')} — ${escapeHtml(entry.realm || '')}</option>`
+      ).join('');
+    } catch (err) {
+      console.warn('[Roster] Could not load guild name list', err);
+    }
+  }
+
+  function applyRosterMatchToForm() {
+    if (document.getElementById('playerId')?.value) return;
+    const typed = document.getElementById('playerNameInput')?.value || '';
+    const hit = guildRosterIndex.find(entry => foldCharacterName(entry.name) === foldCharacterName(typed));
+    if (!hit) return;
+    const classSelect = document.getElementById('playerClassSelect');
+    if (classSelect && hit.className && [...classSelect.options].some(option => option.value === hit.className)) {
+      classSelect.value = hit.className;
+    }
+    if (hit.realm) {
+      const realmInput = document.getElementById('playerRealmInput');
+      if (realmInput) realmInput.value = hit.realm;
+    }
+    const role = hit.role || 'DPS';
+    const tank = document.getElementById('roleTank');
+    const healer = document.getElementById('roleHealer');
+    const dps = document.getElementById('roleDps');
+    if (tank) tank.checked = role === 'Tank';
+    if (healer) healer.checked = role === 'Healer';
+    if (dps) dps.checked = role === 'DPS';
+  }
+
   // --- Player Modal (Add / Edit) ---
   function openPlayerModal(playerId = null) {
     const modal = document.getElementById('playerModal');
@@ -2105,10 +2157,11 @@
     if (document.getElementById('bracketIoPush')?.checked) brackets.push('12+');
     if (brackets.length === 0) brackets.push('10-12');
 
-    let keyMin = 10, keyMax = 12;
-    if (brackets.includes('6-8')) { keyMin = 6; keyMax = Math.max(keyMax, 8); }
+    let keyMin = 30;
+    let keyMax = 2;
+    if (brackets.includes('6-8')) { keyMin = Math.min(keyMin, 6); keyMax = Math.max(keyMax, 8); }
     if (brackets.includes('10-12')) { keyMin = Math.min(keyMin, 10); keyMax = Math.max(keyMax, 12); }
-    if (brackets.includes('12+')) { keyMax = Math.max(keyMax, 18); }
+    if (brackets.includes('12+')) { keyMin = Math.min(keyMin, 13); keyMax = Math.max(keyMax, 18); }
 
     const ownedKey = document.getElementById('keystoneInput').value.trim();
 
@@ -2424,6 +2477,13 @@
     document.getElementById('keystoneSigil').addEventListener('click', () => {
       playSound('keystone');
     });
+
+    loadGuildNameList();
+    const playerNameInput = document.getElementById('playerNameInput');
+    if (playerNameInput) {
+      playerNameInput.addEventListener('input', applyRosterMatchToForm);
+      playerNameInput.addEventListener('change', applyRosterMatchToForm);
+    }
 
     // Add Player Modal triggers
     document.getElementById('openAddModalBtn').addEventListener('click', () => openPlayerModal());
