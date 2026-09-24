@@ -1544,12 +1544,15 @@
         throw new Error('No members found in guild data');
       }
 
-      // Filter to primary raiders (Rank 0: GM, Rank 1: Officers, Rank 2: Raiders, Rank 3: Veterans/Core)
-      const validMembers = data.members.filter(m => m.character && m.character.name && m.rank <= 3);
+      // Sync entire guild: include all active guild members across all ranks
+      const validMembers = data.members.filter(m => m.character && m.character.name);
 
       const existingMap = new Map();
       state.players.forEach(p => {
         existingMap.set(p.name.toLowerCase(), p);
+        if (p.realm) {
+          existingMap.set(`${p.name.toLowerCase()}@${p.realm.toLowerCase()}`, p);
+        }
       });
       const sampleMap = new Map();
       SAMPLE_ROSTER.forEach(s => {
@@ -1559,14 +1562,15 @@
       const updatedPlayers = validMembers.map(m => {
         const c = m.character;
         const lowerName = c.name.toLowerCase();
-        const existing = existingMap.get(lowerName) || sampleMap.get(lowerName);
+        const realmKey = lowerName + '@' + (c.realm || 'perenolde').toLowerCase();
+        const existing = existingMap.get(realmKey) || existingMap.get(lowerName) || sampleMap.get(lowerName);
 
         const className = c.class;
         const activeRole = c.active_spec_role === 'TANK' ? 'Tank' : (c.active_spec_role === 'HEALING' ? 'Healer' : 'DPS');
         const classRoles = WOW_CLASSES[className]?.roles || [activeRole];
         const roles = [activeRole, ...classRoles.filter(r => r !== activeRole)];
 
-        // Preselect attendance for GM, Officer, and Raider ranks (rank <= 2)
+        // Preselect attendance for GM, Officer, and Raider ranks (rank <= 2) or maintain existing
         const isRaiderRank = m.rank <= 2;
 
         if (existing) {
@@ -1583,7 +1587,7 @@
           };
         } else {
           return {
-            id: 'kk-' + c.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+            id: 'kk-' + c.name.toLowerCase().replace(/[^a-z0-9]/g, '') + (c.realm ? '-' + c.realm.toLowerCase().replace(/[^a-z0-9]/g, '') : ''),
             name: c.name,
             className: className,
             roles: roles,
@@ -1593,7 +1597,7 @@
             realm: c.realm || 'Perenolde',
             region: c.region || 'us',
             ilvl: 320,
-            io: 2000,
+            io: 0,
             rank: m.rank,
             attending: isRaiderRank,
             avatar: c.thumbnail_url || null,
@@ -1607,7 +1611,7 @@
       savePlayers();
       renderRoster();
       playSound('fanfare');
-      showToast(`Imported ${validMembers.length} Kith & Kin members! Raider ranks pre-selected.`);
+      showToast(`Synced entire guild! ${validMembers.length} members loaded.`);
     } catch (err) {
       console.error('Guild sync error:', err);
       alert('Could not sync guild from Raider.IO: ' + err.message);
