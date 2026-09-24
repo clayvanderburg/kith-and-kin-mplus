@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kith and Kin — Mythic+ Night Group Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient Audio Elements synthesized via Web Audio API -->
+  <div class="site-wrapper">
+    <!-- Header -->
+    <header class="guild-header">
+      <div class="guild-crest">
+        <div class="keystone-sigil" id="keystoneSigil" title="Click to pulse the keystone!">
+          <div class="keystone-gem"></div>
+          <div class="keystone-ring"></div>
+        </div>
+      </div>
+      <div class="header-titles">
+        <div class="guild-subtitle">World of Warcraft Guild Event</div>
+        <h1 class="guild-title">Kith & Kin <span class="highlight">Mythic+ Night</span></h1>
+        <p class="guild-tagline">Assemble the realm's finest dungeon crawlers, match key levels, and conquer the keystones!</p>
+      </div>
+      <div class="header-actions">
+        <button id="soundToggleBtn" class="btn-icon" title="Toggle Sound FX">
+          <span class="icon">🔊</span>
+          <span class="btn-text">Audio: ON</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-layout">
+      <!-- Left Column: Guild Roster Management -->
+      <section class="roster-panel card">
+        <div class="panel-header">
+          <div class="panel-title-wrap">
+            <h2 class="panel-title">🛡️ Guild Sign-ups</h2>
+            <span class="badge" id="rosterCountBadge">0 Attending</span>
+          </div>
+          <div class="panel-toolbar">
+            <button id="openAddModalBtn" class="btn btn-sm btn-primary">➕ Add Member</button>
+            <button id="openImportBtn" class="btn btn-sm btn-secondary" title="Paste roster list">📋 Import / Export</button>
+            <button id="resetSampleBtn" class="btn btn-sm btn-ghost" title="Load sample guild members">↺ Load Defaults</button>
+          </div>
+        </div>
+
+        <!-- Quick Filter / Summary Bar -->
+        <div class="roster-metrics">
+          <div class="metric-pill tank">
+            <span class="role-icon">🛡️</span> Tanks: <strong id="tankCount">0</strong>
+          </div>
+          <div class="metric-pill healer">
+            <span class="role-icon">💚</span> Healers: <strong id="healerCount">0</strong>
+          </div>
+          <div class="metric-pill dps">
+            <span class="role-icon">⚔️</span> DPS: <strong id="dpsCount">0</strong>
+          </div>
+          <div class="metric-pill groups">
+            <span class="role-icon">🏰</span> Max Groups: <strong id="maxGroupsCount">0</strong>
+          </div>
+        </div>
+
+        <div class="roster-controls-subbar">
+          <div class="attendance-bulk-actions">
+            <button id="selectAllBtn" class="btn-link">Select All Attending</button>
+            <span>•</span>
+            <button id="deselectAllBtn" class="btn-link">Deselect All</button>
+          </div>
+          <div class="sort-selector">
+            <label for="rosterSort">Sort:</label>
+            <select id="rosterSort" class="form-select-sm">
+              <option value="name">Name (A-Z)</option>
+              <option value="role">Role (T &gt; H &gt; D)</option>
+              <option value="key">Key Level</option>
+              <option value="class">Class</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Roster List -->
+        <div class="roster-list-container">
+          <div id="rosterList" class="roster-list">
+            <!-- Dynamic player rows inserted here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Group Generation & Deployment -->
+      <section class="generator-panel card">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">⚡ Keystone Activation</h2>
+            <p class="panel-desc">Configure party preferences and forge balanced 5-man dungeon groups.</p>
+          </div>
+        </div>
+
+        <!-- Algorithm Settings Box -->
+        <div class="settings-box">
+          <div class="setting-item">
+            <label for="matchingModeSelect">Grouping Strategy</label>
+            <select id="matchingModeSelect" class="form-select">
+              <option value="balanced" selected>🎯 Balanced Key Levels (Match similar key comfort)</option>
+              <option value="guildMixer">🤝 Guild Mixer (Spread key ranges &amp; classes evenly)</option>
+              <option value="pureChaos">🎲 Complete Chaos (Pure random valid comps)</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label for="dungeonPoolSelect">Dungeon Pool</label>
+            <select id="dungeonPoolSelect" class="form-select">
+              <option value="tww_s1" selected>The War Within — Season 1 Dungeons</option>
+              <option value="all_tww">All Current Khaz Algar Dungeons</option>
+              <option value="none">No Dungeon Assignment (Keys Only)</option>
+            </select>
+          </div>
+
+          <div class="setting-item checkbox-item">
+            <label class="checkbox-label" title="Distribute Bloodlust/Heroism classes (Mage, Shaman, Hunter, Evoker) evenly">
+              <input type="checkbox" id="ensureLustCheck" checked>
+              <span>⚡ Ensure Bloodlust / Heroism in Each Group</span>
+            </label>
+          </div>
+
+          <div class="setting-item checkbox-item">
+            <label class="checkbox-label" title="Distribute Battle Resurrection classes (Druid, Paladin, Death Knight, Warlock) evenly">
+              <input type="checkbox" id="ensureBrezCheck" checked>
+              <span>🔄 Ensure Battle Resurrection in Each Group</span>
+            </label>
+          </div>
+
+          <div class="setting-item checkbox-item">
+            <label class="checkbox-label" title="Try to assign distinct classes within the same 5-man group">
+              <input type="checkbox" id="avoidClassDupes" checked>
+              <span>Avoid Duplicate Classes in Groups</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Big Launch Action -->
+        <div class="launch-action-bar">
+          <button id="generateGroupsBtn" class="btn btn-keystone">
+            <span class="keystone-glow"></span>
+            <span class="keystone-btn-content">
+              <span class="keystone-icon">💎</span>
+              <span class="keystone-text">
+                <span class="title">ACTIVATE KEYSTONE &amp; FORM GROUPS</span>
+                <span class="subtitle">Assemble 1 Tank, 1 Healer, 3 DPS per party</span>
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <!-- Results Display -->
+        <div class="groups-section">
+          <div class="groups-header">
+            <h3 class="section-title" id="resultsTitle">Active Dungeon Parties</h3>
+            <div class="groups-actions" id="groupsActions" style="display: none;">
+              <button id="copyDiscordBtn" class="btn btn-sm btn-discord">
+                <span class="discord-icon">💬</span> Copy Discord Post
+              </button>
+              <button id="rerollUnlockedBtn" class="btn btn-sm btn-secondary" title="Re-roll only groups that are not locked">
+                🎲 Re-roll Unlocked
+              </button>
+            </div>
+          </div>
+
+          <!-- Groups Grid Container -->
+          <div id="groupsGrid" class="groups-grid">
+            <div class="empty-state">
+              <div class="empty-icon">🛡️⚔️💚</div>
+              <h4>No groups formed yet</h4>
+              <p>Make sure at least 5 guild members (including at least 1 Tank &amp; 1 Healer) are marked attending, then click <strong>Activate Keystone</strong>!</p>
+            </div>
+          </div>
+
+          <!-- Bench / Reserves Section -->
+          <div id="benchContainer" class="bench-container" style="display: none;">
+            <div class="bench-header">
+              <h4>☕ Tavern Reserves &amp; Rotation (Benched)</h4>
+              <span class="badge badge-warning" id="benchCountBadge">0 Players</span>
+            </div>
+            <p class="bench-advice" id="benchAdvice"></p>
+            <div id="benchList" class="bench-list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="guild-footer">
+      <p>⚔️ For the Guild! Crafted for <strong>Kith and Kin</strong> Mythic+ Nights • World of Warcraft</p>
+    </footer>
+  </div>
+
+  <!-- Modal: Add / Edit Member -->
+  <div class="modal-backdrop" id="playerModal">
+    <div class="modal card">
+      <div class="modal-header">
+        <h3 id="playerModalTitle">Add Guild Member</h3>
+        <button class="modal-close" id="closePlayerModalBtn">&times;</button>
+      </div>
+      <form id="playerForm">
+        <input type="hidden" id="playerId">
+        
+        <div class="form-group">
+          <label for="playerNameInput">Character / Player Name *</label>
+          <input type="text" id="playerNameInput" class="form-input" placeholder="e.g. MadKing, Thrall, Jaina" required maxlength="24">
+        </div>
+
+        <div class="form-group">
+          <label for="playerClassSelect">Class *</label>
+          <select id="playerClassSelect" class="form-select" required>
+            <option value="Death Knight">Death Knight</option>
+            <option value="Demon Hunter">Demon Hunter</option>
+            <option value="Druid">Druid</option>
+            <option value="Evoker">Evoker</option>
+            <option value="Hunter">Hunter</option>
+            <option value="Mage">Mage</option>
+            <option value="Monk">Monk</option>
+            <option value="Paladin">Paladin</option>
+            <option value="Priest">Priest</option>
+            <option value="Rogue">Rogue</option>
+            <option value="Shaman">Shaman</option>
+            <option value="Warlock">Warlock</option>
+            <option value="Warrior" selected>Warrior</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Eligible Roles Tonight * (Select all they can play)</label>
+          <div class="role-selector-pills">
+            <label class="role-checkbox-pill tank">
+              <input type="checkbox" id="roleTank" value="Tank">
+              <span class="pill-content">🛡️ Tank</span>
+            </label>
+            <label class="role-checkbox-pill healer">
+              <input type="checkbox" id="roleHealer" value="Healer">
+              <span class="pill-content">💚 Healer</span>
+            </label>
+            <label class="role-checkbox-pill dps">
+              <input type="checkbox" id="roleDps" value="DPS" checked>
+              <span class="pill-content">⚔️ DPS</span>
+            </label>
+          </div>
+          <span class="form-hint">Flex players (e.g. Tank + DPS) help the group generator fit more teams!</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-half">
+            <label for="keyMinInput">Min Key Comfort</label>
+            <input type="number" id="keyMinInput" class="form-input" min="2" max="30" value="4">
+          </div>
+          <div class="form-group col-half">
+            <label for="keyMaxInput">Max Key Comfort</label>
+            <input type="number" id="keyMaxInput" class="form-input" min="2" max="30" value="10">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="keystoneInput">Owned Keystone (Optional)</label>
+          <input type="text" id="keystoneInput" class="form-input" placeholder="e.g. Grim Batol +8, or leave blank">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelPlayerModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="savePlayerBtn">Save Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Import / Export Roster -->
+  <div class="modal-backdrop" id="importExportModal">
+    <div class="modal card modal-wide">
+      <div class="modal-header">
+        <h3>📋 Import / Export Guild Roster</h3>
+        <button class="modal-close" id="closeImportModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Paste your roster below to bulk import, or copy the text to share with fellow officers.
+          <br><small>Format: <code>PlayerName, Class, Role(s), MinKey-MaxKey, [OptionalKey]</code></small>
+        </p>
+        <textarea id="importExportText" class="form-textarea" rows="10" placeholder="MadKing, Warrior, Tank/DPS, 7-12, Grim Batol +10&#10;Addie, Priest, Healer, 4-9&#10;Grok, Mage, DPS, 6-11"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="exportBtn">Export Current Roster</button>
+        <button type="button" class="btn btn-primary" id="importBtn">Import &amp; Overwrite</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
