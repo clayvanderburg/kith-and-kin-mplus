@@ -121,82 +121,86 @@
     initAudio();
     if (!audioCtx) return;
 
-    const now = audioCtx.currentTime;
+    try {
+      const now = audioCtx.currentTime;
 
-    if (type === 'keystone') {
-      // Epic Mythic Keystone socket sound: deep resonant chime + rising shimmer
-      const osc1 = audioCtx.createOscillator();
-      const osc2 = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
+      if (type === 'keystone') {
+        // Epic Mythic Keystone socket sound: deep resonant chime + rising shimmer
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
 
-      osc1.type = 'sine';
-      osc2.type = 'triangle';
+        osc1.type = 'sine';
+        osc2.type = 'triangle';
 
-      osc1.frequency.setValueAtTime(146.83, now); // D3
-      osc1.frequency.exponentialRampToValueAtTime(587.33, now + 0.35); // D5
-      osc1.frequency.exponentialRampToValueAtTime(880.00, now + 0.6); // A5
+        osc1.frequency.setValueAtTime(146.83, now); // D3
+        osc1.frequency.exponentialRampToValueAtTime(587.33, now + 0.35); // D5
+        osc1.frequency.exponentialRampToValueAtTime(880.00, now + 0.6); // A5
 
-      osc2.frequency.setValueAtTime(220.00, now);
-      osc2.frequency.exponentialRampToValueAtTime(440.00, now + 0.4);
+        osc2.frequency.setValueAtTime(220.00, now);
+        osc2.frequency.exponentialRampToValueAtTime(440.00, now + 0.4);
 
-      gainNode.gain.setValueAtTime(0.01, now);
-      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.1);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+        gainNode.gain.setValueAtTime(0.01, now);
+        gainNode.gain.linearRampToValueAtTime(0.3, now + 0.1);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
 
-      osc1.connect(gainNode);
-      osc2.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
 
-      osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + 0.95);
-      osc2.stop(now + 0.95);
-    } else if (type === 'fanfare') {
-      // Triumphant group complete fanfare
-      const notes = [440, 554.37, 659.25, 880]; // A major arpeggio
-      notes.forEach((freq, idx) => {
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.95);
+        osc2.stop(now + 0.95);
+      } else if (type === 'fanfare') {
+        // Triumphant group complete fanfare
+        const notes = [440, 554.37, 659.25, 880]; // A major arpeggio
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          const start = now + idx * 0.08;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+
+          gain.gain.setValueAtTime(0.15, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(start);
+          osc.stop(start + 0.36);
+        });
+      } else if (type === 'click') {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        const start = now + idx * 0.08;
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, start);
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(300, now + 0.05);
 
-        gain.gain.setValueAtTime(0.15, start);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start(start);
-        osc.stop(start + 0.36);
-      });
-    } else if (type === 'click') {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(300, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      } else if (type === 'lock') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(350, now);
+        osc.frequency.setValueAtTime(520, now + 0.04);
 
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.06);
-    } else if (type === 'lock') {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(350, now);
-      osc.frequency.setValueAtTime(520, now + 0.04);
-
-      gain.gain.setValueAtTime(0.06, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.13);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+    } catch (e) {
+      // Audio autoplay policy or device failure gracefully swallowed
     }
   }
 
@@ -439,6 +443,7 @@
       const hasTank = player.roles.includes('Tank');
       const hasHealer = player.roles.includes('Healer');
       const hasDps = player.roles.includes('DPS');
+      const ioColor = getIoColor(player.io);
       const isAltRealm = player.realm && player.realm.toLowerCase() !== 'perenolde';
 
       row.innerHTML = `
@@ -1534,11 +1539,15 @@
       state.players.forEach(p => {
         existingMap.set(p.name.toLowerCase(), p);
       });
+      const sampleMap = new Map();
+      SAMPLE_ROSTER.forEach(s => {
+        sampleMap.set(s.name.toLowerCase(), s);
+      });
 
       const updatedPlayers = validMembers.map(m => {
         const c = m.character;
         const lowerName = c.name.toLowerCase();
-        const existing = existingMap.get(lowerName);
+        const existing = existingMap.get(lowerName) || sampleMap.get(lowerName);
 
         const className = c.class;
         const activeRole = c.active_spec_role === 'TANK' ? 'Tank' : (c.active_spec_role === 'HEALING' ? 'Healer' : 'DPS');
@@ -1566,13 +1575,13 @@
             name: c.name,
             className: className,
             roles: roles,
-            keyMin: 5,
-            keyMax: 11,
+            keyMin: 4,
+            keyMax: 10,
             ownedKey: '',
             realm: c.realm || 'Perenolde',
             region: c.region || 'us',
-            ilvl: 625,
-            io: 2200,
+            ilvl: 320,
+            io: 2000,
             rank: m.rank,
             attending: isRaiderRank,
             avatar: c.thumbnail_url || null,
