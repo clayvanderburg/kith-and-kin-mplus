@@ -65,10 +65,13 @@
               <option value="Healer">💚 Healers</option>
               <option value="DPS">⚔️ DPS</option>
             </select>
-            <select id="attendFilterSelect" class="form-select-sm" title="Filter by Attendance">
+            <select id="attendFilterSelect" class="form-select-sm" title="Filter by Attendance or Vibe">
               <option value="all">All Status</option>
               <option value="attending">✅ Attending</option>
               <option value="absent">💤 Absent</option>
+              <option value="shitter">💩 Shitters Only</option>
+              <option value="need_carry">🎒 Needs Carry</option>
+              <option value="willing_carry">🏋️ Back is Stronk</option>
             </select>
           </div>
         </div>
@@ -333,6 +336,35 @@
         <div class="form-group">
           <label for="keystoneInput">Owned Keystone (Optional)</label>
           <input type="text" id="keystoneInput" class="form-input" placeholder="e.g. Grim Batol +8, or leave blank">
+        </div>
+
+        <!-- Carry & Vibe Preference -->
+        <div class="form-group">
+          <label>Vibe &amp; Carry Preference</label>
+          <div class="carry-options-grid">
+            <label class="radio-pill-item">
+              <input type="radio" name="carryPref" id="carryPrefNone" value="none" checked>
+              <span class="pill-box">⚖️ Standard</span>
+            </label>
+            <label class="radio-pill-item need">
+              <input type="radio" name="carryPref" id="carryPrefNeed" value="need_carry">
+              <span class="pill-box">🎒 I need a carry</span>
+            </label>
+            <label class="radio-pill-item stronk">
+              <input type="radio" name="carryPref" id="carryPrefStronk" value="willing_carry">
+              <span class="pill-box">🏋️ My back is stronk</span>
+            </label>
+          </div>
+          <span class="form-hint">The solver will attempt to match players needing a carry with people willing to carry!</span>
+        </div>
+
+        <!-- Shitter Alt Group Checkbox -->
+        <div class="form-group shitter-checkbox-wrap">
+          <label class="checkbox-label" for="isShitterCheck">
+            <input type="checkbox" id="isShitterCheck">
+            <span class="shitter-label-text">💩 I'm a shitter (put me in the shitter alt group)</span>
+          </label>
+          <span class="form-hint" style="margin-top: 0.25rem;">Players checked as shitters will be prioritized and grouped together into dedicated Shitter Alt Groups!</span>
         </div>
 
         <div class="modal-footer">

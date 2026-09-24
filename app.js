@@ -64,37 +64,37 @@
   // Ranks 0-2 from Raider.IO roster (GM, Officers, Raiders) with top raiders pre-selected attending
   const SAMPLE_ROSTER = [
     // --- Attending Raiders (Forming 3 full groups: 3 Tanks, 3 Healers, 9 DPS) ---
-    { id: 'kk-adrenaline', name: 'Adrenaline', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +10', realm: 'Perenolde', region: 'us', ilvl: 633, io: 2580, rank: 0, attending: true },
-    { id: 'kk-glaiven', name: 'Glaiven', className: 'Demon Hunter', roles: ['DPS', 'Tank'], keyMin: 7, keyMax: 12, ownedKey: 'Ara-Kara +9', realm: 'Perenolde', region: 'us', ilvl: 635, io: 3138, rank: 1, attending: true },
-    { id: 'kk-gredic', name: 'Gredic', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'The Stonevault +8', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2420, rank: 1, attending: true },
-    { id: 'kk-shocktherapy', name: 'Shockthêràpy', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'City of Threads +9', realm: 'Perenolde', region: 'us', ilvl: 631, io: 2470, rank: 1, attending: true },
-    { id: 'kk-ravenlight', name: 'Ravenlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: 'The Dawnbreaker +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2390, rank: 1, attending: true },
-    { id: 'kk-khaidylock', name: 'Khaidylock', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +8', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2350, rank: 1, attending: true },
-    { id: 'kk-khaiduus', name: 'Khaiduus', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2310, rank: 1, attending: true },
-    { id: 'kk-engorged', name: 'Engorged', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: 'The Necrotic Wake +7', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2260, rank: 1, attending: true },
-    { id: 'kk-holyscheisse', name: 'Holyscheisse', className: 'Druid', roles: ['DPS', 'Healer', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Siege of Boralus +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2370, rank: 1, attending: true },
-    { id: 'kk-bearackobama', name: 'Bearackobamà', className: 'Druid', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2220, rank: 1, attending: true },
-    { id: 'kk-charliestar', name: 'Charliestar', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Grim Batol +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2380, rank: 1, attending: true },
-    { id: 'kk-meanssa', name: 'Meanssa', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'The Stonevault +10', realm: 'Perenolde', region: 'us', ilvl: 634, io: 2560, rank: 1, attending: true },
-    { id: 'kk-stirlingskat', name: 'Stirlingskat', className: 'Druid', roles: ['Healer', 'Tank', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2190, rank: 1, attending: true },
-    { id: 'kk-avaryn', name: 'Avaryn', className: 'Druid', roles: ['Healer', 'DPS', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Ara-Kara +8', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2430, rank: 2, attending: true },
-    { id: 'kk-azerite', name: 'Azerite', className: 'Hunter', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +9', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2450, rank: 2, attending: true },
+    { id: 'kk-adrenaline', name: 'Adrenaline', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +10', realm: 'Perenolde', region: 'us', ilvl: 633, io: 2580, rank: 0, attending: true, carryPreference: 'willing_carry', isShitter: false },
+    { id: 'kk-glaiven', name: 'Glaiven', className: 'Demon Hunter', roles: ['DPS', 'Tank'], keyMin: 7, keyMax: 12, ownedKey: 'Ara-Kara +9', realm: 'Perenolde', region: 'us', ilvl: 635, io: 3138, rank: 1, attending: true, carryPreference: 'willing_carry', isShitter: false },
+    { id: 'kk-gredic', name: 'Gredic', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'The Stonevault +8', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2420, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-shocktherapy', name: 'Shockthêràpy', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'City of Threads +9', realm: 'Perenolde', region: 'us', ilvl: 631, io: 2470, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-ravenlight', name: 'Ravenlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: 'The Dawnbreaker +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2390, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-khaidylock', name: 'Khaidylock', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +8', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2350, rank: 1, attending: true, carryPreference: 'need_carry', isShitter: false },
+    { id: 'kk-khaiduus', name: 'Khaiduus', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2310, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-engorged', name: 'Engorged', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: 'The Necrotic Wake +7', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2260, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
+    { id: 'kk-holyscheisse', name: 'Holyscheisse', className: 'Druid', roles: ['DPS', 'Healer', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Siege of Boralus +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2370, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
+    { id: 'kk-bearackobama', name: 'Bearackobamà', className: 'Druid', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2220, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
+    { id: 'kk-charliestar', name: 'Charliestar', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Grim Batol +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2380, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-meanssa', name: 'Meanssa', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'The Stonevault +10', realm: 'Perenolde', region: 'us', ilvl: 634, io: 2560, rank: 1, attending: true, carryPreference: 'willing_carry', isShitter: false },
+    { id: 'kk-stirlingskat', name: 'Stirlingskat', className: 'Druid', roles: ['Healer', 'Tank', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2190, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-avaryn', name: 'Avaryn', className: 'Druid', roles: ['Healer', 'DPS', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Ara-Kara +8', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2430, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-azerite', name: 'Azerite', className: 'Hunter', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +9', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2450, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
 
     // --- Other Kith and Kin Guild Members (Available to toggle on or search) ---
-    { id: 'kk-myssa', name: 'Myssa', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2400, rank: 1, attending: false },
-    { id: 'kk-knightlight', name: 'Kníghtlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2330, rank: 1, attending: false },
-    { id: 'kk-ayahuasca', name: 'Ayahuascå', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2240, rank: 1, attending: false },
-    { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2360, rank: 1, attending: false },
-    { id: 'kk-tyberia', name: 'Tyberia', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2280, rank: 2, attending: false },
-    { id: 'kk-tiblock', name: 'Tiblock', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 621, io: 2150, rank: 2, attending: false },
-    { id: 'kk-sploosh', name: 'Splõõsh', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2210, rank: 2, attending: false },
-    { id: 'kk-veralith', name: 'Veralith', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2390, rank: 2, attending: false },
-    { id: 'kk-noxxicc', name: 'Noxxicc', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2320, rank: 2, attending: false },
-    { id: 'kk-haiyu', name: 'Haiyu', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 620, io: 2120, rank: 2, attending: false },
-    { id: 'kk-valkyrin', name: 'Valkyrin', className: 'Paladin', roles: ['Healer', 'Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2340, rank: 2, attending: false },
-    { id: 'kk-bungulator', name: 'Bungulator', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2180, rank: 2, attending: false },
-    { id: 'kk-sylana', name: 'Sylana', className: 'Warrior', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2270, rank: 2, attending: false },
-    { id: 'kk-azernasty', name: 'Azernasty', className: 'Death Knight', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2200, rank: 2, attending: false }
+    { id: 'kk-myssa', name: 'Myssa', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2400, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-knightlight', name: 'Kníghtlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2330, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-ayahuasca', name: 'Ayahuascå', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2240, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2360, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-tyberia', name: 'Tyberia', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2280, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-tiblock', name: 'Tiblock', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 621, io: 2150, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-sploosh', name: 'Splõõsh', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2210, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-veralith', name: 'Veralith', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2390, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-noxxicc', name: 'Noxxicc', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2320, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-haiyu', name: 'Haiyu', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 620, io: 2120, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-valkyrin', name: 'Valkyrin', className: 'Paladin', roles: ['Healer', 'Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2340, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-bungulator', name: 'Bungulator', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2180, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-sylana', name: 'Sylana', className: 'Warrior', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2270, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-azernasty', name: 'Azernasty', className: 'Death Knight', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2200, rank: 2, attending: false, carryPreference: 'none', isShitter: false }
   ];
 
   // --- App State ---
@@ -220,7 +220,11 @@
           state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
           savePlayers();
         } else {
-          state.players = parsed;
+          state.players = parsed.map(p => ({
+            ...p,
+            carryPreference: p.carryPreference || 'none',
+            isShitter: !!p.isShitter
+          }));
         }
       } else {
         state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
@@ -347,7 +351,9 @@
         const matchesName = player.name.toLowerCase().includes(q);
         const matchesClass = (player.className || '').toLowerCase().includes(q);
         const matchesRealm = (player.realm || '').toLowerCase().includes(q);
-        if (!matchesName && !matchesClass && !matchesRealm) return false;
+        const matchesShitter = (q.includes('shit') || q.includes('poop') || q.includes('alt')) && player.isShitter;
+        const matchesCarry = (q.includes('carry') || q.includes('stronk') || q.includes('back')) && (player.carryPreference === 'need_carry' || player.carryPreference === 'willing_carry');
+        if (!matchesName && !matchesClass && !matchesRealm && !matchesShitter && !matchesCarry) return false;
       }
 
       if (state.roleFilter && state.roleFilter !== 'all') {
@@ -356,6 +362,9 @@
 
       if (state.attendFilter === 'attending' && !player.attending) return false;
       if (state.attendFilter === 'absent' && player.attending) return false;
+      if (state.attendFilter === 'shitter' && !player.isShitter) return false;
+      if (state.attendFilter === 'need_carry' && player.carryPreference !== 'need_carry') return false;
+      if (state.attendFilter === 'willing_carry' && player.carryPreference !== 'willing_carry') return false;
 
       return true;
     });
@@ -428,6 +437,9 @@
             <span class="class-tag" style="color: ${classInfo.color}; border: 1px solid ${classInfo.color}44;">${escapeHtml(player.className)}</span>
             <span class="ilvl-pill" title="Item Level">${player.ilvl || 620} iLvl</span>
             <span class="io-badge" style="color: ${ioColor}; border-color: ${ioColor}77;" title="Mythic+ Score">${(player.io || 0).toLocaleString()} IO</span>
+            ${player.carryPreference === 'need_carry' ? `<span class="carry-pill need" title="I need a carry!">🎒 Needs Carry</span>` : ''}
+            ${player.carryPreference === 'willing_carry' ? `<span class="carry-pill stronk" title="My back is stronk (willing to carry)">🏋️ Back is Stronk</span>` : ''}
+            ${player.isShitter ? `<span class="shitter-pill" title="I'm a shitter (put me in the shitter alt group)">💩 Shitter</span>` : ''}
           </div>
           <div class="player-details-row">
             <div class="role-badge-group">
@@ -669,6 +681,38 @@
             score -= 75; // Heavy penalty for missing BRez
           }
         }
+
+        // 💩 Shitter Alt Group clustering:
+        // Try to gather players who checked "I'm a shitter" together!
+        const shitterCount = members.filter(m => m.isShitter).length;
+        if (shitterCount >= 2) {
+          // Substantial reward for clustering shitters together into alt groups
+          score += shitterCount * 50;
+        } else if (shitterCount === 1) {
+          // Penalty for isolating a single shitter if there are multiple shitters available
+          const totalShitters = availablePool.filter(p => p.isShitter).length;
+          if (totalShitters > 1) {
+            score -= 35;
+          }
+        }
+
+        // 🎒 Carry & 🏋️ Stronk Back matching:
+        // Attempt to match "I need a carry" with people willing to carry ("My back is stronk")
+        const needCarryMembers = members.filter(m => m.carryPreference === 'need_carry');
+        const willingCarryMembers = members.filter(m => m.carryPreference === 'willing_carry');
+
+        if (needCarryMembers.length > 0) {
+          if (willingCarryMembers.length >= 1) {
+            // Success! Someone needing a carry has at least one strong back to carry them
+            score += 70;
+            if (willingCarryMembers.length >= needCarryMembers.length) {
+              score += 25;
+            }
+          } else {
+            // Penalty: Group has people needing a carry, but nobody willing to carry
+            score -= 60;
+          }
+        }
       });
 
       // Equalize Average Group M+ Score (IO) across all teams
@@ -757,10 +801,29 @@
       const avgIo = Math.round(totalIo / members.length);
       const avgIlvl = Math.round((totalIlvl / members.length) * 10) / 10;
 
+      const shitterCount = members.filter(m => m.isShitter).length;
+      const isShitterGroup = shitterCount >= 2;
+
+      const needCarryMembers = members.filter(m => m.carryPreference === 'need_carry');
+      const willingCarryMembers = members.filter(m => m.carryPreference === 'willing_carry');
+      const hasCarryMatch = needCarryMembers.length > 0 && willingCarryMembers.length > 0;
+
+      let groupName = shuffledNames[idx % shuffledNames.length];
+      if (isShitterGroup) {
+        const shitterNames = [
+          'The Shitter Squad',
+          'Shitter Alt Syndicate',
+          'Floor Inspectors Deluxe',
+          'Grey Parse All-Stars',
+          'Dungeon Floor Warmers'
+        ];
+        groupName = shitterNames[idx % shitterNames.length];
+      }
+
       finalGroups.push({
         id: 'group-' + Date.now() + '-' + idx,
         number: finalGroups.length + 1,
-        name: shuffledNames[idx % shuffledNames.length],
+        name: groupName,
         targetKeyStr: keyRangeStr,
         dungeon: assignedDungeon,
         avgIo,
@@ -772,7 +835,12 @@
         hasLust: !!lustMember,
         lustProvider: lustMember ? `${lustMember.name} (${lustMember.className})` : null,
         hasBrez: !!brezMember,
-        brezProvider: brezMember ? `${brezMember.name} (${brezMember.className})` : null
+        brezProvider: brezMember ? `${brezMember.name} (${brezMember.className})` : null,
+        isShitterGroup,
+        shitterCount,
+        hasCarryMatch,
+        needCarryNames: needCarryMembers.map(m => m.name),
+        willingCarryNames: willingCarryMembers.map(m => m.name)
       });
     });
 
@@ -854,6 +922,20 @@
 
     actions.style.display = 'flex';
 
+    function renderMemberVibeBadges(p) {
+      if (!p) return '';
+      let h = '';
+      if (p.carryPreference === 'need_carry') {
+        h += `<span class="carry-pill need" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="I need a carry">🎒 Carry Me</span>`;
+      } else if (p.carryPreference === 'willing_carry') {
+        h += `<span class="carry-pill stronk" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="My back is stronk (willing to carry)">🏋️ Stronk Back</span>`;
+      }
+      if (p.isShitter) {
+        h += `<span class="shitter-pill" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="I'm a shitter (shitter alt group enjoyer)">💩 Shitter</span>`;
+      }
+      return h;
+    }
+
     // Render Each 5-man Party Card
     state.formedGroups.forEach((grp, index) => {
       const card = document.createElement('div');
@@ -888,6 +970,8 @@
           <span class="party-util-badge ${grp.hasBrez ? 'ready' : 'missing'}" title="${grp.hasBrez ? 'Battle Rez ready: ' + escapeHtml(grp.brezProvider) : 'No Battle Rez class in this group!'}">
             🔄 ${grp.hasBrez ? 'BRez: ' + escapeHtml(grp.brezProvider) : 'BRez: Missing'}
           </span>
+          ${grp.isShitterGroup ? `<span class="party-util-badge shitter-group" title="Dedicated Shitter Alt Squad! (${grp.shitterCount} Shitters)">💩 Shitter Alt Squad</span>` : ''}
+          ${grp.hasCarryMatch ? `<span class="party-util-badge carry-assist" title="Carry Match: ${escapeHtml(grp.willingCarryNames.join(', '))} carrying ${escapeHtml(grp.needCarryNames.join(', '))}">🎒 Carry Assisted</span>` : ''}
         </div>
 
         <div class="party-metrics-bar">
@@ -903,6 +987,7 @@
               <div class="slot-name-class">
                 <span class="slot-player-name" style="color: ${tankClass.color};">${escapeHtml(grp.tank.name)}</span>
                 <span class="class-tag" style="color: ${tankClass.color}; border: 1px solid ${tankClass.color}44;">${escapeHtml(grp.tank.className)}</span>
+                ${renderMemberVibeBadges(grp.tank)}
                 <span class="slot-stat-badge ilvl">${grp.tank.ilvl || 620} iLvl</span>
                 <span class="slot-stat-badge io" style="color: ${getIoColor(grp.tank.io)};">${(grp.tank.io || 0).toLocaleString()} IO</span>
               </div>
@@ -917,6 +1002,7 @@
               <div class="slot-name-class">
                 <span class="slot-player-name" style="color: ${healerClass.color};">${escapeHtml(grp.healer.name)}</span>
                 <span class="class-tag" style="color: ${healerClass.color}; border: 1px solid ${healerClass.color}44;">${escapeHtml(grp.healer.className)}</span>
+                ${renderMemberVibeBadges(grp.healer)}
                 <span class="slot-stat-badge ilvl">${grp.healer.ilvl || 620} iLvl</span>
                 <span class="slot-stat-badge io" style="color: ${getIoColor(grp.healer.io)};">${(grp.healer.io || 0).toLocaleString()} IO</span>
               </div>
@@ -934,6 +1020,7 @@
                   <div class="slot-name-class">
                     <span class="slot-player-name" style="color: ${dpsClass.color};">${escapeHtml(dps.name)}</span>
                     <span class="class-tag" style="color: ${dpsClass.color}; border: 1px solid ${dpsClass.color}44;">${escapeHtml(dps.className)}</span>
+                    ${renderMemberVibeBadges(dps)}
                     <span class="slot-stat-badge ilvl">${dps.ilvl || 620} iLvl</span>
                     <span class="slot-stat-badge io" style="color: ${getIoColor(dps.io)};">${(dps.io || 0).toLocaleString()} IO</span>
                   </div>
@@ -1021,18 +1108,31 @@
 
     const groups = singleGroup ? [singleGroup] : state.formedGroups;
 
+    function formatDiscordMember(m, roleIcon, roleName) {
+      const vibeTags = [];
+      if (m.isShitter) vibeTags.push('💩 Shitter');
+      if (m.carryPreference === 'need_carry') vibeTags.push('🎒 Needs Carry');
+      if (m.carryPreference === 'willing_carry') vibeTags.push('🏋️ Back is Stronk');
+      const vibeStr = vibeTags.length > 0 ? ` [${vibeTags.join(', ')}]` : '';
+      return `• ${roleIcon} ${roleName}: **${m.name}** (${m.className} • ${m.ilvl || 620} iLvl • ${(m.io || 0).toLocaleString()} IO)${vibeStr}\n`;
+    }
+
     groups.forEach((grp, idx) => {
-      text += `\n🛡️ **Group ${idx + 1}: ${grp.name}**\n`;
+      const shitterTag = grp.isShitterGroup ? ' [💩 Shitter Alt Squad]' : '';
+      text += `\n🛡️ **Group ${idx + 1}: ${grp.name}**${shitterTag}\n`;
       text += `🎯 **Keys:** ${grp.targetKeyStr}\n`;
       text += `🏰 **Dungeon:** ${grp.dungeon}\n`;
       text += `📊 **Team Stats:** Avg IO: **${(grp.avgIo || 0).toLocaleString()}** | Avg iLvl: **${grp.avgIlvl || 620}**\n`;
       const lustStr = grp.hasLust ? `⚡ ${grp.lustProvider}` : `⚠️ Lust: None (Bring drums!)`;
       const brezStr = grp.hasBrez ? `🔄 ${grp.brezProvider}` : `⚠️ BRez: None (Engi brez)`;
       text += `✨ **Utility:** ${lustStr} | ${brezStr}\n`;
-      text += `• 🛡️ Tank: **${grp.tank.name}** (${grp.tank.className} • ${grp.tank.ilvl || 620} iLvl • ${(grp.tank.io || 0).toLocaleString()} IO)\n`;
-      text += `• 💚 Healer: **${grp.healer.name}** (${grp.healer.className} • ${grp.healer.ilvl || 620} iLvl • ${(grp.healer.io || 0).toLocaleString()} IO)\n`;
+      if (grp.hasCarryMatch) {
+        text += `🎒 **Carry Match:** ${grp.willingCarryNames.join(', ')} carrying ${grp.needCarryNames.join(', ')}\n`;
+      }
+      text += formatDiscordMember(grp.tank, '🛡️', 'Tank');
+      text += formatDiscordMember(grp.healer, '💚', 'Healer');
       grp.dps.forEach(d => {
-        text += `• ⚔️ DPS: **${d.name}** (${d.className} • ${d.ilvl || 620} iLvl • ${(d.io || 0).toLocaleString()} IO)\n`;
+        text += formatDiscordMember(d, '⚔️', 'DPS');
       });
     });
 
@@ -1096,6 +1196,16 @@
       document.getElementById('keyMinInput').value = p.keyMin;
       document.getElementById('keyMaxInput').value = p.keyMax;
       document.getElementById('keystoneInput').value = p.ownedKey || '';
+
+      const carryPref = p.carryPreference || 'none';
+      if (carryPref === 'need_carry') {
+        document.getElementById('carryPrefNeed').checked = true;
+      } else if (carryPref === 'willing_carry') {
+        document.getElementById('carryPrefStronk').checked = true;
+      } else {
+        document.getElementById('carryPrefNone').checked = true;
+      }
+      document.getElementById('isShitterCheck').checked = !!p.isShitter;
     } else {
       title.textContent = 'Add Guild Member';
       document.getElementById('playerId').value = '';
@@ -1106,6 +1216,8 @@
       document.getElementById('roleDps').checked = true;
       document.getElementById('keyMinInput').value = 4;
       document.getElementById('keyMaxInput').value = 10;
+      document.getElementById('carryPrefNone').checked = true;
+      document.getElementById('isShitterCheck').checked = false;
     }
 
     modal.classList.add('is-open');
@@ -1208,6 +1320,10 @@
     const keyMax = parseInt(document.getElementById('keyMaxInput').value, 10) || 15;
     const ownedKey = document.getElementById('keystoneInput').value.trim();
 
+    const carryPrefRadio = document.querySelector('input[name="carryPref"]:checked');
+    const carryPreference = carryPrefRadio ? carryPrefRadio.value : 'none';
+    const isShitter = document.getElementById('isShitterCheck').checked;
+
     if (id) {
       // Edit existing
       const p = state.players.find(x => x.id === id);
@@ -1222,6 +1338,8 @@
         p.keyMin = Math.min(keyMin, keyMax);
         p.keyMax = Math.max(keyMin, keyMax);
         p.ownedKey = ownedKey;
+        p.carryPreference = carryPreference;
+        p.isShitter = isShitter;
       }
       showToast(`Updated ${name}`);
     } else {
@@ -1238,6 +1356,8 @@
         keyMin: Math.min(keyMin, keyMax),
         keyMax: Math.max(keyMin, keyMax),
         ownedKey,
+        carryPreference,
+        isShitter,
         attending: true
       };
       state.players.push(newPlayer);
@@ -1401,7 +1521,9 @@
             realm: c.realm || existing.realm || 'Perenolde',
             region: c.region || existing.region || 'us',
             rank: m.rank,
-            avatar: c.thumbnail_url || existing.avatar || null
+            avatar: c.thumbnail_url || existing.avatar || null,
+            carryPreference: existing.carryPreference || 'none',
+            isShitter: !!existing.isShitter
           };
         } else {
           return {
@@ -1418,7 +1540,9 @@
             io: 2200,
             rank: m.rank,
             attending: isRaiderRank,
-            avatar: c.thumbnail_url || null
+            avatar: c.thumbnail_url || null,
+            carryPreference: 'none',
+            isShitter: false
           };
         }
       });

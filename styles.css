@@ -1515,6 +1515,137 @@ button {
 }
 
 /* ==========================================================================
+   Carry & Shitter Alt Badges & Modal Options
+   ========================================================================== */
+
+.carry-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.carry-pill.need {
+  background: rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.5);
+  color: #fdba74;
+}
+
+.carry-pill.stronk {
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #d8b4fe;
+}
+
+.shitter-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(180, 83, 9, 0.25);
+  border: 1px solid rgba(217, 119, 6, 0.6);
+  color: #fde047;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.carry-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.radio-pill-item {
+  position: relative;
+  display: flex;
+  cursor: pointer;
+}
+
+.radio-pill-item input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.radio-pill-item .pill-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  transition: all 0.18s ease;
+}
+
+.radio-pill-item input:checked + .pill-box {
+  background: rgba(212, 160, 23, 0.18);
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+  box-shadow: 0 0 10px rgba(212, 160, 23, 0.2);
+}
+
+.radio-pill-item.need input:checked + .pill-box {
+  background: rgba(249, 115, 22, 0.22);
+  border-color: #f97316;
+  color: #fdba74;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.25);
+}
+
+.radio-pill-item.stronk input:checked + .pill-box {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: #a855f7;
+  color: #e9d5ff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
+}
+
+.shitter-checkbox-wrap {
+  background: rgba(120, 53, 15, 0.15);
+  border: 1px dashed rgba(217, 119, 6, 0.45);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.65rem;
+}
+
+.shitter-checkbox-wrap .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.shitter-label-text {
+  font-weight: 700;
+  color: #fde047;
+  font-size: 0.9rem;
+}
+
+.party-util-badge.shitter-group {
+  background: rgba(180, 83, 9, 0.3);
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  color: #fef08a;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+}
+
+.party-util-badge.carry-assist {
+  background: rgba(168, 85, 247, 0.22);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #f3e8ff;
+}
+
+/* ==========================================================================
    Footer
    ========================================================================== */
 
