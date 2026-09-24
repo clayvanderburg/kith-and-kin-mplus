@@ -1,120 +1,195 @@
 /**
  * Discord Embeds for Kith and Kin Mythic+ Night
+ * Modeled after Raid-Helper with tailored World of Warcraft Mythic+ enhancements.
  */
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { WOW_CLASSES } = require('./solver');
 
-function createRosterEmbed(players, webUrl) {
+const CLASS_ICONS = {
+  'Death Knight': '⚔️',
+  'Demon Hunter': '🦇',
+  'Druid': '🌿',
+  'Evoker': '🐲',
+  'Hunter': '🏹',
+  'Mage': '✨',
+  'Monk': '🥋',
+  'Paladin': '🛡️',
+  'Priest': '☀️',
+  'Rogue': '🗡️',
+  'Shaman': '⚡',
+  'Warlock': '🔥',
+  'Warrior': '🪓'
+};
+
+const ROLE_ICONS = {
+  'Tank': '🛡️',
+  'Healer': '💚',
+  'DPS': '⚔️'
+};
+
+/**
+ * Calculates Unix timestamp for the upcoming Friday 8:00 PM EST
+ */
+function getNextFridayTimestamp() {
+  const now = new Date();
+  const target = new Date(now.getTime());
+  let daysUntilFriday = (5 - now.getDay() + 7) % 7;
+  if (daysUntilFriday === 0 && now.getHours() >= 20) {
+    daysUntilFriday = 7;
+  }
+  target.setDate(now.getDate() + daysUntilFriday);
+  target.setHours(20, 0, 0, 0);
+  return Math.floor(target.getTime() / 1000);
+}
+
+function createRosterEmbed(players, webUrl = 'https://kith-and-kin-mplus.netlify.app', hostName = 'MadKing') {
   const attending = players.filter(p => p.attending);
+  const absent = players.filter(p => !p.attending);
   const tanks = attending.filter(p => (p.roles || []).includes('Tank')).length;
   const healers = attending.filter(p => (p.roles || []).includes('Healer')).length;
   const dps = attending.filter(p => (p.roles || []).includes('DPS')).length;
   const maxGroups = Math.min(tanks, healers, Math.floor(dps / 3));
 
+  const needsCarry = attending.filter(p => p.carryPreference === 'need_carry');
+  const stronk = attending.filter(p => p.carryPreference === 'willing_carry');
+  const shitters = attending.filter(p => p.isShitter);
+
+  const nextFriday = getNextFridayTimestamp();
+
   const embed = new EmbedBuilder()
-    .setTitle('🏰 Kith & Kin — Mythic+ Night Sign-ups')
-    .setColor(0xF5D061)
+    .setTitle('🏰 Friday Mythic+ Keystone Night')
+    .setColor(0xDC2626) // Vivid red border matching Raid-Helper event styling
     .setDescription(
-      `**Event Status**: ${attending.length} Attending • Can form **${maxGroups}** full ${maxGroups === 1 ? 'group' : 'groups'} (1 Tank, 1 Healer, 3 DPS)\n\n` +
-      `🛡️ **Tanks**: ${tanks}  |  💚 **Healers**: ${healers}  |  ⚔️ **DPS**: ${dps}`
-    )
-    .setTimestamp();
+      `Conquer **Midnight Season 2** keystones! Match IO ranges, balance Bloodlust & Battle Res, pair carries, and assemble full parties.\n\n` +
+      `👑 **Host:** ${hostName}  •  👥 **Attending:** **${attending.length}**${absent.length ? ` (+${absent.length} absent)` : ''}\n` +
+      `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM EST\n` +
+      `⏳ **Kickoff:** <t:${nextFriday}:F> (<t:${nextFriday}:R>)\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🛡️ **Tanks:** ${tanks}  •  💚 **Healers:** ${healers}  •  ⚔️ **DPS:** ${dps}  •  🏰 **Groups:** **${maxGroups} Full**\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+    );
 
   if (attending.length === 0) {
     embed.addFields({
-      name: 'No Sign-ups Yet',
-      value: 'Click a button below or type `/mplus signup` to sign up your character!'
+      name: '⚡ Sign-ups are OPEN!',
+      value: 'Click a role button below (`Tank`, `Healer`, or `DPS`) to sign up your character!'
     });
   } else {
-    // Group attendees by primary role
-    const tankList = attending.filter(p => p.roles[0] === 'Tank' || (p.roles.includes('Tank') && !p.roles.includes('Healer')));
-    const healerList = attending.filter(p => p.roles[0] === 'Healer' || (p.roles.includes('Healer') && !tankList.includes(p)));
-    const dpsList = attending.filter(p => !tankList.includes(p) && !healerList.includes(p));
-
-    const formatPlayer = (p) => {
-      let tags = [];
-      if (p.carryPreference === 'need_carry') tags.push('🎒 Need');
-      if (p.carryPreference === 'willing_carry') tags.push('🏋️ Stronk');
-      if (p.isShitter) tags.push('💩');
-      const tagStr = tags.length ? ` [${tags.join(' ')}]` : '';
-      const keyStr = p.ownedKey ? ` • 🔑 ${p.ownedKey}` : ` • Keys +${p.keyMin}-${p.keyMax}`;
-      return `**${p.name}** (${p.className}) • ${p.io ? p.io.toLocaleString() + ' IO' : p.ilvl + ' ilvl'}${keyStr}${tagStr}`;
-    };
-
-    if (tankList.length > 0) {
-      embed.addFields({
-        name: `🛡️ Tanks (${tankList.length})`,
-        value: tankList.map(formatPlayer).join('\n') || 'None'
-      });
-    }
-
-    if (healerList.length > 0) {
-      embed.addFields({
-        name: `💚 Healers (${healerList.length})`,
-        value: healerList.map(formatPlayer).join('\n') || 'None'
-      });
-    }
-
-    if (dpsList.length > 0) {
-      embed.addFields({
-        name: `⚔️ DPS (${dpsList.length})`,
-        value: dpsList.map(formatPlayer).join('\n') || 'None'
-      });
-    }
-  }
-
-  if (webUrl) {
-    embed.addFields({
-      name: '🌐 Web Dashboard',
-      value: `[View Live Generator & Custom Comps](${webUrl})`
+    // Group attendees by WoW Class
+    const classGroups = {};
+    attending.forEach(p => {
+      const cls = p.className || 'Adventurer';
+      if (!classGroups[cls]) classGroups[cls] = [];
+      classGroups[cls].push(p);
     });
+
+    // Sort classes by count descending, then alphabetically
+    const sortedClasses = Object.keys(classGroups).sort((a, b) => {
+      if (classGroups[b].length !== classGroups[a].length) {
+        return classGroups[b].length - classGroups[a].length;
+      }
+      return a.localeCompare(b);
+    });
+
+    // Add 3-column inline grid fields (Raid-Helper style)
+    sortedClasses.forEach(cls => {
+      const pList = classGroups[cls];
+      const icon = CLASS_ICONS[cls] || '⚔️';
+      const lines = pList.map((p, idx) => {
+        const primaryRole = (p.roles && p.roles[0]) || 'DPS';
+        const roleIcon = ROLE_ICONS[primaryRole] || '⚔️';
+        const ioStr = p.io ? `${(p.io / 1000).toFixed(1)}k` : `${p.ilvl || 320}ilvl`;
+        const keyStr = p.ownedKey ? `+${p.ownedKey.split('+')[1] || p.keyMax || 10}` : `+${p.keyMax || 10}`;
+        let flag = '';
+        if (p.carryPreference === 'need_carry') flag = ' 🎒';
+        if (p.carryPreference === 'willing_carry') flag = ' 🏋️';
+        if (p.isShitter) flag = ' 💩';
+
+        return `${roleIcon} \`${idx + 1}\` **${p.name}** (${ioStr} • ${keyStr})${flag}`;
+      });
+
+      embed.addFields({
+        name: `${icon} ${cls} (${pList.length})`,
+        value: lines.join('\n') || 'None',
+        inline: true
+      });
+    });
+
+    // Special Vibe / Alt Squad Roster breakdown
+    let vibeBreakdown = [];
+    if (needsCarry.length > 0) {
+      vibeBreakdown.push(`🎒 **Needs Carry (${needsCarry.length}):** ${needsCarry.map(p => `**${p.name}**`).join(', ')}`);
+    }
+    if (stronk.length > 0) {
+      vibeBreakdown.push(`🏋️ **Back is Stronk (${stronk.length}):** ${stronk.map(p => `**${p.name}**`).join(', ')}`);
+    }
+    if (shitters.length > 0) {
+      vibeBreakdown.push(`💩 **Shitter Alt Squad (${shitters.length}):** ${shitters.map(p => `**${p.name}**`).join(', ')}`);
+    }
+    if (absent.length > 0) {
+      vibeBreakdown.push(`💤 **Absent (${absent.length}):** ${absent.slice(0, 10).map(p => p.name).join(', ')}${absent.length > 10 ? ` +${absent.length - 10} more` : ''}`);
+    }
+
+    if (vibeBreakdown.length > 0) {
+      embed.addFields({
+        name: '🎭 Squad Preferences & Vibe',
+        value: vibeBreakdown.join('\n'),
+        inline: false
+      });
+    }
   }
+
+  embed.setFooter({
+    text: `Kith & Kin • Midnight Season 2 • Click buttons below to RSVP`
+  });
+  embed.setTimestamp();
 
   return embed;
 }
 
-function createGroupEmbeds(groups, benched, webUrl) {
+function createGroupEmbeds(groups, benched, webUrl = 'https://kith-and-kin-mplus.netlify.app') {
   const embeds = [];
 
   groups.forEach((grp, idx) => {
     let title = `PARTY ${idx + 1}: ${grp.name.toUpperCase()}`;
-    if (grp.isShitterGroup) title += ' 💩';
+    if (grp.isShitterGroup) title += ' 💩 (SHITTER SQUAD)';
 
-    let color = 0xF5D061;
-    if (grp.isShitterGroup) color = 0xB45309;
+    let color = grp.isShitterGroup ? 0xB45309 : 0xF5D061;
 
     const embed = new EmbedBuilder()
       .setTitle(title)
       .setColor(color);
 
-    let metaDesc = `🔑 **${grp.assignedDungeon}**\n🎯 Key Comfort: \`${grp.keyRangeStr}\`\n⭐ Avg IO: **${grp.avgIo.toLocaleString()}** | 🛡️ Avg iLvl: **${grp.avgIlvl}**\n`;
+    let metaDesc = `🔑 **Assigned:** **${grp.assignedDungeon}**\n` +
+                   `🎯 **Target Key:** \`${grp.keyRangeStr}\`\n` +
+                   `⭐ **Avg IO:** **${grp.avgIo.toLocaleString()}**  •  🛡️ **Avg iLvl:** **${grp.avgIlvl}**\n`;
 
     let utilLine = [];
     if (grp.hasLust) {
-      utilLine.push(`⚡ Lust: ${grp.lustProvider}`);
+      utilLine.push(`⚡ Lust: **${grp.lustProvider}**`);
     } else {
-      utilLine.push(`⚠️ Missing Lust`);
+      utilLine.push(`⚠️ No Lust`);
     }
     if (grp.hasBrez) {
-      utilLine.push(`🔄 BRez: ${grp.brezProvider}`);
+      utilLine.push(`🔄 BRez: **${grp.brezProvider}**`);
     } else {
-      utilLine.push(`⚠️ Missing BRez`);
+      utilLine.push(`⚠️ No BRez`);
     }
     if (grp.hasCarryMatch) {
-      utilLine.push(`🎒 Carry Assisted`);
+      utilLine.push(`🎒 Carry Matched`);
     }
 
     metaDesc += utilLine.join('  •  ') + '\n\n';
 
     const formatMemberLine = (icon, m) => {
       let flags = [];
-      if (m.carryPreference === 'need_carry') flags.push('🎒 Need');
-      if (m.carryPreference === 'willing_carry') flags.push('🏋️ Stronk');
-      if (m.isShitter) flags.push('💩');
-      const flagStr = flags.length ? ` \`${flags.join(' ')}\`` : '';
+      if (m.carryPreference === 'need_carry') flags.push('🎒 Need Carry');
+      if (m.carryPreference === 'willing_carry') flags.push('🏋️ Stronk Back');
+      if (m.isShitter) flags.push('💩 Shitter');
+      const flagStr = flags.length ? ` \`[${flags.join(' ')}]\`` : '';
 
-      return `${icon} **${m.name}** (${m.className}) — **${(m.io || 0).toLocaleString()} IO** (${m.ilvl || 320} ilvl)${flagStr}\n   └ Key Range: +${m.keyMin} to +${m.keyMax}${m.ownedKey ? ` | 🔑 ${m.ownedKey}` : ''}`;
+      return `${icon} **${m.name}** (${m.className}) — **${(m.io || 0).toLocaleString()} IO** (${m.ilvl || 320} ilvl)${flagStr}\n` +
+             `   └ Range: +${m.keyMin} to +${m.keyMax}${m.ownedKey ? ` | 🔑 ${m.ownedKey}` : ''}`;
     };
 
     let membersText = [
@@ -140,43 +215,49 @@ function createGroupEmbeds(groups, benched, webUrl) {
   return embeds;
 }
 
-function createSignupButtons() {
+function createSignupButtons(webUrl = 'https://kith-and-kin-mplus.netlify.app') {
+  // Row 1: Quick Role Sign-up Buttons (Primary)
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('btn_attend_tank')
-      .setLabel('Attend: Tank 🛡️')
+      .setCustomId('btn_role_Tank')
+      .setLabel('Tank 🛡️')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId('btn_attend_healer')
-      .setLabel('Attend: Healer 💚')
+      .setCustomId('btn_role_Healer')
+      .setLabel('Healer 💚')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId('btn_attend_dps')
-      .setLabel('Attend: DPS ⚔️')
+      .setCustomId('btn_role_DPS')
+      .setLabel('DPS ⚔️')
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('btn_absent')
-      .setLabel('Can’t Make It ❌')
+      .setLabel('Can’t Make It 💤')
       .setStyle(ButtonStyle.Secondary)
   );
 
+  // Row 2: Vibe & Preference Toggles + Form Groups + Web Link
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('btn_vibe_carry')
+      .setCustomId('btn_need_carry')
       .setLabel('Need Carry 🎒')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('btn_vibe_stronk')
-      .setLabel('Back is Stronk 🏋️')
+      .setCustomId('btn_stronk_carry')
+      .setLabel('Stronk Back 🏋️')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('btn_vibe_shitter')
-      .setLabel('I’m a Shitter 💩')
+      .setCustomId('btn_shitter')
+      .setLabel('Shitter Alt 💩')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('btn_refresh_roster')
-      .setLabel('🔄 Refresh')
-      .setStyle(ButtonStyle.Secondary)
+      .setCustomId('btn_form_groups')
+      .setLabel('Form Groups 🏰')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setLabel('Web View 🌐')
+      .setStyle(ButtonStyle.Link)
+      .setURL(webUrl)
   );
 
   return [row1, row2];

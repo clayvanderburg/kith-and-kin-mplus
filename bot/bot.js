@@ -232,9 +232,10 @@ async function handleButtonInteraction(interaction) {
   // Quick RSVP buttons
   const knownName = userCharacterMap.get(interaction.user.id) || interaction.member?.displayName || interaction.user.username;
 
-  if (customId.startsWith('btn_attend_')) {
-    const roleType = customId.replace('btn_attend_', ''); // tank, healer, dps
-    const roleName = roleType === 'tank' ? 'Tank' : (roleType === 'healer' ? 'Healer' : 'DPS');
+  if (customId.startsWith('btn_role_') || customId.startsWith('btn_attend_')) {
+    let roleName = customId.startsWith('btn_role_') 
+      ? customId.replace('btn_role_', '')
+      : (customId.replace('btn_attend_', '') === 'tank' ? 'Tank' : (customId.replace('btn_attend_', '') === 'healer' ? 'Healer' : 'DPS'));
 
     // Prompt with a modal to confirm character name & key range
     const modal = new ModalBuilder()
@@ -271,6 +272,28 @@ async function handleButtonInteraction(interaction) {
     return interaction.showModal(modal);
   }
 
+  if (customId === 'btn_form_groups') {
+    await interaction.deferReply();
+    const state = await fetchRemoteState();
+    const attending = (state.players || []).filter(p => p.attending);
+
+    if (attending.length < 5) {
+      return interaction.editReply(`⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Click a role button to sign up!`);
+    }
+
+    const { solveGroups } = require('./solver');
+    const result = solveGroups(attending);
+    state.formedGroups = result.groups;
+    state.benchedPlayers = result.benched;
+    await pushRemoteState(state);
+
+    const groupEmbeds = createGroupEmbeds(result.groups, result.benched, WEB_URL);
+    return interaction.editReply({
+      content: `🏰 **Formed ${result.groups.length} Mythic+ Group(s) for Friday Night!**`,
+      embeds: groupEmbeds
+    });
+  }
+
   if (customId === 'btn_absent') {
     await interaction.deferReply({ ephemeral: true });
     const state = await fetchRemoteState();
@@ -280,15 +303,19 @@ async function handleButtonInteraction(interaction) {
     if (player) {
       player.attending = false;
       await pushRemoteState(state);
-      return interaction.editReply(`Marked **${player.name}** as absent for tonight.`);
+      return interaction.editReply(`Marked **${player.name}** as absent for Friday night.`);
     }
 
-    return interaction.editReply(`Could not find a signed-up character for you. Type \`/mplus signup\` to register first.`);
+    return interaction.editReply(`Could not find a signed-up character for you. Click a role button to register first!`);
   }
 
-  if (customId.startsWith('btn_vibe_')) {
+  if (customId.startsWith('btn_vibe_') || customId === 'btn_need_carry' || customId === 'btn_stronk_carry' || customId === 'btn_shitter') {
     await interaction.deferReply({ ephemeral: true });
-    const vibe = customId.replace('btn_vibe_', '');
+    let vibe = '';
+    if (customId === 'btn_need_carry' || customId === 'btn_vibe_carry') vibe = 'carry';
+    else if (customId === 'btn_stronk_carry' || customId === 'btn_vibe_stronk') vibe = 'stronk';
+    else if (customId === 'btn_shitter' || customId === 'btn_vibe_shitter') vibe = 'shitter';
+
     const charName = userCharacterMap.get(interaction.user.id) || interaction.member?.displayName;
     const state = await fetchRemoteState();
     const player = (state.players || []).find(p => p.name.toLowerCase() === (charName || '').toLowerCase());
@@ -298,13 +325,13 @@ async function handleButtonInteraction(interaction) {
     }
 
     if (vibe === 'carry') {
-      player.carryPreference = 'need_carry';
+      player.carryPreference = player.carryPreference === 'need_carry' ? 'none' : 'need_carry';
       await pushRemoteState(state);
-      return interaction.editReply(`Set **${player.name}** to: 🎒 **Needs Carry** (solver will match you with a carry!)`);
+      return interaction.editReply(`Set **${player.name}** carry preference to: **${player.carryPreference === 'need_carry' ? '🎒 Needs Carry' : 'None'}**`);
     } else if (vibe === 'stronk') {
-      player.carryPreference = 'willing_carry';
+      player.carryPreference = player.carryPreference === 'willing_carry' ? 'none' : 'willing_carry';
       await pushRemoteState(state);
-      return interaction.editReply(`Set **${player.name}** to: 🏋️ **Back is Stronk** (willing to carry!)`);
+      return interaction.editReply(`Set **${player.name}** carry preference to: **${player.carryPreference === 'willing_carry' ? '🏋️ Back is Stronk (willing to carry)' : 'None'}**`);
     } else if (vibe === 'shitter') {
       player.isShitter = !player.isShitter;
       await pushRemoteState(state);

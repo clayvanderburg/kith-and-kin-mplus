@@ -400,15 +400,43 @@ exports.handler = async (event, context) => {
       }
     }
 
-    if (customId === 'btn_shitter') {
-      if (player) {
-        player.isShitter = !player.isShitter;
-        await saveState(state);
+    if (customId === 'btn_form_groups') {
+      const attending = (state.players || []).filter(p => p.attending);
+      if (attending.length < 5) {
         return jsonResponse({
           type: 4,
-          data: { content: `💩 Shitter alt squad preference set: **${player.isShitter ? 'Yes (put me in the shitter squad)' : 'No'}**`, flags: 64 }
+          data: {
+            content: `⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Click a role button to sign up!`,
+            flags: 64
+          }
         });
       }
+
+      const result = solver ? solver.solveGroups(attending) : { groups: [], benched: [] };
+      state.formedGroups = result.groups;
+      state.benchedPlayers = result.benched;
+      await saveState(state);
+
+      const groupEmbeds = embeds ? embeds.createGroupEmbeds(result.groups, result.benched, WEB_URL).map(e => e.toJSON()) : [];
+      return jsonResponse({
+        type: 4,
+        data: {
+          content: `🏰 **Formed ${result.groups.length} Mythic+ Group(s) for Friday Night!**`,
+          embeds: groupEmbeds
+        }
+      });
+    }
+
+    if (customId === 'btn_refresh_roster') {
+      const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL).toJSON() : { title: 'Roster' };
+      const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : [];
+      return jsonResponse({
+        type: 7, // UPDATE_MESSAGE
+        data: {
+          embeds: [embed],
+          components: buttons
+        }
+      });
     }
 
     return jsonResponse({
