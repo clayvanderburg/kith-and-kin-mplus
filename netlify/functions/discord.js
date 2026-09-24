@@ -34,7 +34,7 @@ try {
 } catch (e) {}
 
 const TMP_FILE = path.join('/tmp', 'kk_mplus_state.json');
-const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY;
+const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '66f468e2962fddf5f6c25d675f66df3970d481be92cc350c30358a12dfe527bb';
 const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
 
 // In-memory fallback
