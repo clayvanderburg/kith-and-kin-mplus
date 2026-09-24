@@ -1,93 +1,88 @@
 # Kith & Kin Mythic+ Discord Bot Setup Guide
 
-This guide walks you through setting up, deploying, and running the **Kith & Kin Mythic+ Night Discord Bot**, fully synchronized in real-time with the live web application.
+You do **NOT** have to host or run the bot on your computer!
+
+Discord supports **Serverless HTTP Interactions**, meaning Netlify can run the entire bot 24/7 for free with **zero servers, zero background processes, and zero computers running**.
 
 ---
 
-## 1. Create Your Discord Application & Bot
+## 🚀 Option 1: 100% Serverless on Netlify (Recommended — No Computer Needed!)
 
-1. Go to the **[Discord Developer Portal](https://discord.com/developers/applications)** and log in.
-2. Click **New Application** in the top right.
-   - Name it: `Kith and Kin Mythic+` (or any name you prefer).
-   - Agree to the Terms of Service and click **Create**.
-3. In the left sidebar, navigate to **General Information**:
-   - Copy the **Application ID** (this is your `CLIENT_ID`).
-4. In the left sidebar, navigate to **Bot**:
-   - Under the username, click **Reset Token** (or **View Token**) and copy the generated token (this is your `DISCORD_TOKEN`).
-   - Under **Privileged Gateway Intents**, enable:
-     - ✅ **Server Members Intent**
-     - ✅ **Message Content Intent**
-   - Click **Save Changes**.
+With this setup, when a guild member runs `/mplus ...` or clicks an RSVP button in Discord, Discord directly calls your Netlify serverless function (`/api/discord`). It processes the command, updates the shared state, and sends the response back to Discord instantly.
 
----
+### Step 1: Create Your Discord Application
+1. Go to the **[Discord Developer Portal](https://discord.com/developers/applications)** and sign in.
+2. Click **New Application** (e.g. `Kith & Kin Mythic+`).
+3. Under **General Information**, you will find:
+   - **Application ID** (this is your `CLIENT_ID`)
+   - **Public Key** (this is your `DISCORD_PUBLIC_KEY`)
+4. Under **Bot** (left menu):
+   - Click **Reset Token** and copy your **Bot Token** (`DISCORD_TOKEN`).
 
-## 2. Invite the Bot to Your Guild Server
+### Step 2: Set Environment Variables in Netlify
+1. Go to your **[Netlify Dashboard](https://app.netlify.com)** ➔ select your `kith-and-kin-mplus` site.
+2. Navigate to **Site configuration** ➔ **Environment variables**.
+3. Add:
+   - `DISCORD_PUBLIC_KEY`: Paste your Public Key from Discord Developer Portal.
+   - `SYNC_SECRET`: `kith_and_kin_mythic_key_2026` (or any custom passphrase you prefer).
 
-1. In the left sidebar, navigate to **OAuth2** ➔ **URL Generator**.
-2. Under **Scopes**, check:
+### Step 3: Set Interactions Endpoint URL in Discord
+1. Back in the **Discord Developer Portal** ➔ **General Information**.
+2. Find the field labeled **"Interactions Endpoint URL"**.
+3. Enter your live Netlify endpoint:
+   ```
+   https://kith-and-kin-mplus.netlify.app/api/discord
+   ```
+4. Click **Save Changes**. Discord will send an automated validation ping to Netlify. Because your function handles `type: 1` verification, Discord will immediately verify and save with a green checkmark!
+
+### Step 4: Register the Slash Commands (One-Time Only)
+To register the `/mplus` commands in your Discord server:
+1. In the `bot` directory on your computer, create `bot/.env` with your `DISCORD_TOKEN`, `CLIENT_ID`, and `GUILD_ID`.
+2. Run:
+   ```bash
+   cd bot
+   npm install
+   npm run deploy-commands
+   ```
+3. That's it! You never need to run anything on your computer again. Netlify handles everything automatically.
+
+### Step 5: Invite the Bot to Your Guild
+1. In the **Discord Developer Portal** ➔ **OAuth2** ➔ **URL Generator**.
+2. Under **Scopes**, select:
    - ✅ `bot`
    - ✅ `applications.commands`
-3. Under **Bot Permissions**, check:
+3. Under **Bot Permissions**, select:
    - ✅ `Send Messages`
    - ✅ `Embed Links`
    - ✅ `Attach Files`
    - ✅ `Read Message History`
-   - ✅ `Use External Emojis`
-   - ✅ `View Channels`
-4. Copy the generated URL at the bottom and paste it into your browser.
-5. Select your Discord server (e.g. **Kith and Kin**) and click **Authorize**.
+4. Copy the generated invite link, open it in your browser, and authorize it for your Kith and Kin Discord server.
 
 ---
 
-## 3. Configure Local Environment (`bot/.env`)
+## 💻 Option 2: Self-Hosted on Your Computer or Home Server (BB8)
 
-In the `bot` folder, copy `.env.example` to `.env`:
+If you ever prefer running a traditional persistent bot process on your computer, home server (e.g. `BB8`), or a VPS:
 
-```bash
-cd bot
-copy .env.example .env
-```
-
-Open `bot/.env` and fill in your values:
-
-```ini
-# Bot Token & Application ID from Discord Developer Portal
-DISCORD_TOKEN=your_bot_token_here
-CLIENT_ID=your_application_id_here
-
-# (Optional) If provided, slash commands register instantly in this server without waiting for global cache
-GUILD_ID=your_discord_server_id
-
-# The live Netlify API URL for two-way synchronization
-API_URL=https://kith-and-kin-mplus.netlify.app/api/state
-
-# Shared secret key matching netlify/functions/state.js
-SYNC_SECRET=kith_and_kin_mythic_key_2026
-```
+1. Configure `bot/.env`:
+   ```ini
+   DISCORD_TOKEN=your_bot_token
+   CLIENT_ID=your_client_id
+   GUILD_ID=your_guild_id
+   API_URL=https://kith-and-kin-mplus.netlify.app/api/state
+   SYNC_SECRET=kith_and_kin_mythic_key_2026
+   ```
+2. Start the bot:
+   ```bash
+   cd bot
+   npm install
+   npm start
+   ```
+3. The bot connects over WebSocket Gateway and continuously listens for commands and button clicks while syncing with Netlify.
 
 ---
 
-## 4. Install Dependencies & Start the Bot
-
-From inside the `bot/` folder:
-
-```bash
-cd bot
-npm install
-npm start
-```
-
-You should see:
-```
-🤖 Kith & Kin Bot logged in as Kith and Kin Mythic+#XXXX!
-[Commands] Successfully reloaded slash commands!
-```
-
-*(Optional: Use `pm2 start bot.js --name "kith-and-kin-bot"` or run as a Windows background task / cloud worker to keep it running 24/7).*
-
----
-
-## 5. Discord Commands & Interactive Buttons
+## Discord Commands & Features
 
 ### `/mplus post-signup`
 Posts an interactive recruitment embed in the channel with one-click buttons:
@@ -102,7 +97,7 @@ Posts an interactive recruitment embed in the channel with one-click buttons:
 ### `/mplus signup`
 Quick command sign-up directly with parameters:
 - `/mplus signup character:MadKing role:Tank min_key:10 max_key:16 carry_pref:willing_carry shitter:False`
-*(Automatically looks up your character on Raider.IO to fetch current item level, Mythic+ score, and active Midnight Season 2 keystone).*
+*(Automatically looks up Raider.IO to fetch current item level, Mythic+ score, and active Midnight Season 2 keystone).*
 
 ### `/mplus roster`
 Displays the full live sign-up roster, attending counts by role, and carries/shitters.
@@ -115,10 +110,3 @@ Resets formed groups while keeping roster signups intact.
 
 ### `/mplus web`
 Posts a direct clickable link to the live web dashboard.
-
----
-
-## 6. How Two-Way Sync Works
-
-- **Discord ➔ Web**: When any guild member registers or clicks RSVP buttons in Discord, the bot updates `/api/state`. The web dashboard automatically reflects the change within seconds (or on manual refresh).
-- **Web ➔ Discord**: When you generate groups, toggle attendance, or add members on the web app, it pushes changes to `/api/state`. Running `/mplus roster` or `/mplus form` in Discord instantly uses the latest web state.
