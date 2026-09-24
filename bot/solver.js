@@ -57,18 +57,20 @@ function shuffleArray(arr) {
   return a;
 }
 
-function solveGroups({
-  players,
-  strategy = 'balanced',
-  dungeonPool = DUNGEONS_MIDNIGHT_S2,
-  excludedDungeons = [],
-  avoidClassDupes = true,
-  ensureLust = true,
-  ensureBrez = true,
-  balanceIo = true,
-  lockedGroups = []
-}) {
-  const attendees = players.filter(p => p.attending);
+function solveGroups(options = {}) {
+  const opts = Array.isArray(options) ? { players: options } : options;
+  const {
+    players = [],
+    strategy = 'balanced',
+    dungeonPool = DUNGEONS_MIDNIGHT_S2,
+    excludedDungeons = [],
+    avoidClassDupes = true,
+    ensureLust = true,
+    ensureBrez = true,
+    balanceIo = true,
+    lockedGroups = []
+  } = opts;
+  const attendees = players.filter(p => p.attending !== false);
 
   // Exclude players already locked into existing preserved groups
   const lockedPlayerIds = new Set();
@@ -100,9 +102,13 @@ function solveGroups({
     const healers = [];
     const dps = [];
 
-    const candidateTanks = shuffled.filter(p => (p.roles || []).includes('Tank'));
-    const candidateHealers = shuffled.filter(p => (p.roles || []).includes('Healer'));
-    const candidateDps = shuffled.filter(p => (p.roles || []).includes('DPS'));
+    // Voluntary reserves give priority to members wanting to run full time
+    const candidateTanks = shuffled.filter(p => (p.roles || []).includes('Tank'))
+      .sort((a, b) => (a.isReserve ? 1 : 0) - (b.isReserve ? 1 : 0));
+    const candidateHealers = shuffled.filter(p => (p.roles || []).includes('Healer'))
+      .sort((a, b) => (a.isReserve ? 1 : 0) - (b.isReserve ? 1 : 0));
+    const candidateDps = shuffled.filter(p => (p.roles || []).includes('DPS'))
+      .sort((a, b) => (a.isReserve ? 1 : 0) - (b.isReserve ? 1 : 0));
 
     const assignedIds = new Set();
 
@@ -299,6 +305,8 @@ function solveGroups({
       groupName = shitterNames[idx % shitterNames.length];
     }
 
+    const leaderMember = members.find(m => m.isLeader);
+
     finalGroups.push({
       ...grp,
       name: groupName,
@@ -309,6 +317,8 @@ function solveGroups({
       lustProvider: lustMember ? `${lustMember.name} (${lustMember.className})` : null,
       hasBrez: !!brezMember,
       brezProvider: brezMember ? `${brezMember.name} (${brezMember.className})` : null,
+      hasLeader: !!leaderMember,
+      leaderName: leaderMember ? leaderMember.name : null,
       avgIo,
       avgIlvl,
       isShitterGroup,

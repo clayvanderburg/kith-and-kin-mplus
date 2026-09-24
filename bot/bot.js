@@ -6,7 +6,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { registerCommands } = require('./commands');
-const { createRosterEmbed, createGroupEmbeds, createSignupButtons } = require('./embeds');
+const { createRosterEmbed, createGroupEmbeds, createSignupButtons, createSignupFormComponents } = require('./embeds');
 const { solveGroups, rollKeystone, DUNGEONS_MIDNIGHT_S2, WOW_CLASSES } = require('./solver');
 const { fetchRemoteState, pushRemoteState, lookupRaiderIo } = require('./sync');
 
@@ -49,6 +49,8 @@ client.on('interactionCreate', async (interaction) => {
       await handleSlashCommand(interaction);
     } else if (interaction.isButton()) {
       await handleButtonInteraction(interaction);
+    } else if (interaction.isStringSelectMenu()) {
+      await handleSelectMenuInteraction(interaction);
     } else if (interaction.isModalSubmit()) {
       await handleModalSubmit(interaction);
     }
@@ -296,7 +298,102 @@ async function handleButtonInteraction(interaction) {
     return interaction.editReply({ embeds: [embed] });
   }
 
-  // Quick RSVP buttons
+  // 1. Open Interactive Sign-Up Form (Dropdowns)
+  if (customId === 'btn_open_signup') {
+    const state = await fetchRemoteState();
+    const defaultName = userCharacterMap.get(interaction.user.id) || interaction.member?.displayName || interaction.user.username;
+    const player = (state.players || []).find(p =>
+      p.discordId === interaction.user.id ||
+      p.name.toLowerCase() === defaultName.toLowerCase()
+    );
+
+    const components = createSignupFormComponents({
+      players: state.players || [],
+      defaultName,
+      player
+    });
+
+    return interaction.reply({
+      content: `### 📝 Friday Mythic+ Night Sign-Up\nSelect your character from the guild roster, choose your role(s), key range, and preferences below:\n*(Only you can see this form)*`,
+      components,
+      ephemeral: true
+    });
+  }
+
+  if (customId === 'btn_dismiss_form') {
+    return interaction.update({
+      content: '❌ Sign-up form closed.',
+      components: []
+    });
+  }
+
+  if (customId === 'btn_confirm_rsvp') {
+    const state = await fetchRemoteState();
+    const defaultName = userCharacterMap.get(interaction.user.id) || interaction.member?.displayName || interaction.user.username;
+    let player = (state.players || []).find(p =>
+      p.discordId === interaction.user.id ||
+      p.name.toLowerCase() === defaultName.toLowerCase()
+    );
+
+    if (!player) {
+      return interaction.update({
+        content: '⚠️ Please select a character from the first dropdown before confirming!',
+        components: createSignupFormComponents({ players: state.players || [], defaultName, player: null })
+      });
+    }
+
+    player.attending = true;
+    player.discordId = interaction.user.id;
+    await pushRemoteState(state);
+
+    let badges = [];
+    if (player.isLeader) badges.push('👑 Born Leader');
+    if (player.isReserve) badges.push('🍺 Voluntary Reserve');
+    if (player.carryPreference === 'need_carry') badges.push('🎒 Needs Carry');
+    if (player.carryPreference === 'willing_carry') badges.push('🏋️ Stronk Back');
+    if (player.isShitter) badges.push('💩 Shitter');
+
+    return interaction.update({
+      content: `🎉 **RSVP Confirmed for ${player.name}!**\n• Role(s): **${(player.roles || []).join('/')}**\n• Keys: **+${player.keyMin} to +${player.keyMax}**${badges.length ? '\n• Preferences: ' + badges.join(', ') : ''}\n\nSynced to the [web dashboard](${WEB_URL})! Click **Refresh 🔄** on the main event card to view the updated roster lineup.`,
+      components: []
+    });
+  }
+
+  if (customId === 'btn_custom_modal') {
+    const modal = new ModalBuilder()
+      .setCustomId('modal_signup_custom')
+      .setTitle('Sign Up Custom / Alt Character');
+
+    const nameInput = new TextInputBuilder()
+      .setCustomId('char_name')
+      .setLabel('WoW Character Name')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const rolesInput = new TextInputBuilder()
+      .setCustomId('char_roles')
+      .setLabel('Roles (Tank, Healer, DPS)')
+      .setStyle(TextInputStyle.Short)
+      .setValue('DPS')
+      .setRequired(true);
+
+    const keyRangeInput = new TextInputBuilder()
+      .setCustomId('key_range')
+      .setLabel('Comfortable Key Range (e.g. 10-15)')
+      .setStyle(TextInputStyle.Short)
+      .setValue('12-15')
+      .setRequired(false);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(nameInput),
+      new ActionRowBuilder().addComponents(rolesInput),
+      new ActionRowBuilder().addComponents(keyRangeInput)
+    );
+
+    return interaction.showModal(modal);
+  }
+
+  // Quick RSVP legacy role buttons fallback
   const knownName = userCharacterMap.get(interaction.user.id) || interaction.member?.displayName || interaction.user.username;
 
   if (customId.startsWith('btn_role_') || customId.startsWith('btn_attend_')) {
@@ -304,7 +401,6 @@ async function handleButtonInteraction(interaction) {
       ? customId.replace('btn_role_', '')
       : (customId.replace('btn_attend_', '') === 'tank' ? 'Tank' : (customId.replace('btn_attend_', '') === 'healer' ? 'Healer' : 'DPS'));
 
-    // Prompt with a modal to confirm character name & key range
     const modal = new ModalBuilder()
       .setCustomId(`modal_rsvp_${roleName}`)
       .setTitle(`RSVP as ${roleName}`);
@@ -345,11 +441,11 @@ async function handleButtonInteraction(interaction) {
     const attending = (state.players || []).filter(p => p.attending);
 
     if (attending.length < 5) {
-      return interaction.editReply(`⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Click a role button to sign up!`);
+      return interaction.editReply(`⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Click [Sign Up / Edit RSVP 📝] to register!`);
     }
 
     const { solveGroups } = require('./solver');
-    const result = solveGroups(attending);
+    const result = solveGroups({ players: state.players });
     state.formedGroups = result.groups;
     state.benchedPlayers = result.benched;
     await pushRemoteState(state);
@@ -373,7 +469,7 @@ async function handleButtonInteraction(interaction) {
       return interaction.editReply(`Marked **${player.name}** as absent for Friday night.`);
     }
 
-    return interaction.editReply(`Could not find a signed-up character for you. Click a role button to register first!`);
+    return interaction.editReply(`Could not find a signed-up character for you. Click [Sign Up / Edit RSVP 📝] to register first!`);
   }
 
   if (customId.startsWith('btn_vibe_') || customId === 'btn_need_carry' || customId === 'btn_stronk_carry' || customId === 'btn_shitter') {
@@ -454,7 +550,208 @@ async function handleButtonInteraction(interaction) {
   }
 }
 
+async function handleSelectMenuInteraction(interaction) {
+  const customId = interaction.customId;
+  const state = await fetchRemoteState();
+  const defaultName = userCharacterMap.get(interaction.user.id) || interaction.member?.displayName || interaction.user.username;
+  let player = (state.players || []).find(p => 
+    p.discordId === interaction.user.id || 
+    p.name.toLowerCase() === defaultName.toLowerCase()
+  );
+
+  if (customId === 'select_character') {
+    const selected = interaction.values[0];
+    if (selected === '__custom__') {
+      const modal = new ModalBuilder()
+        .setCustomId('modal_signup_custom')
+        .setTitle('Sign Up Custom / Alt Character');
+
+      const nameInput = new TextInputBuilder()
+        .setCustomId('char_name')
+        .setLabel('WoW Character Name')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const rolesInput = new TextInputBuilder()
+        .setCustomId('char_roles')
+        .setLabel('Roles (Tank, Healer, DPS)')
+        .setStyle(TextInputStyle.Short)
+        .setValue('DPS')
+        .setRequired(true);
+
+      const keyRangeInput = new TextInputBuilder()
+        .setCustomId('key_range')
+        .setLabel('Comfortable Key Range (e.g. 10-15)')
+        .setStyle(TextInputStyle.Short)
+        .setValue('12-15')
+        .setRequired(false);
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(nameInput),
+        new ActionRowBuilder().addComponents(rolesInput),
+        new ActionRowBuilder().addComponents(keyRangeInput)
+      );
+
+      return interaction.showModal(modal);
+    }
+
+    let targetPlayer = (state.players || []).find(p => p.name.toLowerCase() === (selected || '').toLowerCase());
+    if (targetPlayer) {
+      targetPlayer.attending = true;
+      targetPlayer.discordId = interaction.user.id;
+      userCharacterMap.set(interaction.user.id, targetPlayer.name);
+      await pushRemoteState(state);
+    }
+
+    const components = createSignupFormComponents({
+      players: state.players || [],
+      defaultName: selected,
+      player: targetPlayer
+    });
+
+    return interaction.update({
+      content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Character selected: **${selected}**\nNow select your role(s), key range, and preferences:`,
+      components
+    });
+  }
+
+  if (customId === 'select_roles') {
+    const selectedRoles = interaction.values || ['DPS'];
+    if (player) {
+      player.roles = selectedRoles;
+      player.attending = true;
+      await pushRemoteState(state);
+    }
+    const components = createSignupFormComponents({
+      players: state.players || [],
+      defaultName,
+      player
+    });
+    return interaction.update({
+      content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Role(s) set to: **${selectedRoles.join('/')}**\nSelect your comfortable key range and preferences:`,
+      components
+    });
+  }
+
+  if (customId === 'select_key_range') {
+    const range = interaction.values[0] || '12-15';
+    const parts = range.split('-');
+    if (player && parts.length === 2) {
+      player.keyMin = parseInt(parts[0], 10);
+      player.keyMax = parseInt(parts[1], 10);
+      player.attending = true;
+      await pushRemoteState(state);
+    }
+    const components = createSignupFormComponents({
+      players: state.players || [],
+      defaultName,
+      player
+    });
+    return interaction.update({
+      content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Comfortable Key Range set to: **+${player?.keyMin || parts[0]} to +${player?.keyMax || parts[1]}**`,
+      components
+    });
+  }
+
+  if (customId === 'select_vibes') {
+    const vibes = interaction.values || [];
+    if (player) {
+      player.isLeader = vibes.includes('vibe_leader');
+      player.isReserve = vibes.includes('vibe_reserve');
+      player.carryPreference = vibes.includes('vibe_need_carry') ? 'need_carry' : (vibes.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
+      player.isShitter = vibes.includes('vibe_shitter');
+      player.attending = true;
+      await pushRemoteState(state);
+    }
+    const components = createSignupFormComponents({
+      players: state.players || [],
+      defaultName,
+      player
+    });
+    let vibeTags = [];
+    if (player?.isLeader) vibeTags.push('👑 Born Leader');
+    if (player?.isReserve) vibeTags.push('🍺 Reserve');
+    if (player?.carryPreference === 'need_carry') vibeTags.push('🎒 Needs Carry');
+    if (player?.carryPreference === 'willing_carry') vibeTags.push('🏋️ Stronk Back');
+    if (player?.isShitter) vibeTags.push('💩 Shitter');
+
+    return interaction.update({
+      content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Preferences updated: **${vibeTags.length ? vibeTags.join(', ') : 'Standard'}**\nClick **Save My RSVP ✅** to finish!`,
+      components
+    });
+  }
+}
+
 async function handleModalSubmit(interaction) {
+  if (interaction.customId === 'modal_signup_custom') {
+    await interaction.deferReply({ ephemeral: true });
+    const charName = interaction.fields.getTextInputValue('char_name').trim();
+    const rolesStr = interaction.fields.getTextInputValue('char_roles').trim();
+    const keyRangeStr = interaction.fields.getTextInputValue('key_range')?.trim() || '12-15';
+
+    const roles = rolesStr.split(/[,/ ]+/).filter(Boolean);
+    let keyMin = 10, keyMax = 15;
+    const match = keyRangeStr.match(/(\d+)\s*[-–to ]+\s*(\d+)/i);
+    if (match) {
+      keyMin = parseInt(match[1], 10);
+      keyMax = parseInt(match[2], 10);
+    }
+
+    userCharacterMap.set(interaction.user.id, charName);
+    const state = await fetchRemoteState();
+    let player = (state.players || []).find(p => p.name.toLowerCase() === charName.toLowerCase());
+
+    let rIoData = null;
+    try {
+      rIoData = await lookupRaiderIo(charName);
+    } catch (e) {}
+
+    const className = rIoData?.className || player?.className || 'Warrior';
+    const ilvl = rIoData?.ilvl || player?.ilvl || 320;
+    const io = rIoData?.io !== undefined ? rIoData.io : (player?.io || 0);
+
+    if (player) {
+      player.roles = roles.length ? roles : ['DPS'];
+      player.attending = true;
+      player.keyMin = keyMin;
+      player.keyMax = keyMax;
+      player.discordId = interaction.user.id;
+      if (rIoData) {
+        player.ilvl = ilvl;
+        player.io = io;
+        player.className = className;
+      }
+    } else {
+      player = {
+        id: 'kk-' + charName.toLowerCase().replace(/[^a-z0-9]/g, ''),
+        name: charName,
+        className,
+        roles: roles.length ? roles : ['DPS'],
+        keyMin,
+        keyMax,
+        ownedKey: rIoData?.ownedKey || '',
+        realm: rIoData?.realm || 'Perenolde',
+        region: 'us',
+        ilvl,
+        io,
+        rank: 2,
+        attending: true,
+        carryPreference: 'none',
+        isShitter: false,
+        isLeader: false,
+        isReserve: false,
+        discordId: interaction.user.id
+      };
+      state.players.push(player);
+    }
+
+    await pushRemoteState(state);
+
+    return interaction.editReply({
+      content: `✅ Registered **${player.name}** (${player.className}) as **${player.roles.join('/')}**!\n• Key Range: \`+${player.keyMin} – +${player.keyMax}\`\n• Stats: \`${player.ilvl} iLvl | ${player.io.toLocaleString()} IO\`\n\nSynced to live website!`
+    });
+  }
+
   if (!interaction.customId.startsWith('modal_rsvp_')) return;
   await interaction.deferReply({ ephemeral: true });
 

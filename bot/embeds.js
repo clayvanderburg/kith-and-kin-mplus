@@ -90,6 +90,8 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
   const dps = attending.filter(p => (p.roles || []).includes('DPS')).length;
   const maxGroups = Math.min(tanks, healers, Math.floor(dps / 3));
 
+  const leaders = attending.filter(p => p.isLeader);
+  const reserves = attending.filter(p => p.isReserve);
   const needsCarry = attending.filter(p => p.carryPreference === 'need_carry');
   const stronk = attending.filter(p => p.carryPreference === 'willing_carry');
   const shitters = attending.filter(p => p.isShitter);
@@ -112,7 +114,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
   if (attending.length === 0) {
     embed.addFields({
       name: '⚡ Sign-ups are OPEN!',
-      value: 'Click a role button below (`Tank`, `Healer`, or `DPS`) to sign up your character!'
+      value: 'Click **`[Sign Up / Edit RSVP 📝]`** below to register your character and select your roles!'
     });
   } else {
     // Group attendees by WoW Class
@@ -141,9 +143,11 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
         const ioStr = p.io ? `${(p.io / 1000).toFixed(1)}k` : `${p.ilvl || 320}ilvl`;
         const keyStr = p.ownedKey ? `+${p.ownedKey.split('+')[1] || p.keyMax || 10}` : `+${p.keyMax || 10}`;
         let flag = '';
-        if (p.carryPreference === 'need_carry') flag = ' 🎒';
-        if (p.carryPreference === 'willing_carry') flag = ' 🏋️';
-        if (p.isShitter) flag = ' 💩';
+        if (p.isLeader) flag += ' 👑';
+        if (p.isReserve) flag += ' 🍺';
+        if (p.carryPreference === 'need_carry') flag += ' 🎒';
+        if (p.carryPreference === 'willing_carry') flag += ' 🏋️';
+        if (p.isShitter) flag += ' 💩';
 
         return `${roleIcon} \`${idx + 1}\` **${p.name}** (${ioStr} • ${keyStr})${flag}`;
       });
@@ -157,6 +161,12 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
 
     // Special Vibe / Alt Squad Roster breakdown
     let vibeBreakdown = [];
+    if (leaders.length > 0) {
+      vibeBreakdown.push(`👑 **Born Leaders (${leaders.length}):** ${leaders.map(p => `**${p.name}**`).join(', ')}`);
+    }
+    if (reserves.length > 0) {
+      vibeBreakdown.push(`🍺 **Bench / Reserves (${reserves.length}):** ${reserves.map(p => `**${p.name}**`).join(', ')}`);
+    }
     if (needsCarry.length > 0) {
       vibeBreakdown.push(`🎒 **Needs Carry (${needsCarry.length}):** ${needsCarry.map(p => `**${p.name}**`).join(', ')}`);
     }
@@ -180,7 +190,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
   }
 
   embed.setFooter({
-    text: `Kith & Kin • Midnight Season 2 • Click buttons below to RSVP`
+    text: `Kith & Kin • Midnight Season 2 • Click [Sign Up / Edit RSVP] below`
   });
   embed.setTimestamp();
 
@@ -205,6 +215,9 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.a
                    `⭐ **Avg IO:** **${grp.avgIo.toLocaleString()}**  •  🛡️ **Avg iLvl:** **${grp.avgIlvl}**\n`;
 
     let utilLine = [];
+    if (grp.hasLeader && grp.leaderName) {
+      utilLine.push(`👑 Leader: **${grp.leaderName}**`);
+    }
     if (grp.hasLust) {
       utilLine.push(`⚡ Lust: **${grp.lustProvider}**`);
     } else {
@@ -223,6 +236,8 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.a
 
     const formatMemberLine = (icon, m) => {
       let flags = [];
+      if (m.isLeader) flags.push('👑 Leader');
+      if (m.isReserve) flags.push('🍺 Reserve');
       if (m.carryPreference === 'need_carry') flags.push('🎒 Need Carry');
       if (m.carryPreference === 'willing_carry') flags.push('🏋️ Stronk Back');
       if (m.isShitter) flags.push('💩 Shitter');
@@ -247,7 +262,7 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.a
       .setTitle(`🍺 Tavern Reserves / Bench (${benched.length})`)
       .setColor(0x64748B)
       .setDescription(
-        benched.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')}) — ${(p.io || 0).toLocaleString()} IO (+${p.keyMin}-+${p.keyMax})`).join('\n')
+        benched.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')}) — ${(p.io || 0).toLocaleString()} IO (+${p.keyMin}-+${p.keyMax})${p.isReserve ? ' *(Voluntary Reserve 🍺)*' : ''}`).join('\n')
       );
     embeds.push(benchEmbed);
   }
@@ -256,52 +271,28 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.a
 }
 
 function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
-  // Row 1: Quick Role Sign-up Buttons (Primary)
+  // Row 1: Primary Actions
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('btn_role_Tank')
-      .setLabel('Tank 🛡️')
+      .setCustomId('btn_open_signup')
+      .setLabel('Sign Up / Edit RSVP 📝')
       .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('btn_role_Healer')
-      .setLabel('Healer 💚')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId('btn_role_DPS')
-      .setLabel('DPS ⚔️')
-      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('btn_absent')
       .setLabel('Can’t Make It 💤')
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  // Row 2: Vibe & Preference Toggles + Form Groups + Web Link
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('btn_need_carry')
-      .setLabel('Need Carry 🎒')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('btn_stronk_carry')
-      .setLabel('Stronk Back 🏋️')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('btn_shitter')
-      .setLabel('Shitter Alt 💩')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('btn_form_groups')
       .setLabel('Form Groups 🏰')
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setLabel('Web View 🌐')
       .setStyle(ButtonStyle.Link)
       .setURL(webUrl)
   );
 
-  // Row 3: Keystone Actions & Live Refresh
-  const row3 = new ActionRowBuilder().addComponents(
+  // Row 2: Keystone Tools & Refresh
+  const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('btn_roll_key')
       .setLabel('Roll Key 🎲')
@@ -316,11 +307,142 @@ function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return [row1, row2, row3];
+  return [row1, row2];
+}
+
+/**
+ * Generates interactive drop-down menus for the Discord Sign-Up popup
+ */
+function createSignupFormComponents({ players = [], defaultName = '', player = null }) {
+  // 1. Character Dropdown
+  const uniquePlayers = [];
+  const seenNames = new Set();
+
+  (players || []).forEach(p => {
+    if (!p.name || seenNames.has(p.name.toLowerCase())) return;
+    seenNames.add(p.name.toLowerCase());
+    uniquePlayers.push(p);
+  });
+
+  uniquePlayers.sort((a, b) => a.name.localeCompare(b.name));
+
+  const charOptions = uniquePlayers.slice(0, 24).map(p => {
+    const rolesStr = (p.roles || ['DPS']).join('/');
+    const keyStr = p.ownedKey ? `+${p.ownedKey.split('+')[1] || 10}` : '+10';
+    const isSelected = player ? player.name.toLowerCase() === p.name.toLowerCase() : defaultName.toLowerCase().includes(p.name.toLowerCase());
+    return {
+      label: `${p.name} (${p.className || 'WoW'})`,
+      value: p.name,
+      description: `${rolesStr} • ${p.io ? (p.io / 1000).toFixed(1) + 'k IO' : (p.ilvl || 320) + 'ilvl'} • ${keyStr}`,
+      default: !!isSelected
+    };
+  });
+
+  charOptions.push({
+    label: '➕ Type Custom / Unlisted Alt Name',
+    value: '__custom__',
+    description: 'Brings up a box to enter a character name not on the list'
+  });
+
+  const rowChar = {
+    type: 1,
+    components: [
+      {
+        type: 3, // STRING_SELECT
+        custom_id: 'select_character',
+        placeholder: player ? `Selected: ${player.name} (${player.className})` : 'Choose your WoW Character from Guild...',
+        min_values: 1,
+        max_values: 1,
+        options: charOptions
+      }
+    ]
+  };
+
+  // 2. Roles Multi-Select Dropdown
+  const activeRoles = player?.roles || ['DPS'];
+  const rowRoles = {
+    type: 1,
+    components: [
+      {
+        type: 3,
+        custom_id: 'select_roles',
+        placeholder: `Select Roles (Multi-Select: Tank, Healer, DPS)... Currently: ${activeRoles.join('/')}`,
+        min_values: 1,
+        max_values: 3,
+        options: [
+          { label: 'Tank', value: 'Tank', emoji: { name: '🛡️' }, description: 'Ready to tank 5-man parties', default: activeRoles.includes('Tank') },
+          { label: 'Healer', value: 'Healer', emoji: { name: '💚' }, description: 'Ready to heal 5-man parties', default: activeRoles.includes('Healer') },
+          { label: 'DPS', value: 'DPS', emoji: { name: '⚔️' }, description: 'Damage dealer', default: activeRoles.includes('DPS') }
+        ]
+      }
+    ]
+  };
+
+  // 3. Key Range Dropdown
+  const currentRange = player ? `${player.keyMin || 10}-${player.keyMax || 15}` : '12-15';
+  const rowRange = {
+    type: 1,
+    components: [
+      {
+        type: 3,
+        custom_id: 'select_key_range',
+        placeholder: player ? `Comfortable Key Range (Currently: +${player.keyMin}-+${player.keyMax})` : 'Select Comfortable Key Range...',
+        min_values: 1,
+        max_values: 1,
+        options: [
+          { label: '+2 to +6 (Chill / Learning / Low Alts)', value: '2-6', emoji: { name: '🌱' }, default: currentRange === '2-6' },
+          { label: '+7 to +11 (Mid Keys / Weekly Vault)', value: '7-11', emoji: { name: '🗝️' }, default: currentRange === '7-11' },
+          { label: '+12 to +15 (Standard Keystone Run)', value: '12-15', emoji: { name: '🏰' }, default: currentRange === '12-15' || (!player && true) },
+          { label: '+16 to +18 (High Keys / Keystone Push)', value: '16-18', emoji: { name: '🔥' }, default: currentRange === '16-18' },
+          { label: '+19+ (Hardcore Keystone Push)', value: '19-25', emoji: { name: '⚡' }, default: currentRange === '19-25' }
+        ]
+      }
+    ]
+  };
+
+  // 4. Squad Vibes & Preferences (Multi-Select)
+  const isLeader = player?.isLeader || false;
+  const isReserve = player?.isReserve || false;
+  const isNeedCarry = player?.carryPreference === 'need_carry';
+  const isWillingCarry = player?.carryPreference === 'willing_carry';
+  const isShitter = player?.isShitter || false;
+
+  const rowVibes = {
+    type: 1,
+    components: [
+      {
+        type: 3,
+        custom_id: 'select_vibes',
+        placeholder: 'Select Vibes & Preferences (Leader, Reserve, Carry, Shitter)...',
+        min_values: 0,
+        max_values: 5,
+        options: [
+          { label: 'Born Leader (willing to lead group)', value: 'vibe_leader', emoji: { name: '👑' }, description: 'Willing to lead and guide a 5-man party', default: isLeader },
+          { label: 'Bench / Reserve (willing to rotate out)', value: 'vibe_reserve', emoji: { name: '🍺' }, description: 'Happy to sit reserve or rotate out for others', default: isReserve },
+          { label: 'Need Carry (pair me with high-IO carries)', value: 'vibe_need_carry', emoji: { name: '🎒' }, description: 'Needs assistance pushing keystone levels', default: isNeedCarry },
+          { label: 'Back is Stronk (willing to carry)', value: 'vibe_willing_carry', emoji: { name: '🏋️' }, description: 'Ready to anchor and carry lower keys', default: isWillingCarry },
+          { label: 'Shitter Alt Squad (chill alt run)', value: 'vibe_shitter', emoji: { name: '💩' }, description: 'Under-geared alt run, pure fun', default: isShitter }
+        ]
+      }
+    ]
+  };
+
+  // 5. Submit / Action Buttons
+  const rowActions = {
+    type: 1,
+    components: [
+      { type: 2, style: 3, custom_id: 'btn_confirm_rsvp', label: 'Save My RSVP ✅' },
+      { type: 2, style: 2, custom_id: 'btn_custom_modal', label: 'Type Alt Name ✏️' },
+      { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
+    ]
+  };
+
+  return [rowChar, rowRoles, rowRange, rowVibes, rowActions];
 }
 
 module.exports = {
   createRosterEmbed,
   createGroupEmbeds,
-  createSignupButtons
+  createSignupButtons,
+  createSignupFormComponents
 };

@@ -224,7 +224,9 @@
           state.players = parsed.map(p => ({
             ...p,
             carryPreference: p.carryPreference || 'none',
-            isShitter: !!p.isShitter
+            isShitter: !!p.isShitter,
+            isLeader: !!p.isLeader,
+            isReserve: !!p.isReserve
           }));
         }
       } else {
@@ -315,7 +317,9 @@
         state.players = data.players.map(p => ({
           ...p,
           carryPreference: p.carryPreference || 'none',
-          isShitter: !!p.isShitter
+          isShitter: !!p.isShitter,
+          isLeader: !!p.isLeader,
+          isReserve: !!p.isReserve
         }));
 
         if (Array.isArray(data.formedGroups)) {
@@ -523,6 +527,8 @@
 
       if (state.attendFilter === 'attending' && !player.attending) return false;
       if (state.attendFilter === 'absent' && player.attending) return false;
+      if (state.attendFilter === 'leader' && !player.isLeader) return false;
+      if (state.attendFilter === 'reserve' && !player.isReserve) return false;
       if (state.attendFilter === 'shitter' && !player.isShitter) return false;
       if (state.attendFilter === 'need_carry' && player.carryPreference !== 'need_carry') return false;
       if (state.attendFilter === 'willing_carry' && player.carryPreference !== 'willing_carry') return false;
@@ -617,6 +623,8 @@
             </div>
             ${classInfo.lust ? `<span class="util-icon-tag lust" title="${player.className} brings Bloodlust / Heroism">⚡ Lust</span>` : ''}
             ${classInfo.brez ? `<span class="util-icon-tag brez" title="${player.className} brings Battle Resurrection">🔄 BRez</span>` : ''}
+            ${player.isLeader ? `<span class="leader-pill" title="Born Leader: willing to lead group">👑 Leader</span>` : ''}
+            ${player.isReserve ? `<span class="reserve-pill" title="Voluntary Bench / Reserve: willing to rotate out">🍺 Reserve</span>` : ''}
             ${player.carryPreference === 'need_carry' ? `<span class="carry-pill need" title="I need a carry!">🎒 Needs Carry</span>` : ''}
             ${player.carryPreference === 'willing_carry' ? `<span class="carry-pill stronk" title="My back is stronk (willing to carry)">🏋️ Back is Stronk</span>` : ''}
             ${player.isShitter ? `<span class="shitter-pill" title="I'm a shitter (put me in the shitter alt group)">💩 Shitter</span>` : ''}
@@ -741,10 +749,13 @@
       const healers = [];
       const dps = [];
 
-      // Prioritize pure tanks first, then flex
-      const candidateTanks = shuffled.filter(p => p.roles.includes('Tank'));
-      const candidateHealers = shuffled.filter(p => p.roles.includes('Healer'));
-      const candidateDps = shuffled.filter(p => p.roles.includes('DPS'));
+      // Prioritize members wanting to run full time over voluntary reserves
+      const candidateTanks = shuffled.filter(p => p.roles.includes('Tank'))
+        .sort((a, b) => (a.isReserve ? 1 : 0) - (b.isReserve ? 1 : 0));
+      const candidateHealers = shuffled.filter(p => p.roles.includes('Healer'))
+        .sort((a, b) => (a.isReserve ? 1 : 0) - (b.isReserve ? 1 : 0));
+      const candidateDps = shuffled.filter(p => p.roles.includes('DPS'))
+        .sort((a, b) => (a.isReserve ? 1 : 0) - (b.isReserve ? 1 : 0));
 
       // Greedy assignment with backtracking flavor
       const assignedIds = new Set();
@@ -972,6 +983,7 @@
 
       const lustMember = members.find(m => WOW_CLASSES[m.className]?.lust);
       const brezMember = members.find(m => WOW_CLASSES[m.className]?.brez);
+      const leaderMember = members.find(m => m.isLeader);
 
       const totalIo = members.reduce((sum, m) => sum + (m.io || 0), 0);
       const totalIlvl = members.reduce((sum, m) => sum + (m.ilvl || 0), 0);
@@ -1013,6 +1025,8 @@
         lustProvider: lustMember ? `${lustMember.name} (${lustMember.className})` : null,
         hasBrez: !!brezMember,
         brezProvider: brezMember ? `${brezMember.name} (${brezMember.className})` : null,
+        hasLeader: !!leaderMember,
+        leaderName: leaderMember ? leaderMember.name : null,
         isShitterGroup,
         shitterCount,
         hasCarryMatch,
@@ -1266,6 +1280,12 @@
     function renderMemberVibeBadges(p) {
       if (!p) return '';
       let h = '';
+      if (p.isLeader) {
+        h += `<span class="leader-pill" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="Born Leader: willing to lead group">👑 Leader</span>`;
+      }
+      if (p.isReserve) {
+        h += `<span class="reserve-pill" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="Voluntary Bench / Reserve">🍺 Reserve</span>`;
+      }
       if (p.carryPreference === 'need_carry') {
         h += `<span class="carry-pill need" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="I need a carry">🎒 Carry Me</span>`;
       } else if (p.carryPreference === 'willing_carry') {
@@ -1311,6 +1331,7 @@
         </div>
 
         <div class="party-utility-bar">
+          ${grp.hasLeader && grp.leaderName ? `<span class="party-util-badge ready" title="Designated Group Leader">👑 Leader: ${escapeHtml(grp.leaderName)}</span>` : ''}
           <span class="party-util-badge ${grp.hasLust ? 'ready' : 'missing'}" title="${grp.hasLust ? 'Bloodlust/Heroism ready: ' + escapeHtml(grp.lustProvider) : 'No Bloodlust class in this group! Bring drums!'}">
             ⚡ ${grp.hasLust ? 'Lust: ' + escapeHtml(grp.lustProvider) : 'Lust: Missing'}
           </span>
@@ -1617,6 +1638,8 @@
         document.getElementById('carryPrefNone').checked = true;
       }
       document.getElementById('isShitterCheck').checked = !!p.isShitter;
+      document.getElementById('playerIsLeader').checked = !!p.isLeader;
+      document.getElementById('playerIsReserve').checked = !!p.isReserve;
     } else {
       title.textContent = 'Add Guild Member';
       document.getElementById('playerId').value = '';
@@ -1629,6 +1652,8 @@
       document.getElementById('keyMaxInput').value = 10;
       document.getElementById('carryPrefNone').checked = true;
       document.getElementById('isShitterCheck').checked = false;
+      document.getElementById('playerIsLeader').checked = false;
+      document.getElementById('playerIsReserve').checked = false;
     }
 
     modal.classList.add('is-open');
@@ -1747,6 +1772,8 @@
     const carryPrefRadio = document.querySelector('input[name="carryPref"]:checked');
     const carryPreference = carryPrefRadio ? carryPrefRadio.value : 'none';
     const isShitter = document.getElementById('isShitterCheck').checked;
+    const isLeader = document.getElementById('playerIsLeader')?.checked || false;
+    const isReserve = document.getElementById('playerIsReserve')?.checked || false;
 
     if (id) {
       // Edit existing
@@ -1764,6 +1791,8 @@
         p.ownedKey = ownedKey;
         p.carryPreference = carryPreference;
         p.isShitter = isShitter;
+        p.isLeader = isLeader;
+        p.isReserve = isReserve;
       }
       showToast(`Updated ${name}`);
     } else {
@@ -1782,6 +1811,8 @@
         ownedKey,
         carryPreference,
         isShitter,
+        isLeader,
+        isReserve,
         attending: true
       };
       state.players.push(newPlayer);

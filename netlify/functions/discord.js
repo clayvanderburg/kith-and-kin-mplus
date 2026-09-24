@@ -450,54 +450,212 @@ exports.handler = async (event, context) => {
     const discordUser = interaction.member?.user || interaction.user;
     const defaultName = discordUser?.global_name || discordUser?.username || 'Player';
 
-    // Show modal if registering for a role
-    if (customId.startsWith('btn_role_')) {
-      const role = customId.replace('btn_role_', '');
+    // 1. Open Interactive Sign-Up Form (Dropdowns)
+    if (customId === 'btn_open_signup') {
+      const components = embeds ? embeds.createSignupFormComponents({
+        players: state.players || [],
+        defaultName,
+        player
+      }) : [];
+
       return jsonResponse({
-        type: 9, // MODAL
+        type: 4,
         data: {
-          custom_id: `modal_signup_${role}`,
-          title: `Sign Up as ${role}`,
+          content: `### 📝 Friday Mythic+ Night Sign-Up\nSelect your character from the guild roster, choose your role(s), key range, and preferences below:\n*(Only you can see this form)*`,
+          components,
+          flags: 64
+        }
+      });
+    }
+
+    // 2. Select Character Dropdown
+    if (customId === 'select_character') {
+      const selected = interaction.data.values?.[0];
+      if (selected === '__custom__') {
+        return jsonResponse({
+          type: 9, // Modal for custom character name
+          data: {
+            custom_id: 'modal_signup_custom',
+            title: 'Sign Up Custom / Alt Character',
+            components: [
+              {
+                type: 1,
+                components: [
+                  { type: 4, custom_id: 'char_name', label: 'WoW Character Name (Perenolde)', style: 1, required: true }
+                ]
+              },
+              {
+                type: 1,
+                components: [
+                  { type: 4, custom_id: 'char_roles', label: 'Roles: Tank, Healer, DPS (comma separated)', style: 1, value: 'DPS', required: true }
+                ]
+              },
+              {
+                type: 1,
+                components: [
+                  { type: 4, custom_id: 'key_range', label: 'Comfortable Key Range (e.g. 10-15)', style: 1, value: '12-15', required: false }
+                ]
+              }
+            ]
+          }
+        });
+      }
+
+      let targetPlayer = (state.players || []).find(p => p.name.toLowerCase() === (selected || '').toLowerCase());
+      if (targetPlayer) {
+        targetPlayer.attending = true;
+        targetPlayer.discordId = discordUser.id;
+        await saveState(state);
+      }
+
+      const components = embeds ? embeds.createSignupFormComponents({
+        players: state.players || [],
+        defaultName: selected,
+        player: targetPlayer
+      }) : [];
+
+      return jsonResponse({
+        type: 7, // UPDATE_MESSAGE
+        data: {
+          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Character selected: **${selected}**\nNow select your role(s), key range, and preferences:`,
+          components
+        }
+      });
+    }
+
+    // 3. Select Role(s) Multi-Select
+    if (customId === 'select_roles') {
+      const selectedRoles = interaction.data.values || ['DPS'];
+      if (player) {
+        player.roles = selectedRoles;
+        player.attending = true;
+        await saveState(state);
+      }
+      const components = embeds ? embeds.createSignupFormComponents({
+        players: state.players || [],
+        defaultName,
+        player
+      }) : [];
+      return jsonResponse({
+        type: 7,
+        data: {
+          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Role(s) set to: **${selectedRoles.join('/')}**\nSelect your comfortable key range and preferences:`,
+          components
+        }
+      });
+    }
+
+    // 4. Select Key Range
+    if (customId === 'select_key_range') {
+      const range = interaction.data.values?.[0] || '12-15';
+      const parts = range.split('-');
+      if (player && parts.length === 2) {
+        player.keyMin = parseInt(parts[0], 10);
+        player.keyMax = parseInt(parts[1], 10);
+        player.attending = true;
+        await saveState(state);
+      }
+      const components = embeds ? embeds.createSignupFormComponents({
+        players: state.players || [],
+        defaultName,
+        player
+      }) : [];
+      return jsonResponse({
+        type: 7,
+        data: {
+          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Comfortable Key Range set to: **+${player?.keyMin || parts[0]} to +${player?.keyMax || parts[1]}**`,
+          components
+        }
+      });
+    }
+
+    // 5. Select Squad Vibes & Preferences (Multi-Select)
+    if (customId === 'select_vibes') {
+      const vibes = interaction.data.values || [];
+      if (player) {
+        player.isLeader = vibes.includes('vibe_leader');
+        player.isReserve = vibes.includes('vibe_reserve');
+        player.carryPreference = vibes.includes('vibe_need_carry') ? 'need_carry' : (vibes.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
+        player.isShitter = vibes.includes('vibe_shitter');
+        player.attending = true;
+        await saveState(state);
+      }
+      const components = embeds ? embeds.createSignupFormComponents({
+        players: state.players || [],
+        defaultName,
+        player
+      }) : [];
+      let vibeTags = [];
+      if (player?.isLeader) vibeTags.push('👑 Born Leader');
+      if (player?.isReserve) vibeTags.push('🍺 Reserve');
+      if (player?.carryPreference === 'need_carry') vibeTags.push('🎒 Needs Carry');
+      if (player?.carryPreference === 'willing_carry') vibeTags.push('🏋️ Stronk Back');
+      if (player?.isShitter) vibeTags.push('💩 Shitter');
+
+      return jsonResponse({
+        type: 7,
+        data: {
+          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Preferences updated: **${vibeTags.length ? vibeTags.join(', ') : 'Standard'}**\nClick **Save My RSVP ✅** to finish!`,
+          components
+        }
+      });
+    }
+
+    // 6. Confirm & Save RSVP Button
+    if (customId === 'btn_confirm_rsvp') {
+      if (!player) {
+        return jsonResponse({
+          type: 7,
+          data: {
+            content: '⚠️ Please select a character from the first dropdown before confirming!',
+            components: embeds ? embeds.createSignupFormComponents({ players: state.players || [], defaultName, player: null }) : []
+          }
+        });
+      }
+      player.attending = true;
+      player.discordId = discordUser.id;
+      await saveState(state);
+
+      let badges = [];
+      if (player.isLeader) badges.push('👑 Born Leader');
+      if (player.isReserve) badges.push('🍺 Voluntary Reserve');
+      if (player.carryPreference === 'need_carry') badges.push('🎒 Needs Carry');
+      if (player.carryPreference === 'willing_carry') badges.push('🏋️ Stronk Back');
+      if (player.isShitter) badges.push('💩 Shitter');
+
+      return jsonResponse({
+        type: 7,
+        data: {
+          content: `🎉 **RSVP Confirmed for ${player.name}!**\n• Role(s): **${(player.roles || []).join('/')}**\n• Keys: **+${player.keyMin} to +${player.keyMax}**${badges.length ? '\n• Preferences: ' + badges.join(', ') : ''}\n\nSynced to the [web dashboard](${WEB_URL})! Click **Refresh 🔄** on the main event card to view the updated roster lineup.`,
+          components: []
+        }
+      });
+    }
+
+    // 7. Custom Alt Modal Button
+    if (customId === 'btn_custom_modal') {
+      return jsonResponse({
+        type: 9,
+        data: {
+          custom_id: 'modal_signup_custom',
+          title: 'Sign Up Custom / Alt Character',
           components: [
             {
               type: 1,
               components: [
-                {
-                  type: 4,
-                  custom_id: 'char_name',
-                  label: 'WoW Character Name (Perenolde)',
-                  style: 1,
-                  placeholder: 'e.g. MadKing',
-                  required: true,
-                  value: defaultName
-                }
+                { type: 4, custom_id: 'char_name', label: 'WoW Character Name', style: 1, required: true }
               ]
             },
             {
               type: 1,
               components: [
-                {
-                  type: 4,
-                  custom_id: 'key_range',
-                  label: 'Comfortable Key Range (Min - Max)',
-                  style: 1,
-                  placeholder: 'e.g. 8-14',
-                  required: false,
-                  value: '8-14'
-                }
+                { type: 4, custom_id: 'char_roles', label: 'Roles: Tank, Healer, DPS (comma separated)', style: 1, value: 'DPS', required: true }
               ]
             },
             {
               type: 1,
               components: [
-                {
-                  type: 4,
-                  custom_id: 'owned_key',
-                  label: 'Active Keystone (Dungeon & Level)',
-                  style: 1,
-                  placeholder: 'e.g. Murder Row +12 (or leave blank to auto-fetch)',
-                  required: false
-                }
+                { type: 4, custom_id: 'key_range', label: 'Comfortable Key Range (e.g. 10-15)', style: 1, value: '12-15', required: false }
               ]
             }
           ]
@@ -505,43 +663,11 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // Toggle Preferences / Absent
-    let player = (state.players || []).find(p =>
-      p.name.toLowerCase() === defaultName.toLowerCase() ||
-      p.discordId === discordUser.id
-    );
-
-    if (customId === 'btn_absent') {
-      if (player) {
-        player.attending = false;
-        await saveState(state);
-      }
+    if (customId === 'btn_dismiss_form') {
       return jsonResponse({
-        type: 4,
-        data: { content: '💤 Marked as absent.', flags: 64 }
+        type: 7,
+        data: { content: '👋 Closed sign-up form.', components: [] }
       });
-    }
-
-    if (customId === 'btn_need_carry') {
-      if (player) {
-        player.carryPreference = player.carryPreference === 'need_carry' ? 'none' : 'need_carry';
-        await saveState(state);
-        return jsonResponse({
-          type: 4,
-          data: { content: `🎒 Carry preference set: **${player.carryPreference === 'need_carry' ? 'I need a carry' : 'None'}**`, flags: 64 }
-        });
-      }
-    }
-
-    if (customId === 'btn_stronk_carry') {
-      if (player) {
-        player.carryPreference = player.carryPreference === 'willing_carry' ? 'none' : 'willing_carry';
-        await saveState(state);
-        return jsonResponse({
-          type: 4,
-          data: { content: `🏋️ Carry preference set: **${player.carryPreference === 'willing_carry' ? 'My back is stronk (willing to carry)' : 'None'}**`, flags: 64 }
-        });
-      }
     }
 
     if (customId === 'btn_form_groups') {

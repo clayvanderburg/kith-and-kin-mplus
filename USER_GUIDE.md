@@ -21,24 +21,32 @@
 
 ---
 
-## 🎛️ Interactive Discord Buttons (No Typing Needed!)
+## 🎛️ Interactive Discord Sign-Up (Clean Dropdown Form!)
 
-Whenever `/mplus post-signup` is posted in your Discord channel, members can run everything with **1 click**:
+Whenever `/mplus post-signup` is posted in your Discord channel, members click **`[Sign Up / Edit RSVP 📝]`** to open an interactive sign-up form (visible only to them):
 
-### Row 1: Role RSVP
-- `[Tank 🛡️]`: Sign up as a Tank. Pops open a quick window to verify character name & comfortable key range.
-- `[Healer 💚]`: Sign up as a Healer.
-- `[DPS ⚔️]`: Sign up as a DPS.
-- `[Can’t Make It 💤]`: Marks yourself absent if plans change.
+### 📋 The Dropdown Sign-Up Form
+1. **Character Select (Synced Guild Roster)**:
+   - Pick your character directly from the synced Kith & Kin guild roster (over 24+ members).
+   - Or select `[➕ Sign Up Different Alt...]` to type in an alt character.
+2. **Multi-Role Select (`🛡️ Tank`, `💚 Healer`, `⚔️ DPS`)**:
+   - Select **multiple roles** at once if you flex (e.g. Tank + DPS, or Healer + DPS).
+3. **Comfortable Key Range**:
+   - Quick selection from `+2-6`, `+7-11`, `+12-15`, `+16-18`, or `+19+`.
+4. **Squad Vibes & Preferences (Multi-Select)**:
+   - `👑 Born Leader (willing to lead group)`: Willing to lead and guide a 5-man party. The solver will assign you as the party leader!
+   - `🍺 Bench / Reserve (willing to rotate out)`: Happy to sit reserve or rotate out if we have surplus members. The optimizer prioritizes non-reserves for active groups and places voluntary reserves first on the bench.
+   - `🎒 Need Carry`: Flags yourself to be paired with high-IO guild anchors.
+   - `🏋️ Back is Stronk`: Ready to anchor and carry lower keys.
+   - `💩 Shitter Alt Squad`: Under-geared alt run, pure fun.
+5. **Click `[Save My RSVP ✅]`**:
+   - Instantly saves your RSVP and syncs with the live web dashboard!
 
-### Row 2: Vibe & Group Actions
-- `[Need Carry 🎒]`: Flags your sign-up so the optimizer automatically pairs you with a high-IO guildie.
-- `[Stronk Back 🏋️]`: Flags yourself willing to carry keys and anchor groups.
-- `[Shitter Alt 💩]`: Opt-in to the **Shitter Alt Squad** (bundles under-geared alts together for zero-stress keys).
+### 🔘 Quick Action Buttons on Event Post
+- `[Sign Up / Edit RSVP 📝]`: Opens the private interactive form.
+- `[Can't Make It 💤]`: Marks yourself absent if your plans change.
 - `[Form Groups 🏰]`: Instantly runs the solver and posts balanced parties.
 - `[Web View 🌐]`: Opens the live web app in your browser.
-
-### Row 3: Keystone & Sync Tools
 - `[Roll Key 🎲]`: Rolls a random allowed keystone and shows who in the raid holds it.
 - `[Sync Keys 🔑]`: Pulls live bag keys and recent runs from Raider.IO for attendees.
 - `[Refresh 🔄]`: Updates the embed with the latest sign-up numbers.
@@ -52,7 +60,7 @@ An officer types in `#mythic-plus`:
 ```
 /mplus post-signup
 ```
-Members click `[Tank 🛡️]`, `[Healer 💚]`, or `[DPS ⚔️]` to register. The bot automatically checks Raider.IO to grab their real **Midnight Season 2 IO score**, item level, and current keystone!
+Members click `[Sign Up / Edit RSVP 📝]` to pick their character from the guild roster, select flex roles, key level range, and preferences (`👑 Leader`, `🍺 Reserve`, `🎒 Need Carry`, etc.).
 
 ### Step 2: At 8:00 PM EST, Form Groups
 When everyone is in voice, click **`[Form Groups 🏰]`** or type:
@@ -62,6 +70,8 @@ When everyone is in voice, click **`[Form Groups 🏰]`** or type:
 The solver automatically builds 5-man parties ensuring:
 - Exactly **1 Tank, 1 Healer, 3 DPS** per party.
 - **Bloodlust & Battle Res** guaranteed in every group.
+- **Group Leaders (`👑`)** identified and assigned to guide each squad.
+- **Voluntary Reserves (`🍺`)** safely rotated to the bench when there is an uneven surplus.
 - **Balanced Average IO** across teams.
 - "Need Carry" players paired with "Stronk Back" veterans.
 - "Shitter" alts placed together in their own fun squad.
