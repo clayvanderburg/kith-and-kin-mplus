@@ -88,10 +88,11 @@ function verifyDiscordSignature(rawBody, signature, timestamp, clientPublicKey) 
     return false;
   }
   try {
+    const cleanKey = clientPublicKey.trim().replace(/['"]/g, '');
     const pubKey = crypto.createPublicKey({
       key: Buffer.concat([
         Buffer.from('302a300506032b6570032100', 'hex'),
-        Buffer.from(clientPublicKey, 'hex')
+        Buffer.from(cleanKey, 'hex')
       ]),
       format: 'der',
       type: 'spki'
@@ -158,9 +159,19 @@ exports.handler = async (event, context) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const signature = event.headers['x-signature-ed25519'];
-  const timestamp = event.headers['x-signature-timestamp'];
-  const rawBody = event.body || '';
+  // Normalize headers (case-insensitive)
+  const headers = {};
+  for (const [k, v] of Object.entries(event.headers || {})) {
+    headers[k.toLowerCase()] = v;
+  }
+  const signature = headers['x-signature-ed25519'];
+  const timestamp = headers['x-signature-timestamp'];
+
+  // Handle potential base64 encoding from Netlify / API Gateway
+  let rawBody = event.body || '';
+  if (event.isBase64Encoded) {
+    rawBody = Buffer.from(rawBody, 'base64').toString('utf-8');
+  }
 
   // 1. Verify Request Signature from Discord
   const isValid = verifyDiscordSignature(rawBody, signature, timestamp, DISCORD_PUBLIC_KEY);
