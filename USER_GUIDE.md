@@ -103,6 +103,41 @@ Members can also sign up with a single typed command:
 
 ---
 
+## 🎲 Keystone Roulette, Dungeon Pool & Key Sync (New!)
+
+### 1. Active Dungeon Pool & Exclusions
+Don't want to run a specific dungeon tonight (e.g. everyone hates *Kings' Rest* or you already did *Voidscar Arena*)?
+- In the **Active Dungeon Pool** section on the web dashboard, simply **click any dungeon chip** to toggle it:
+  - 🟩 **Green (Active)**: Eligible to be rolled and assigned.
+  - 🟥 **Red / Strikethrough (Excluded)**: Completely excluded from group generation, random rolls, and party suggestions!
+- Quick actions: Click **"Include All"** or **"Reset"** to restore all 8 Midnight Season 2 dungeons.
+
+### 2. Keystone Roulette & Quick Assign
+Roll a keystone on the fly and immediately assign it to your parties:
+- **Source**:
+  - `🎲 Random from Allowed Pool`: Picks an un-excluded dungeon at random.
+  - `🔑 Random from Held Keys`: Picks randomly from keystones your attending members actually hold in their bags!
+  - `🎯 Specific Dungeon (Manual)`: Select a specific dungeon directly.
+- **Key Level**: Set the target difficulty (e.g., `+12`).
+- **Assign To**: Choose **All Formed Groups** or a specific party (**Party 1**, **Party 2**, etc.).
+- Hit **"🎲 Roll Keystone!"** — it plays a fanfare, shows who is holding the key, and updates the party card.
+
+### 3. Quick Reroll & Manual Pick per Party Card
+On every formed group card:
+- Click the **`🎲 Roll`** button next to the dungeon name to reroll a key specifically for that party from the allowed pool.
+- Use the **inline dungeon dropdown** to manually switch that party's dungeon at any time.
+
+### 4. 🔑 Sync Keys Button
+- Click the **`🔑 Sync Keys`** button in the Roster toolbar to automatically query Raider.IO for all attending members, pulling their latest bags/completed keystones and updating their key ranges in real time.
+- In Discord: Click `[Sync Keys 🔑]` on the event card, or use `/mplus sync-keys`.
+
+### 5. Discord Keystone Commands
+- `/mplus roll-key`: Rolls a random keystone (optional `source:pool|held`, `level:12`, `exclude:Kings' Rest`).
+- `/mplus sync-keys`: Refreshes attending members' keys from Raider.IO.
+- `[Roll Key 🎲]` and `[Sync Keys 🔑]` buttons right on the Discord sign-up message!
+
+---
+
 ## 🌐 Live Two-Way Web Dashboard
 
 You can manage groups in Discord or on the website — they stay 100% in sync!

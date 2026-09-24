@@ -61,6 +61,7 @@ function solveGroups({
   players,
   strategy = 'balanced',
   dungeonPool = DUNGEONS_MIDNIGHT_S2,
+  excludedDungeons = [],
   avoidClassDupes = true,
   ensureLust = true,
   ensureBrez = true,
@@ -238,8 +239,9 @@ function solveGroups({
     };
   }
 
-  const shuffledNames = shuffleArray([...PARTY_NAMES]);
-  const shuffledDungeons = shuffleArray([...(dungeonPool || DUNGEONS_MIDNIGHT_S2)]);
+  const activePool = (dungeonPool || DUNGEONS_MIDNIGHT_S2).filter(d => !excludedDungeons.includes(d));
+  const poolToUse = activePool.length > 0 ? activePool : DUNGEONS_MIDNIGHT_S2;
+  const shuffledDungeons = shuffleArray([...poolToUse]);
 
   const finalGroups = [...lockedGroups];
   bestResult.newGroups.forEach((grp, idx) => {
@@ -324,9 +326,58 @@ function solveGroups({
   };
 }
 
+/**
+ * Roulette helper to pick a keystone randomly with exclusions and held keys
+ */
+function rollKeystone({
+  dungeonPool = DUNGEONS_MIDNIGHT_S2,
+  excludedDungeons = [],
+  heldKeys = [],
+  onlyHeld = false,
+  targetLevel = null,
+  minLevel = 8,
+  maxLevel = 16
+}) {
+  let pool = (dungeonPool || DUNGEONS_MIDNIGHT_S2).filter(d => !excludedDungeons.includes(d));
+  if (pool.length === 0) pool = DUNGEONS_MIDNIGHT_S2;
+
+  let chosenDungeon = '';
+  let chosenLevel = targetLevel || Math.floor(Math.random() * (maxLevel - minLevel + 1)) + minLevel;
+  let matchedHolders = [];
+
+  if (onlyHeld && heldKeys.length > 0) {
+    const validHeld = heldKeys.filter(k => {
+      const dungName = k.ownedKey ? k.ownedKey.split('+')[0].trim() : '';
+      return !excludedDungeons.includes(dungName);
+    });
+    if (validHeld.length > 0) {
+      const picked = validHeld[Math.floor(Math.random() * validHeld.length)];
+      chosenDungeon = picked.ownedKey.split('+')[0].trim();
+      const lvlMatch = picked.ownedKey.match(/\+(\d+)/);
+      if (lvlMatch) chosenLevel = parseInt(lvlMatch[1], 10);
+      matchedHolders = [picked.name];
+    }
+  }
+
+  if (!chosenDungeon) {
+    chosenDungeon = pool[Math.floor(Math.random() * pool.length)];
+    matchedHolders = heldKeys
+      .filter(k => k.ownedKey && k.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()))
+      .map(k => `${k.name} (${k.ownedKey})`);
+  }
+
+  return {
+    dungeon: chosenDungeon,
+    level: chosenLevel,
+    keyString: `${chosenDungeon} +${chosenLevel}`,
+    holders: matchedHolders
+  };
+}
+
 module.exports = {
   WOW_CLASSES,
   DUNGEONS_MIDNIGHT_S2,
   PARTY_NAMES,
-  solveGroups
+  solveGroups,
+  rollKeystone
 };

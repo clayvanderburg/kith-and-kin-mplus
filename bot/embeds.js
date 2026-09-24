@@ -260,7 +260,23 @@ function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
       .setURL(webUrl)
   );
 
-  return [row1, row2];
+  // Row 3: Keystone Actions & Live Refresh
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('btn_roll_key')
+      .setLabel('Roll Key 🎲')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('btn_sync_keys')
+      .setLabel('Sync Keys 🔑')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('btn_refresh_roster')
+      .setLabel('Refresh 🔄')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return [row1, row2, row3];
 }
 
 module.exports = {

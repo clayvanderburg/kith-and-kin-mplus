@@ -3,6 +3,8 @@
  * Run with: npm run deploy-commands
  */
 
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
 const { registerCommands } = require('./commands');
 

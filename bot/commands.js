@@ -104,6 +104,37 @@ const commands = [
     )
     .addSubcommand(sub =>
       sub
+        .setName('roll-key')
+        .setDescription('🎲 Roll a random keystone from the allowed pool or held keys')
+        .addStringOption(opt =>
+          opt
+            .setName('source')
+            .setDescription('Source for rolling keystone')
+            .addChoices(
+              { name: '🎲 Random from Allowed Dungeon Pool', value: 'pool' },
+              { name: '🔑 Random from Held Keys in Roster', value: 'held' }
+            )
+        )
+        .addIntegerOption(opt =>
+          opt
+            .setName('level')
+            .setDescription('Specific keystone level (e.g. 12)')
+            .setMinValue(2)
+            .setMaxValue(30)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('exclude')
+            .setDescription('Specific dungeon to exclude (e.g. Murder Row)')
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName('sync-keys')
+        .setDescription('🔑 Refresh attending members’ active keystones from Raider.IO')
+    )
+    .addSubcommand(sub =>
+      sub
         .setName('web')
         .setDescription('Get the direct link to the live web group generator')
     )

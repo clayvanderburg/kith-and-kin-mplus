@@ -94,6 +94,8 @@
     players: [],
     formedGroups: [],
     benchedPlayers: [],
+    excludedDungeons: [],
+    dungeonPoolMode: 'midnight_s2',
     soundEnabled: true,
     sortField: 'io',
     searchQuery: '',
@@ -245,10 +247,24 @@
       if (savedBenched) {
         state.benchedPlayers = JSON.parse(savedBenched);
       }
+
+      const savedExclusions = localStorage.getItem('kk_mplus_excluded_dungeons');
+      if (savedExclusions) {
+        try {
+          state.excludedDungeons = JSON.parse(savedExclusions);
+        } catch (e) {}
+      }
     } catch (e) {
       console.warn('Failed to load local state, using defaults', e);
       state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
     }
+  }
+
+  function saveExclusions() {
+    try {
+      localStorage.setItem('kk_mplus_excluded_dungeons', JSON.stringify(state.excludedDungeons || []));
+    } catch (e) {}
+    pushRemoteState();
   }
 
   // --- Discord & Cloud State Synchronization ---
@@ -308,6 +324,10 @@
         if (Array.isArray(data.benchedPlayers)) {
           state.benchedPlayers = data.benchedPlayers;
         }
+        if (Array.isArray(data.excludedDungeons)) {
+          state.excludedDungeons = data.excludedDungeons;
+          renderDungeonChips();
+        }
 
         savePlayersLocal();
         saveGroupsLocal();
@@ -339,6 +359,7 @@
           players: state.players,
           formedGroups: state.formedGroups,
           benchedPlayers: state.benchedPlayers || [],
+          excludedDungeons: state.excludedDungeons || [],
           lastUpdated: new Date().toISOString()
         };
         const res = await fetch(API_URL, {
@@ -905,8 +926,11 @@
       };
     }
 
-    // Assign party names and dungeons to new groups
-    const dungeonList = dungeonPoolMode === 'none' ? [] : DUNGEONS_MIDNIGHT_S2;
+    // Assign party names and dungeons to new groups respecting exclusions
+    const activePool = DUNGEONS_MIDNIGHT_S2.filter(d => !(state.excludedDungeons || []).includes(d));
+    const dungeonList = dungeonPoolMode === 'none' 
+      ? [] 
+      : (activePool.length > 0 ? activePool : DUNGEONS_MIDNIGHT_S2);
     const shuffledNames = shuffleArray([...PARTY_NAMES]);
     const shuffledDungeons = shuffleArray([...dungeonList]);
 
@@ -929,11 +953,16 @@
         keyRangeStr = `+${Math.min(...minKeys)} to +${Math.max(...maxKeys)} (Compromise: +${targetKey})`;
       }
 
-      // Check if any member owns a key matching or close to target
-      const ownedKeys = members.filter(m => m.ownedKey && m.ownedKey.trim() !== '');
+      // Check if any member owns a key matching or close to target and not excluded
+      const validOwnedKeys = members.filter(m => {
+        if (!m.ownedKey || m.ownedKey.trim() === '') return false;
+        const dung = m.ownedKey.split('+')[0].trim();
+        return !(state.excludedDungeons || []).includes(dung);
+      });
+
       let assignedDungeon = '';
-      if (ownedKeys.length > 0) {
-        assignedDungeon = ownedKeys[0].ownedKey; // Fun perk: prioritize someone's actual key!
+      if (validOwnedKeys.length > 0) {
+        assignedDungeon = validOwnedKeys[0].ownedKey; // Fun perk: prioritize someone's actual key!
       } else if (shuffledDungeons.length > 0) {
         const pickedDungeon = shuffledDungeons[idx % shuffledDungeons.length];
         assignedDungeon = `${pickedDungeon} +${targetKey}`;
@@ -997,6 +1026,170 @@
       benched: bestResult.benched,
       message: null
     };
+  }
+
+  // --- Dungeon Pool & Roulette Actions ---
+  function renderDungeonChips() {
+    const grid = document.getElementById('dungeonChipsGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    DUNGEONS_MIDNIGHT_S2.forEach(dungeon => {
+      const isExcluded = (state.excludedDungeons || []).includes(dungeon);
+      const chip = document.createElement('div');
+      chip.className = `dungeon-chip ${isExcluded ? 'excluded' : 'active'}`;
+      chip.title = isExcluded ? `Click to INCLUDE ${dungeon}` : `Click to EXCLUDE ${dungeon}`;
+      chip.innerHTML = `
+        <span class="chip-name">${escapeHtml(dungeon)}</span>
+        <span class="chip-status">${isExcluded ? '❌ Excluded' : '✅ Active'}</span>
+      `;
+      chip.addEventListener('click', () => {
+        toggleDungeonExclusion(dungeon);
+      });
+      grid.appendChild(chip);
+    });
+  }
+
+  function toggleDungeonExclusion(dungeon) {
+    state.excludedDungeons = state.excludedDungeons || [];
+    if (state.excludedDungeons.includes(dungeon)) {
+      state.excludedDungeons = state.excludedDungeons.filter(d => d !== dungeon);
+    } else {
+      state.excludedDungeons.push(dungeon);
+    }
+    saveExclusions();
+    renderDungeonChips();
+    playSound('click');
+  }
+
+  function handleRollKeystone() {
+    const source = document.getElementById('rouletteSourceSelect')?.value || 'pool';
+    const targetGroup = document.getElementById('rouletteTargetGroupSelect')?.value || 'all';
+    const levelInput = parseInt(document.getElementById('rouletteLevelInput')?.value, 10) || 12;
+    const manualDungeon = document.getElementById('rouletteManualDungeonSelect')?.value || 'Murder Row';
+
+    let chosenDungeon = '';
+    let chosenLevel = levelInput;
+    let holders = [];
+
+    const attending = state.players.filter(p => p.attending);
+    const heldKeys = attending.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+
+    if (source === 'manual') {
+      chosenDungeon = manualDungeon;
+      holders = heldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
+    } else if (source === 'held') {
+      const allowedHeld = heldKeys.filter(p => {
+        const dung = p.ownedKey.split('+')[0].trim();
+        return !(state.excludedDungeons || []).includes(dung);
+      });
+      if (allowedHeld.length === 0) {
+        showToast('⚠️ No attending players hold keys from the allowed pool!');
+        return;
+      }
+      const picked = allowedHeld[Math.floor(Math.random() * allowedHeld.length)];
+      chosenDungeon = picked.ownedKey.split('+')[0].trim();
+      const match = picked.ownedKey.match(/\+(\d+)/);
+      if (match) chosenLevel = parseInt(match[1], 10);
+      holders = [picked];
+    } else {
+      // Allowed pool
+      const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !(state.excludedDungeons || []).includes(d));
+      const poolToUse = allowedPool.length > 0 ? allowedPool : DUNGEONS_MIDNIGHT_S2;
+      chosenDungeon = poolToUse[Math.floor(Math.random() * poolToUse.length)];
+      holders = heldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
+    }
+
+    const fullKeyStr = `${chosenDungeon} +${chosenLevel}`;
+
+    // Apply to target group(s)
+    if (state.formedGroups && state.formedGroups.length > 0) {
+      if (targetGroup === 'all') {
+        state.formedGroups.forEach(g => {
+          g.dungeon = fullKeyStr;
+          g.targetKeyStr = `+${chosenLevel} (Assigned)`;
+        });
+      } else {
+        const gIdx = parseInt(targetGroup, 10);
+        if (state.formedGroups[gIdx]) {
+          state.formedGroups[gIdx].dungeon = fullKeyStr;
+          state.formedGroups[gIdx].targetKeyStr = `+${chosenLevel} (Assigned)`;
+        }
+      }
+      saveGroups();
+      renderGroups();
+    }
+
+    // Display Result Banner
+    const banner = document.getElementById('rouletteResultBanner');
+    const resultText = document.getElementById('rouletteResultText');
+    const holdersText = document.getElementById('rouletteHoldersText');
+    if (banner && resultText) {
+      banner.style.display = 'flex';
+      resultText.textContent = `Rolled: ${fullKeyStr}`;
+      if (holders.length > 0) {
+        holdersText.textContent = `Held in bags by: ${holders.map(h => `${h.name} (${h.ownedKey})`).join(', ')}`;
+      } else {
+        holdersText.textContent = `No attending player holds this exact key (Reroll or push key!)`;
+      }
+    }
+
+    playSound('keystone');
+    showToast(`🎲 Assigned ${fullKeyStr} to ${targetGroup === 'all' ? 'All Groups' : 'Party ' + (parseInt(targetGroup, 10) + 1)}!`);
+  }
+
+  async function handleSyncKeystones() {
+    const attendees = state.players.filter(p => p.attending);
+    if (attendees.length === 0) {
+      showToast('⚠️ No attending members to sync keystones for!');
+      return;
+    }
+
+    const btn = document.getElementById('syncKeystonesBtn');
+    const origText = btn ? btn.innerHTML : '🔑 Sync Keys';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Syncing Keys...';
+    }
+
+    showToast(`🔑 Refreshing active keystones from Raider.IO for ${attendees.length} members...`);
+
+    let updated = 0;
+    for (let i = 0; i < attendees.length; i++) {
+      const p = attendees[i];
+      if (btn) btn.textContent = `⏳ Syncing Keys (${i + 1}/${attendees.length})...`;
+      try {
+        const cleanName = encodeURIComponent(p.name.trim());
+        const cleanRealm = encodeURIComponent((p.realm || 'Perenolde').trim().toLowerCase().replace(/\s+/g, '-').replace(/'/g, ''));
+        const region = p.region || 'us';
+        const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${cleanRealm}&name=${cleanName}&fields=gear,mythic_plus_recent_runs,mythic_plus_best_runs`;
+
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          const recent = data.mythic_plus_recent_runs?.[0] || data.mythic_plus_best_runs?.[0];
+          if (recent) {
+            p.ownedKey = `${recent.dungeon} +${recent.mythic_level}`;
+            p.keyMin = Math.max(2, recent.mythic_level - 3);
+            p.keyMax = recent.mythic_level + 2;
+            updated++;
+          }
+          if (data.gear?.item_level_equipped) {
+            p.ilvl = Math.round(data.gear.item_level_equipped);
+          }
+        }
+      } catch (err) {}
+      await new Promise(r => setTimeout(r, 60));
+    }
+
+    savePlayers();
+    renderRoster();
+    if (btn) {
+      btn.innerHTML = origText;
+      btn.disabled = false;
+    }
+    playSound('fanfare');
+    showToast(`✨ Keystone sync complete! (${updated} keystones refreshed)`);
   }
 
   // --- Group Generation Action ---
@@ -1108,7 +1301,13 @@
 
         <div class="party-sub-meta">
           <span class="party-key-target">🎯 ${grp.targetKeyStr}</span>
-          <span class="party-dungeon" title="${escapeHtml(grp.dungeon)}">🏰 ${escapeHtml(grp.dungeon)}</span>
+          <div class="party-dungeon-row">
+            <span class="party-dungeon-tag" title="Assigned Dungeon">🏰 ${escapeHtml(grp.dungeon || 'Mythic Key')}</span>
+            <button class="btn-mini-roll party-card-reroll-btn" data-group-index="${index}" title="Roll a random key for Party ${index + 1} from allowed pool">🎲 Roll</button>
+            <select class="party-dungeon-select" data-group-index="${index}" title="Manually change dungeon">
+              ${DUNGEONS_MIDNIGHT_S2.map(d => `<option value="${d}" ${(grp.dungeon && grp.dungeon.includes(d)) ? 'selected' : ''}>${d}</option>`).join('')}
+            </select>
+          </div>
         </div>
 
         <div class="party-utility-bar">
@@ -1224,6 +1423,58 @@
         }
       });
     });
+
+    // Individual Party Dungeon Reroll buttons
+    document.querySelectorAll('.party-card-reroll-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-group-index'), 10);
+        const grp = state.formedGroups[idx];
+        if (!grp) return;
+
+        const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !(state.excludedDungeons || []).includes(d));
+        const poolToUse = allowedPool.length > 0 ? allowedPool : DUNGEONS_MIDNIGHT_S2;
+        const picked = poolToUse[Math.floor(Math.random() * poolToUse.length)];
+
+        const lvlMatch = grp.dungeon ? grp.dungeon.match(/\+(\d+)/) : null;
+        const lvl = lvlMatch ? lvlMatch[1] : 12;
+
+        grp.dungeon = `${picked} +${lvl}`;
+        playSound('keystone');
+        saveGroups();
+        renderGroups();
+        showToast(`🎲 Rerolled Party ${idx + 1} dungeon to ${grp.dungeon}!`);
+      });
+    });
+
+    // Individual Party Dungeon Manual Dropdowns
+    document.querySelectorAll('.party-dungeon-select').forEach(sel => {
+      sel.addEventListener('change', (e) => {
+        const idx = parseInt(sel.getAttribute('data-group-index'), 10);
+        const grp = state.formedGroups[idx];
+        if (!grp) return;
+
+        const picked = e.target.value;
+        const lvlMatch = grp.dungeon ? grp.dungeon.match(/\+(\d+)/) : null;
+        const lvl = lvlMatch ? lvlMatch[1] : 12;
+
+        grp.dungeon = `${picked} +${lvl}`;
+        playSound('click');
+        saveGroups();
+        renderGroups();
+        showToast(`🎯 Changed Party ${idx + 1} dungeon to ${grp.dungeon}!`);
+      });
+    });
+
+    // Update Keystone Roulette Target Group Dropdown Options
+    const targetGroupSelect = document.getElementById('rouletteTargetGroupSelect');
+    if (targetGroupSelect) {
+      const currentVal = targetGroupSelect.value;
+      targetGroupSelect.innerHTML = `<option value="all">All Formed Groups</option>` +
+        state.formedGroups.map((g, i) => `<option value="${i}">Party ${i + 1} (${escapeHtml(g.name)})</option>`).join('');
+      if (currentVal && targetGroupSelect.querySelector(`option[value="${currentVal}"]`)) {
+        targetGroupSelect.value = currentVal;
+      }
+    }
 
     // Render Bench / Tavern Reserves
     if (state.benchedPlayers && state.benchedPlayers.length > 0) {
@@ -1900,6 +2151,51 @@
     const clearGroupsBtn = document.getElementById('clearGroupsBtn');
     if (clearGroupsBtn) {
       clearGroupsBtn.addEventListener('click', handleClearGroups);
+    }
+
+    // Key Sync Button
+    const syncKeystonesBtn = document.getElementById('syncKeystonesBtn');
+    if (syncKeystonesBtn) {
+      syncKeystonesBtn.addEventListener('click', handleSyncKeystones);
+    }
+
+    // Dungeon Pool Chips & Exclusion Actions
+    renderDungeonChips();
+
+    const selectAllDungeonsBtn = document.getElementById('selectAllDungeonsBtn');
+    if (selectAllDungeonsBtn) {
+      selectAllDungeonsBtn.addEventListener('click', () => {
+        state.excludedDungeons = [];
+        saveExclusions();
+        renderDungeonChips();
+        playSound('click');
+        showToast('All dungeons included in pool!');
+      });
+    }
+
+    const resetDungeonPoolBtn = document.getElementById('resetDungeonPoolBtn');
+    if (resetDungeonPoolBtn) {
+      resetDungeonPoolBtn.addEventListener('click', () => {
+        state.excludedDungeons = [];
+        saveExclusions();
+        renderDungeonChips();
+        playSound('click');
+        showToast('Reset dungeon pool to default (all included)!');
+      });
+    }
+
+    // Keystone Roulette Controls
+    const rouletteSourceSelect = document.getElementById('rouletteSourceSelect');
+    const rouletteManualDungeonWrap = document.getElementById('rouletteManualDungeonWrap');
+    if (rouletteSourceSelect && rouletteManualDungeonWrap) {
+      rouletteSourceSelect.addEventListener('change', (e) => {
+        rouletteManualDungeonWrap.style.display = e.target.value === 'manual' ? 'block' : 'none';
+      });
+    }
+
+    const rollKeystoneBtn = document.getElementById('rollKeystoneBtn');
+    if (rollKeystoneBtn) {
+      rollKeystoneBtn.addEventListener('click', handleRollKeystone);
     }
 
     // Discord post copy

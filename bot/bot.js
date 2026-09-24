@@ -7,7 +7,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { registerCommands } = require('./commands');
 const { createRosterEmbed, createGroupEmbeds, createSignupButtons } = require('./embeds');
-const { solveGroups, WOW_CLASSES } = require('./solver');
+const { solveGroups, rollKeystone, DUNGEONS_MIDNIGHT_S2, WOW_CLASSES } = require('./solver');
 const { fetchRemoteState, pushRemoteState, lookupRaiderIo } = require('./sync');
 
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -217,6 +217,73 @@ async function handleSlashCommand(interaction) {
       content: '🧹 Cleared all active groups for tonight. Synced to web dashboard.'
     });
   }
+
+  if (subcommand === 'roll-key') {
+    await interaction.deferReply();
+    const source = interaction.options.getString('source') || 'pool';
+    const level = interaction.options.getInteger('level');
+    const exclude = interaction.options.getString('exclude');
+
+    const state = await fetchRemoteState();
+    const excluded = [...(state.excludedDungeons || [])];
+    if (exclude && !excluded.some(e => e.toLowerCase() === exclude.toLowerCase())) {
+      excluded.push(exclude);
+    }
+
+    const attendees = (state.players || []).filter(p => p.attending);
+    const heldKeys = attendees.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+
+    const roll = rollKeystone({
+      dungeonPool: DUNGEONS_MIDNIGHT_S2,
+      excludedDungeons: excluded,
+      heldKeys,
+      onlyHeld: source === 'held',
+      targetLevel: level || null
+    });
+
+    let holderText = (roll.holders && roll.holders.length > 0)
+      ? `\n👜 **Held by:** ${roll.holders.join(', ')}`
+      : `\n*(No attending member currently holds this exact key — push or reroll!)*`;
+
+    const excludedText = excluded.length > 0 ? `\n🚫 **Excluded:** ${excluded.join(', ')}` : '';
+
+    return interaction.editReply({
+      content: `🎲 **Rolled Keystone:** \`${roll.keyString}\`${holderText}${excludedText}\nLive status synced to [web dashboard](${WEB_URL}).`
+    });
+  }
+
+  if (subcommand === 'sync-keys') {
+    await interaction.deferReply();
+    const state = await fetchRemoteState();
+    const attendees = (state.players || []).filter(p => p.attending);
+    if (attendees.length === 0) {
+      return interaction.editReply({ content: '⚠️ No attending members to sync keystones for!' });
+    }
+
+    let updated = 0;
+    for (const p of attendees) {
+      try {
+        const rIo = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
+        if (rIo?.ownedKey) {
+          p.ownedKey = rIo.ownedKey;
+          const lvlMatch = rIo.ownedKey.match(/\+(\d+)/);
+          if (lvlMatch) {
+            const lvl = parseInt(lvlMatch[1], 10);
+            p.keyMin = Math.max(2, lvl - 3);
+            p.keyMax = lvl + 2;
+          }
+          updated++;
+        }
+        if (rIo?.ilvl) p.ilvl = rIo.ilvl;
+        if (rIo?.io) p.io = rIo.io;
+      } catch (e) {}
+    }
+
+    await pushRemoteState(state);
+    return interaction.editReply({
+      content: `🔑 **Refreshed keystones from Raider.IO!** (${updated} members updated)\nView updated roster at [web dashboard](${WEB_URL}).`
+    });
+  }
 }
 
 async function handleButtonInteraction(interaction) {
@@ -337,6 +404,53 @@ async function handleButtonInteraction(interaction) {
       await pushRemoteState(state);
       return interaction.editReply(`Set **${player.name}** Shitter status to: **${player.isShitter ? '💩 Yes (Shitter Alt Squad)' : 'No'}**`);
     }
+  }
+
+  if (customId === 'btn_roll_key') {
+    await interaction.deferReply();
+    const state = await fetchRemoteState();
+    const attendees = (state.players || []).filter(p => p.attending);
+    const heldKeys = attendees.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+    const excluded = state.excludedDungeons || [];
+    const roll = rollKeystone({
+      dungeonPool: DUNGEONS_MIDNIGHT_S2,
+      excludedDungeons: excluded,
+      heldKeys,
+      onlyHeld: false,
+      targetLevel: null
+    });
+
+    let holderText = (roll.holders && roll.holders.length > 0)
+      ? `\n👜 **Held by:** ${roll.holders.join(', ')}`
+      : `\n*(No attending member currently holds this exact key — push or reroll!)*`;
+
+    return interaction.editReply({
+      content: `🎲 **Rolled Keystone:** \`${roll.keyString}\`${holderText}\nSynced with [web dashboard](${WEB_URL}).`
+    });
+  }
+
+  if (customId === 'btn_sync_keys') {
+    await interaction.deferReply({ ephemeral: true });
+    const state = await fetchRemoteState();
+    const attendees = (state.players || []).filter(p => p.attending);
+    if (attendees.length === 0) {
+      return interaction.editReply({ content: '⚠️ No attending members to sync keys for!' });
+    }
+
+    let count = 0;
+    for (const p of attendees) {
+      try {
+        const rIo = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
+        if (rIo?.ownedKey) {
+          p.ownedKey = rIo.ownedKey;
+          count++;
+        }
+      } catch (e) {}
+    }
+    await pushRemoteState(state);
+    return interaction.editReply({
+      content: `🔑 **Refreshed active keystones from Raider.IO!** (${count} keys updated)\nView updated roster at [web dashboard](${WEB_URL}).`
+    });
   }
 }
 

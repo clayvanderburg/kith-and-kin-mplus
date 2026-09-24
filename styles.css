@@ -1361,6 +1361,251 @@ button {
   box-shadow: 0 4px 14px rgba(14, 165, 233, 0.55);
 }
 
+.btn-gold {
+  background: linear-gradient(180deg, rgba(245, 208, 97, 0.25) 0%, rgba(180, 83, 9, 0.4) 100%);
+  color: #fef08a;
+  border: 1px solid rgba(245, 208, 97, 0.5);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(245, 208, 97, 0.2);
+}
+
+.btn-gold:hover {
+  background: linear-gradient(180deg, rgba(245, 208, 97, 0.4) 0%, rgba(217, 119, 6, 0.55) 100%);
+  border-color: #fef08a;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(245, 208, 97, 0.45);
+}
+
+.btn-link-sm {
+  background: none;
+  border: none;
+  color: var(--text-gold);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.btn-link-sm:hover {
+  color: #fff;
+}
+
+/* Dungeon Chips Grid & Exclusions */
+.dungeon-pool-box {
+  margin-top: 0.5rem;
+}
+
+.dungeon-pool-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.dungeon-pool-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dungeon-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.4rem;
+}
+
+.dungeon-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  font-size: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.dungeon-chip:hover {
+  border-color: rgba(245, 208, 97, 0.4);
+  background: rgba(245, 208, 97, 0.08);
+}
+
+.dungeon-chip.active {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #86efac;
+}
+
+.dungeon-chip.excluded {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
+.dungeon-chip .chip-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 0.3rem;
+}
+
+/* Keystone Roulette Box */
+.keystone-roulette-card {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(245, 208, 97, 0.05), rgba(15, 23, 42, 0.6));
+  border: 1px solid rgba(245, 208, 97, 0.25);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.roulette-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.85rem;
+}
+
+.roulette-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.roulette-icon {
+  font-size: 1.4rem;
+}
+
+.roulette-title h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-gold);
+  font-weight: 700;
+}
+
+.roulette-title p {
+  margin: 0.1rem 0 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.roulette-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.roulette-row .form-group-sm label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.roulette-btn {
+  height: 32px;
+  white-space: nowrap;
+}
+
+.roulette-result-banner {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(245, 208, 97, 0.12);
+  border: 1px solid rgba(245, 208, 97, 0.4);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: bannerFadeIn 0.3s ease;
+}
+
+@keyframes bannerFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.result-sigil {
+  font-size: 1.1rem;
+}
+
+.result-text {
+  font-weight: 700;
+  color: #fef08a;
+  font-size: 0.95rem;
+}
+
+.result-holders {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+/* Party Card Interactive Dungeon Bar */
+.party-dungeon-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.party-dungeon-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(245, 208, 97, 0.12);
+  border: 1px solid rgba(245, 208, 97, 0.3);
+  padding: 0.2rem 0.5rem;
+  border-radius: 5px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-gold);
+}
+
+.btn-mini-roll {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--text-main);
+  padding: 0.18rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-mini-roll:hover {
+  background: rgba(245, 208, 97, 0.2);
+  border-color: var(--text-gold);
+  color: var(--text-gold);
+}
+
+.party-dungeon-select {
+  background: #0f172a;
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  padding: 0.18rem 0.35rem;
+  cursor: pointer;
+}
+
 .btn-secondary {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;

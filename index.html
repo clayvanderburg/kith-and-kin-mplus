@@ -53,6 +53,7 @@
           <div class="panel-toolbar">
             <button id="importGuildBtn" class="btn btn-sm btn-ghost" title="Import active roster directly from Raider.IO for Kith and Kin (Perenolde)">🏰 Sync Guild</button>
             <button id="syncRaiderIoBtn" class="btn btn-sm btn-accent" title="Fetch item level & Mythic+ score from Raider.IO for all attending members">🔄 Sync Raider.IO</button>
+            <button id="syncKeystonesBtn" class="btn btn-sm btn-gold" title="Refresh active Midnight Season 2 keystones and runs from Raider.IO for all members">🔑 Sync Keys</button>
             <button id="openAddModalBtn" class="btn btn-sm btn-primary">➕ Add</button>
             <button id="openImportBtn" class="btn btn-sm btn-secondary" title="Paste roster list">📋 Text</button>
             <button id="resetSampleBtn" class="btn btn-sm btn-ghost" title="Load sample guild members">↺ Defaults</button>
@@ -148,11 +149,26 @@
           </div>
 
           <div class="setting-item">
-            <label for="dungeonPoolSelect">Dungeon Pool</label>
+            <label for="dungeonPoolSelect">Dungeon Pool Mode</label>
             <select id="dungeonPoolSelect" class="form-select">
               <option value="midnight_s2" selected>Midnight — Season 2 (Current Pool)</option>
               <option value="none">No Dungeon Assignment (Keys Only)</option>
             </select>
+          </div>
+
+          <!-- Dungeon Pool & Exclusion Chips -->
+          <div class="setting-item dungeon-pool-box" id="dungeonChipsSection">
+            <div class="dungeon-pool-header">
+              <label>🏰 Active Dungeon Pool (Click chip to Exclude)</label>
+              <div class="dungeon-pool-actions">
+                <button type="button" id="selectAllDungeonsBtn" class="btn-link-sm">Include All</button>
+                <span>•</span>
+                <button type="button" id="resetDungeonPoolBtn" class="btn-link-sm">Reset</button>
+              </div>
+            </div>
+            <div class="dungeon-chips-grid" id="dungeonChipsGrid">
+              <!-- Dynamically rendered 8 dungeon chips -->
+            </div>
           </div>
 
           <div class="setting-item checkbox-item">
@@ -181,6 +197,71 @@
               <input type="checkbox" id="avoidClassDupes" checked>
               <span>Avoid Duplicate Classes in Groups</span>
             </label>
+          </div>
+        </div>
+
+        <!-- Keystone Roulette & Quick Assign -->
+        <div class="keystone-roulette-card">
+          <div class="roulette-header">
+            <div class="roulette-title">
+              <span class="roulette-icon">🎲</span>
+              <div>
+                <h4>Keystone Roulette &amp; Quick Assign</h4>
+                <p>Roll a random key from the active pool, pick from held keys, or select a dungeon manually.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="roulette-controls">
+            <div class="roulette-row">
+              <div class="form-group-sm">
+                <label for="rouletteSourceSelect">Source</label>
+                <select id="rouletteSourceSelect" class="form-select-sm">
+                  <option value="pool" selected>🎲 Random from Allowed Pool</option>
+                  <option value="held">🔑 Random from Held Keys</option>
+                  <option value="manual">🎯 Specific Dungeon (Manual)</option>
+                </select>
+              </div>
+
+              <div class="form-group-sm" id="rouletteManualDungeonWrap" style="display: none;">
+                <label for="rouletteManualDungeonSelect">Dungeon</label>
+                <select id="rouletteManualDungeonSelect" class="form-select-sm">
+                  <option value="Voidscar Arena">Voidscar Arena</option>
+                  <option value="Murder Row">Murder Row</option>
+                  <option value="The Blinding Vale">The Blinding Vale</option>
+                  <option value="Den of Nalorakk">Den of Nalorakk</option>
+                  <option value="Kings' Rest">Kings' Rest</option>
+                  <option value="Altar of Fangs">Altar of Fangs</option>
+                  <option value="Temple of Sethraliss">Temple of Sethraliss</option>
+                  <option value="Ruby Life Pools">Ruby Life Pools</option>
+                </select>
+              </div>
+
+              <div class="form-group-sm">
+                <label for="rouletteLevelInput">Key Level</label>
+                <input type="number" id="rouletteLevelInput" class="form-input-sm" value="12" min="2" max="30" style="width: 70px;">
+              </div>
+
+              <div class="form-group-sm">
+                <label for="rouletteTargetGroupSelect">Assign To</label>
+                <select id="rouletteTargetGroupSelect" class="form-select-sm">
+                  <option value="all">All Formed Groups</option>
+                </select>
+              </div>
+
+              <button type="button" id="rollKeystoneBtn" class="btn btn-sm btn-accent roulette-btn">
+                🎲 Roll Keystone!
+              </button>
+            </div>
+
+            <!-- Rolled Result Banner -->
+            <div id="rouletteResultBanner" class="roulette-result-banner" style="display: none;">
+              <div class="result-badge">
+                <span class="result-sigil">🔑</span>
+                <span class="result-text" id="rouletteResultText">Rolled: Murder Row +12</span>
+              </div>
+              <div class="result-holders" id="rouletteHoldersText"></div>
+            </div>
           </div>
         </div>
 

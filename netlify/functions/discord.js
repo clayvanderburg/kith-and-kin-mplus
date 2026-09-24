@@ -246,6 +246,108 @@ exports.handler = async (event, context) => {
         });
       }
 
+      if (subcommand === 'roll-key') {
+        const subOpts = options[0]?.options || [];
+        const getOpt = (n) => subOpts.find(o => o.name === n)?.value;
+        const source = getOpt('source') || 'pool';
+        const level = getOpt('level');
+        const exclude = getOpt('exclude');
+
+        const excluded = [...(state.excludedDungeons || [])];
+        if (exclude && !excluded.some(e => e.toLowerCase() === exclude.toLowerCase())) {
+          excluded.push(exclude);
+        }
+
+        const attendees = (state.players || []).filter(p => p.attending);
+        const heldKeys = attendees.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+
+        if (source === 'held' && heldKeys.length === 0) {
+          return jsonResponse({
+            type: 4,
+            data: {
+              content: '⚠️ No attending members have an active keystone recorded yet! Use `/mplus roll-key source:pool` or click **🔑 Sync Keys** on the dashboard.',
+              flags: 64
+            }
+          });
+        }
+
+        const rollResult = solver ? solver.rollKeystone({
+          dungeonPool: solver.DUNGEONS_MIDNIGHT_S2,
+          excludedDungeons: excluded,
+          heldKeys,
+          onlyHeld: source === 'held',
+          targetLevel: level ? parseInt(level, 10) : null
+        }) : {
+          dungeon: 'Murder Row',
+          level: level || 12,
+          keyString: `Murder Row +${level || 12}`,
+          holders: []
+        };
+
+        let holderText = '';
+        if (rollResult.holders && rollResult.holders.length > 0) {
+          holderText = `\n👜 **Held in bags by:** ${rollResult.holders.join(', ')}`;
+        } else {
+          holderText = `\n*(No attending member currently holds this exact key — push or reroll!)*`;
+        }
+
+        const excludedText = excluded.length > 0 ? `\n🚫 **Excluded:** ${excluded.join(', ')}` : '';
+
+        return jsonResponse({
+          type: 4,
+          data: {
+            content: `🎲 **Rolled Keystone:** \`${rollResult.keyString}\`${holderText}${excludedText}\nLive status synced to [web dashboard](${WEB_URL}).`
+          }
+        });
+      }
+
+      if (subcommand === 'sync-keys') {
+        const attendees = (state.players || []).filter(p => p.attending);
+        if (attendees.length === 0) {
+          return jsonResponse({
+            type: 4,
+            data: {
+              content: '⚠️ No attending members to sync keystones for. Use `/mplus signup` or RSVP buttons first!',
+              flags: 64
+            }
+          });
+        }
+
+        let updatedCount = 0;
+        const syncBatch = attendees.slice(0, 8);
+        const syncPromises = syncBatch.map(async p => {
+          try {
+            const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
+            if (data?.ownedKey) {
+              p.ownedKey = data.ownedKey;
+              const lvlMatch = data.ownedKey.match(/\+(\d+)/);
+              if (lvlMatch) {
+                const lvl = parseInt(lvlMatch[1], 10);
+                p.keyMin = Math.max(2, lvl - 3);
+                p.keyMax = lvl + 2;
+              }
+              updatedCount++;
+            }
+            if (data?.ilvl) p.ilvl = data.ilvl;
+            if (data?.io) p.io = data.io;
+          } catch (e) {}
+        });
+
+        await Promise.race([
+          Promise.all(syncPromises),
+          new Promise(r => setTimeout(r, 2200))
+        ]);
+
+        await saveState(state);
+
+        return jsonResponse({
+          type: 4,
+          data: {
+            content: `🔑 **Refreshed Keystones from Raider.IO!**\nUpdated ${updatedCount} member active keys.\nCheck the full lineup on the [web dashboard](${WEB_URL}).`
+          }
+        });
+      }
+
       if (subcommand === 'form') {
         const attending = (state.players || []).filter(p => p.attending);
         if (attending.length < 5) {
@@ -447,6 +549,73 @@ exports.handler = async (event, context) => {
         data: {
           content: `🏰 **Formed ${result.groups.length} Mythic+ Group(s) for Friday Night!**`,
           embeds: groupEmbeds
+        }
+      });
+    }
+
+    if (customId === 'btn_shitter') {
+      if (player) {
+        player.isShitter = !player.isShitter;
+        await saveState(state);
+        return jsonResponse({
+          type: 4,
+          data: { content: `💩 Shitter alt squad status: **${player.isShitter ? 'Yes! (Joined Shitter Squad)' : 'Standard'}**`, flags: 64 }
+        });
+      }
+    }
+
+    if (customId === 'btn_roll_key') {
+      const attendees = (state.players || []).filter(p => p.attending);
+      const heldKeys = attendees.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+      const excluded = state.excludedDungeons || [];
+      const roll = solver ? solver.rollKeystone({
+        dungeonPool: solver.DUNGEONS_MIDNIGHT_S2,
+        excludedDungeons: excluded,
+        heldKeys,
+        onlyHeld: false,
+        targetLevel: null
+      }) : { keyString: 'Murder Row +12', holders: [] };
+
+      let holderText = (roll.holders && roll.holders.length > 0)
+        ? `\n👜 **Held by:** ${roll.holders.join(', ')}`
+        : `\n*(No attending member currently holds this exact key — push or reroll!)*`;
+
+      return jsonResponse({
+        type: 4,
+        data: {
+          content: `🎲 **Rolled Keystone:** \`${roll.keyString}\`${holderText}\nSynced with [web dashboard](${WEB_URL}).`
+        }
+      });
+    }
+
+    if (customId === 'btn_sync_keys') {
+      const attendees = (state.players || []).filter(p => p.attending);
+      if (attendees.length === 0) {
+        return jsonResponse({
+          type: 4,
+          data: { content: '⚠️ No attending members to sync keys for!', flags: 64 }
+        });
+      }
+
+      let count = 0;
+      const syncBatch = attendees.slice(0, 8);
+      await Promise.race([
+        Promise.all(syncBatch.map(async p => {
+          try {
+            const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
+            if (data?.ownedKey) {
+              p.ownedKey = data.ownedKey;
+              count++;
+            }
+          } catch (e) {}
+        })),
+        new Promise(r => setTimeout(r, 2200))
+      ]);
+      await saveState(state);
+      return jsonResponse({
+        type: 4,
+        data: {
+          content: `🔑 **Refreshed active keystones from Raider.IO!** (${count} keys updated)\nView updated roster on the [web dashboard](${WEB_URL}).`
         }
       });
     }
