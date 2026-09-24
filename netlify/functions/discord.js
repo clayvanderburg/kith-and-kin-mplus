@@ -27,34 +27,43 @@ function loadModule(name) {
 const solver = loadModule('solver');
 const embeds = loadModule('embeds');
 
-// Netlify Blobs support if configured
-let getStore = null;
-try {
-  getStore = require('@netlify/blobs').getStore;
-} catch (e) {}
-
 const TMP_FILE = path.join('/tmp', 'kk_mplus_state.json');
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '66f468e2962fddf5f6c25d675f66df3970d481be92cc350c30358a12dfe527bb';
 const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
 
-// In-memory fallback
+// Fast in-memory cache for warm lambdas
 let memoryState = null;
 
 async function loadState() {
-  if (getStore) {
-    try {
-      const store = getStore({ name: 'mplus-state', consistency: 'strong' });
-      const raw = await store.get('current_state');
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
+  if (memoryState && Array.isArray(memoryState.players) && memoryState.players.length > 0) {
+    return memoryState;
   }
 
   const fs = require('fs');
   if (fs.existsSync(TMP_FILE)) {
     try {
-      return JSON.parse(fs.readFileSync(TMP_FILE, 'utf8'));
+      const parsed = JSON.parse(fs.readFileSync(TMP_FILE, 'utf8'));
+      if (parsed && Array.isArray(parsed.players) && parsed.players.length > 0) {
+        memoryState = parsed;
+        return parsed;
+      }
     } catch (e) {}
   }
+
+  // Fast fetch from /api/state with strict 1.2s timeout
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch(`${WEB_URL}/api/state`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.players) && data.players.length > 0) {
+        memoryState = data;
+        return data;
+      }
+    }
+  } catch (e) {}
 
   return memoryState || { players: [], formedGroups: [], benchedPlayers: [] };
 }
@@ -68,12 +77,21 @@ async function saveState(data) {
     fs.writeFileSync(TMP_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (e) {}
 
-  if (getStore) {
-    try {
-      const store = getStore({ name: 'mplus-state', consistency: 'strong' });
-      await store.set('current_state', JSON.stringify(data));
-    } catch (e) {}
-  }
+  // Sync to /api/state in background with 1.2s timeout
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    await fetch(`${WEB_URL}/api/state`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-sync-secret': 'kith_and_kin_mythic_key_2026'
+      },
+      body: JSON.stringify(data),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+  } catch (e) {}
 }
 
 /**

@@ -1,0 +1,16 @@
+{
+  "name": "kith-and-kin-mplus",
+  "version": "1.0.0",
+  "description": "Kith and Kin Mythic+ Night Web Dashboard & Discord Serverless Bot",
+  "main": "app.js",
+  "scripts": {
+    "start": "node bot/bot.js",
+    "deploy-commands": "node bot/deploy-commands.js"
+  },
+  "author": "Clayton Vanderburg (MadKing)",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7"
+  }
+}

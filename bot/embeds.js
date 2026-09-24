@@ -3,7 +3,47 @@
  * Modeled after Raid-Helper with tailored World of Warcraft Mythic+ enhancements.
  */
 
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+let EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle;
+try {
+  const djs = require('discord.js');
+  EmbedBuilder = djs.EmbedBuilder;
+  ActionRowBuilder = djs.ActionRowBuilder;
+  ButtonBuilder = djs.ButtonBuilder;
+  ButtonStyle = djs.ButtonStyle;
+} catch (e) {
+  // Pure JSON fallback for serverless environments where discord.js is omitted
+  ButtonStyle = { Primary: 1, Secondary: 2, Success: 3, Danger: 4, Link: 5 };
+  EmbedBuilder = class {
+    constructor() { this.data = { fields: [] }; }
+    setTitle(t) { this.data.title = t; return this; }
+    setDescription(d) { this.data.description = d; return this; }
+    setColor(c) { this.data.color = c; return this; }
+    addFields(...fields) {
+      if (Array.isArray(fields[0])) this.data.fields.push(...fields[0]);
+      else this.data.fields.push(...fields);
+      return this;
+    }
+    setFooter(f) { this.data.footer = f; return this; }
+    setTimestamp() { this.data.timestamp = new Date().toISOString(); return this; }
+    toJSON() { return this.data; }
+  };
+  ButtonBuilder = class {
+    constructor() { this.data = { type: 2 }; }
+    setCustomId(id) { this.data.custom_id = id; return this; }
+    setLabel(l) { this.data.label = l; return this; }
+    setStyle(s) { this.data.style = s; return this; }
+    setURL(u) { this.data.url = u; return this; }
+    toJSON() { return this.data; }
+  };
+  ActionRowBuilder = class {
+    constructor() { this.data = { type: 1, components: [] }; }
+    addComponents(...comps) {
+      this.data.components.push(...comps.map(c => c.toJSON ? c.toJSON() : c));
+      return this;
+    }
+    toJSON() { return this.data; }
+  };
+}
 
 const CLASS_ICONS = {
   'Death Knight': '⚔️',
