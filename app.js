@@ -251,7 +251,118 @@
     }
   }
 
-  function savePlayers() {
+  // --- Discord & Cloud State Synchronization ---
+  const API_URL = (window.location.hostname.includes('netlify.app') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? '/api/state'
+    : 'https://kith-and-kin-mplus.netlify.app/api/state';
+  const SYNC_SECRET = 'kith_and_kin_mythic_key_2026';
+  let pushDebounceTimer = null;
+  let isFetchingRemote = false;
+
+  function updateSyncStatus(status, label) {
+    const badge = document.getElementById('discordSyncStatus');
+    const text = document.getElementById('syncStatusText');
+    if (!badge || !text) return;
+
+    badge.className = 'discord-sync-badge';
+    if (status === 'syncing') {
+      badge.classList.add('syncing');
+      text.textContent = label || 'Syncing...';
+    } else if (status === 'synced') {
+      badge.classList.add('synced');
+      text.textContent = label || 'Discord Synced';
+    } else if (status === 'offline') {
+      badge.classList.add('offline');
+      text.textContent = label || 'Local Storage';
+    } else if (status === 'error') {
+      badge.classList.add('error');
+      text.textContent = label || 'Sync Error';
+    }
+  }
+
+  async function fetchRemoteState(silent = false) {
+    if (isFetchingRemote) return;
+    isFetchingRemote = true;
+    updateSyncStatus('syncing', 'Syncing...');
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      if (data && !data.empty && Array.isArray(data.players) && data.players.length > 0) {
+        state.players = data.players.map(p => ({
+          ...p,
+          carryPreference: p.carryPreference || 'none',
+          isShitter: !!p.isShitter
+        }));
+
+        if (Array.isArray(data.formedGroups)) {
+          state.formedGroups = data.formedGroups;
+        }
+        if (Array.isArray(data.benchedPlayers)) {
+          state.benchedPlayers = data.benchedPlayers;
+        }
+
+        savePlayersLocal();
+        saveGroupsLocal();
+        renderRoster();
+        renderGroups();
+        updateSyncStatus('synced', 'Discord Synced');
+        if (!silent) {
+          showToast('✨ Synced roster with Discord bot & cloud!');
+        }
+      } else {
+        // Remote is uninitialized, push current local state to cloud
+        updateSyncStatus('synced', 'Discord Ready');
+        pushRemoteState();
+      }
+    } catch (err) {
+      console.warn('[Cloud Sync] Fetch error, continuing with local state:', err);
+      updateSyncStatus('offline', 'Local Storage');
+    } finally {
+      isFetchingRemote = false;
+    }
+  }
+
+  function pushRemoteState() {
+    clearTimeout(pushDebounceTimer);
+    updateSyncStatus('syncing', 'Saving...');
+    pushDebounceTimer = setTimeout(async () => {
+      try {
+        const payload = {
+          players: state.players,
+          formedGroups: state.formedGroups,
+          benchedPlayers: state.benchedPlayers || [],
+          lastUpdated: new Date().toISOString()
+        };
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-sync-secret': SYNC_SECRET
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          updateSyncStatus('synced', 'Discord Synced');
+        } else {
+          updateSyncStatus('offline', 'Local Storage');
+        }
+      } catch (err) {
+        console.warn('[Cloud Sync] Push error:', err);
+        updateSyncStatus('offline', 'Local Storage');
+      }
+    }, 1200);
+  }
+
+  function savePlayersLocal() {
     try {
       localStorage.setItem('kk_mplus_players', JSON.stringify(state.players));
     } catch (e) {
@@ -259,13 +370,23 @@
     }
   }
 
-  function saveGroups() {
+  function savePlayers() {
+    savePlayersLocal();
+    pushRemoteState();
+  }
+
+  function saveGroupsLocal() {
     try {
       localStorage.setItem('kk_mplus_groups', JSON.stringify(state.formedGroups));
       localStorage.setItem('kk_mplus_benched', JSON.stringify(state.benchedPlayers || []));
     } catch (e) {
       console.error('Could not save groups to localStorage', e);
     }
+  }
+
+  function saveGroups() {
+    saveGroupsLocal();
+    pushRemoteState();
   }
 
   // --- UI Notifications (Toast) ---
@@ -1783,6 +1904,25 @@
 
     // Discord post copy
     document.getElementById('copyDiscordBtn').addEventListener('click', copyAllToDiscord);
+
+    // Discord / Cloud Manual Sync button
+    const manualSyncBtn = document.getElementById('manualSyncBtn');
+    if (manualSyncBtn) {
+      manualSyncBtn.addEventListener('click', () => {
+        playSound('click');
+        fetchRemoteState(false);
+      });
+    }
+
+    // Initial background sync with Discord bot / cloud state
+    fetchRemoteState(true);
+
+    // Periodic background poll every 45s while tab is active
+    setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchRemoteState(true);
+      }
+    }, 45000);
   }
 
   // Run on DOM ready

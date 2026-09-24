@@ -2,3 +2,9 @@ node_modules/
 .netlify/
 .DS_Store
 *.log
+.env
+.env.*
+!.env.example
+*-cache.json
+bot/node_modules/
+
