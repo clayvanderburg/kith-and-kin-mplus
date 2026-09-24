@@ -315,6 +315,87 @@ body {
 .metric-pill.dps strong { color: var(--role-dps); }
 .metric-pill.groups strong { color: var(--text-gold); }
 
+.roster-search-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.6rem;
+  font-size: 0.85rem;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.form-input-sm.search-field {
+  padding-left: 2rem;
+  padding-right: 1.8rem;
+  background: rgba(8, 12, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  width: 100%;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  transition: all 0.2s ease;
+}
+
+.form-input-sm.search-field:focus {
+  border-color: var(--border-gold);
+  box-shadow: 0 0 8px rgba(200, 158, 71, 0.35);
+  outline: none;
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 0.4rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.btn-clear-search:hover {
+  color: #fff;
+}
+
+.filter-controls-wrap {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filter-controls-wrap select {
+  flex: 1;
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  font-weight: 600;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #fff;
+}
+
 .roster-controls-subbar {
   display: flex;
   justify-content: space-between;

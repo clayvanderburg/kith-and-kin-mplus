@@ -43,10 +43,33 @@
             <span class="badge" id="rosterCountBadge">0 Attending</span>
           </div>
           <div class="panel-toolbar">
+            <button id="importGuildBtn" class="btn btn-sm btn-ghost" title="Import active roster directly from Raider.IO for Kith and Kin (Perenolde)">🏰 Sync Guild</button>
             <button id="syncRaiderIoBtn" class="btn btn-sm btn-accent" title="Fetch item level & Mythic+ score from Raider.IO for all attending members">🔄 Sync Raider.IO</button>
-            <button id="openAddModalBtn" class="btn btn-sm btn-primary">➕ Add Member</button>
-            <button id="openImportBtn" class="btn btn-sm btn-secondary" title="Paste roster list">📋 Import / Export</button>
-            <button id="resetSampleBtn" class="btn btn-sm btn-ghost" title="Load sample guild members">↺ Load Defaults</button>
+            <button id="openAddModalBtn" class="btn btn-sm btn-primary">➕ Add</button>
+            <button id="openImportBtn" class="btn btn-sm btn-secondary" title="Paste roster list">📋 Text</button>
+            <button id="resetSampleBtn" class="btn btn-sm btn-ghost" title="Load sample guild members">↺ Defaults</button>
+          </div>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <div class="roster-search-filter-bar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="rosterSearchInput" class="form-input-sm search-field" placeholder="Search members by character or class...">
+            <button id="clearSearchBtn" class="btn-clear-search" title="Clear Search" style="display: none;">&times;</button>
+          </div>
+          <div class="filter-controls-wrap">
+            <select id="roleFilterSelect" class="form-select-sm" title="Filter by Role">
+              <option value="all">All Roles</option>
+              <option value="Tank">🛡️ Tanks</option>
+              <option value="Healer">💚 Healers</option>
+              <option value="DPS">⚔️ DPS</option>
+            </select>
+            <select id="attendFilterSelect" class="form-select-sm" title="Filter by Attendance">
+              <option value="all">All Status</option>
+              <option value="attending">✅ Attending</option>
+              <option value="absent">💤 Absent</option>
+            </select>
           </div>
         </div>
 
@@ -68,7 +91,7 @@
 
         <div class="roster-controls-subbar">
           <div class="attendance-bulk-actions">
-            <button id="selectAllBtn" class="btn-link">Select All Attending</button>
+            <button id="selectAllBtn" class="btn-link">Select All</button>
             <span>•</span>
             <button id="deselectAllBtn" class="btn-link">Deselect All</button>
           </div>
@@ -176,6 +199,9 @@
               <button id="rerollUnlockedBtn" class="btn btn-sm btn-secondary" title="Re-roll only groups that are not locked">
                 🎲 Re-roll Unlocked
               </button>
+              <button id="clearGroupsBtn" class="btn btn-sm btn-danger" title="Clear all formed groups">
+                🗑️ Clear Groups
+              </button>
             </div>
           </div>
 
@@ -224,7 +250,7 @@
           </div>
           <div class="form-group" style="flex: 2;">
             <label for="playerRealmInput">Realm *</label>
-            <input type="text" id="playerRealmInput" class="form-input" placeholder="e.g. Area 52, Illidan" value="Area 52">
+            <input type="text" id="playerRealmInput" class="form-input" placeholder="e.g. Perenolde, Cairne" value="Perenolde">
           </div>
           <div class="form-group" style="flex: 1;">
             <label for="playerRegionSelect">Region</label>

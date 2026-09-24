@@ -60,23 +60,41 @@
     'Out of Line of Sight'
   ];
 
-  // Default sample guild roster for Kith and Kin (with realistic TWW ilvl & IO scores)
+  // Default sample guild roster for Kith and Kin (Perenolde, US)
+  // Ranks 0-2 from Raider.IO roster (GM, Officers, Raiders) with top raiders pre-selected attending
   const SAMPLE_ROSTER = [
-    { id: 'kk-1', name: 'MadKing', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +10', realm: 'Area 52', region: 'us', ilvl: 634, io: 2540, attending: true },
-    { id: 'kk-2', name: 'Addie', className: 'Priest', roles: ['Healer'], keyMin: 5, keyMax: 10, ownedKey: 'Stonevault +8', realm: 'Area 52', region: 'us', ilvl: 626, io: 2320, attending: true },
-    { id: 'kk-3', name: 'Steven', className: 'Hunter', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 629, io: 2410, attending: true },
-    { id: 'kk-4', name: 'Naela', className: 'Mage', roles: ['DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Ara-Kara +9', realm: 'Area 52', region: 'us', ilvl: 633, io: 2590, attending: true },
-    { id: 'kk-5', name: 'Grokdor', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 4, keyMax: 9, ownedKey: 'Mists +7', realm: 'Area 52', region: 'us', ilvl: 621, io: 2160, attending: true },
-    { id: 'kk-6', name: 'Ironbear', className: 'Druid', roles: ['Tank', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: 'Dawnbreaker +6', realm: 'Area 52', region: 'us', ilvl: 625, io: 2280, attending: true },
-    { id: 'kk-7', name: 'Mistweaver', className: 'Monk', roles: ['Healer', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 631, io: 2490, attending: true },
-    { id: 'kk-8', name: 'Shadowfang', className: 'Rogue', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Necrotic Wake +8', realm: 'Area 52', region: 'us', ilvl: 628, io: 2380, attending: true },
-    { id: 'kk-9', name: 'Totemcaller', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 4, keyMax: 8, ownedKey: 'Siege +5', realm: 'Area 52', region: 'us', ilvl: 618, io: 1980, attending: true },
-    { id: 'kk-10', name: 'Chaosbolt', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 623, io: 2240, attending: true },
-    { id: 'kk-11', name: 'Deathchill', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 8, keyMax: 13, ownedKey: 'City of Threads +11', realm: 'Area 52', region: 'us', ilvl: 637, io: 2680, attending: true },
-    { id: 'kk-12', name: 'Dragonwing', className: 'Evoker', roles: ['Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 629, io: 2420, attending: true },
-    { id: 'kk-13', name: 'Glaivespin', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +8', realm: 'Area 52', region: 'us', ilvl: 634, io: 2550, attending: true },
-    { id: 'kk-14', name: 'PewPewKitten', className: 'Druid', roles: ['DPS'], keyMin: 4, keyMax: 8, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 616, io: 1940, attending: true },
-    { id: 'kk-15', name: 'Lightbringer', className: 'Paladin', roles: ['Healer', 'DPS'], keyMin: 5, keyMax: 9, ownedKey: '', realm: 'Area 52', region: 'us', ilvl: 622, io: 2210, attending: true }
+    // --- Attending Raiders (Forming 3 full groups: 3 Tanks, 3 Healers, 9 DPS) ---
+    { id: 'kk-adrenaline', name: 'Adrenaline', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +10', realm: 'Perenolde', region: 'us', ilvl: 633, io: 2580, rank: 0, attending: true },
+    { id: 'kk-glaiven', name: 'Glaiven', className: 'Demon Hunter', roles: ['DPS', 'Tank'], keyMin: 7, keyMax: 12, ownedKey: 'Ara-Kara +9', realm: 'Perenolde', region: 'us', ilvl: 635, io: 3138, rank: 1, attending: true },
+    { id: 'kk-gredic', name: 'Gredic', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'The Stonevault +8', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2420, rank: 1, attending: true },
+    { id: 'kk-shocktherapy', name: 'Shockthêràpy', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'City of Threads +9', realm: 'Perenolde', region: 'us', ilvl: 631, io: 2470, rank: 1, attending: true },
+    { id: 'kk-ravenlight', name: 'Ravenlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: 'The Dawnbreaker +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2390, rank: 1, attending: true },
+    { id: 'kk-khaidylock', name: 'Khaidylock', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +8', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2350, rank: 1, attending: true },
+    { id: 'kk-khaiduus', name: 'Khaiduus', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2310, rank: 1, attending: true },
+    { id: 'kk-engorged', name: 'Engorged', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: 'The Necrotic Wake +7', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2260, rank: 1, attending: true },
+    { id: 'kk-holyscheisse', name: 'Holyscheisse', className: 'Druid', roles: ['DPS', 'Healer', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Siege of Boralus +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2370, rank: 1, attending: true },
+    { id: 'kk-bearackobama', name: 'Bearackobamà', className: 'Druid', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2220, rank: 1, attending: true },
+    { id: 'kk-charliestar', name: 'Charliestar', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Grim Batol +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2380, rank: 1, attending: true },
+    { id: 'kk-meanssa', name: 'Meanssa', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'The Stonevault +10', realm: 'Perenolde', region: 'us', ilvl: 634, io: 2560, rank: 1, attending: true },
+    { id: 'kk-stirlingskat', name: 'Stirlingskat', className: 'Druid', roles: ['Healer', 'Tank', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2190, rank: 1, attending: true },
+    { id: 'kk-avaryn', name: 'Avaryn', className: 'Druid', roles: ['Healer', 'DPS', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Ara-Kara +8', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2430, rank: 2, attending: true },
+    { id: 'kk-azerite', name: 'Azerite', className: 'Hunter', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +9', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2450, rank: 2, attending: true },
+
+    // --- Other Kith and Kin Guild Members (Available to toggle on or search) ---
+    { id: 'kk-myssa', name: 'Myssa', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2400, rank: 1, attending: false },
+    { id: 'kk-knightlight', name: 'Kníghtlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2330, rank: 1, attending: false },
+    { id: 'kk-ayahuasca', name: 'Ayahuascå', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2240, rank: 1, attending: false },
+    { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2360, rank: 1, attending: false },
+    { id: 'kk-tyberia', name: 'Tyberia', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2280, rank: 2, attending: false },
+    { id: 'kk-tiblock', name: 'Tiblock', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 621, io: 2150, rank: 2, attending: false },
+    { id: 'kk-sploosh', name: 'Splõõsh', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2210, rank: 2, attending: false },
+    { id: 'kk-veralith', name: 'Veralith', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2390, rank: 2, attending: false },
+    { id: 'kk-noxxicc', name: 'Noxxicc', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2320, rank: 2, attending: false },
+    { id: 'kk-haiyu', name: 'Haiyu', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 620, io: 2120, rank: 2, attending: false },
+    { id: 'kk-valkyrin', name: 'Valkyrin', className: 'Paladin', roles: ['Healer', 'Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2340, rank: 2, attending: false },
+    { id: 'kk-bungulator', name: 'Bungulator', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2180, rank: 2, attending: false },
+    { id: 'kk-sylana', name: 'Sylana', className: 'Warrior', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2270, rank: 2, attending: false },
+    { id: 'kk-azernasty', name: 'Azernasty', className: 'Death Knight', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2200, rank: 2, attending: false }
   ];
 
   // --- App State ---
@@ -85,7 +103,10 @@
     formedGroups: [],
     benchedPlayers: [],
     soundEnabled: true,
-    sortField: 'name'
+    sortField: 'io',
+    searchQuery: '',
+    roleFilter: 'all',
+    attendFilter: 'all'
   };
 
   // --- Sound Synthesizer (Web Audio API) ---
@@ -192,7 +213,15 @@
     try {
       const savedPlayers = localStorage.getItem('kk_mplus_players');
       if (savedPlayers) {
-        state.players = JSON.parse(savedPlayers);
+        const parsed = JSON.parse(savedPlayers);
+        // If user has old placeholder data (e.g. kk-1 / MadKing / Area 52), migrate to real Kith and Kin roster
+        const hasOldDummies = Array.isArray(parsed) && parsed.some(p => p.id === 'kk-1' && p.name === 'MadKing');
+        if (hasOldDummies) {
+          state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
+          savePlayers();
+        } else {
+          state.players = parsed;
+        }
       } else {
         state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
         savePlayers();
@@ -206,6 +235,11 @@
       const savedGroups = localStorage.getItem('kk_mplus_groups');
       if (savedGroups) {
         state.formedGroups = JSON.parse(savedGroups);
+      }
+
+      const savedBenched = localStorage.getItem('kk_mplus_benched');
+      if (savedBenched) {
+        state.benchedPlayers = JSON.parse(savedBenched);
       }
     } catch (e) {
       console.warn('Failed to load local state, using defaults', e);
@@ -224,6 +258,7 @@
   function saveGroups() {
     try {
       localStorage.setItem('kk_mplus_groups', JSON.stringify(state.formedGroups));
+      localStorage.setItem('kk_mplus_benched', JSON.stringify(state.benchedPlayers || []));
     } catch (e) {
       console.error('Could not save groups to localStorage', e);
     }
@@ -274,7 +309,7 @@
     return '#f8fafc';
   }
 
-  async function fetchCharacterRaiderIo(name, realm = 'Area 52', region = 'us') {
+  async function fetchCharacterRaiderIo(name, realm = 'Perenolde', region = 'us') {
     if (!name || !name.trim()) throw new Error('Character name is required');
     const cleanName = encodeURIComponent(name.trim());
     const cleanRealm = encodeURIComponent(realm.trim().toLowerCase().replace(/\s+/g, '-').replace(/'/g, ''));
@@ -284,11 +319,14 @@
       throw new Error(`Character "${name}" not found on ${realm} (${region.toUpperCase()})`);
     }
     const data = await res.json();
+    const seasonData = Array.isArray(data.mythic_plus_scores_by_season) 
+      ? data.mythic_plus_scores_by_season[0] 
+      : data.mythic_plus_scores_by_season;
     return {
       name: data.name,
       className: data.class,
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
-      io: Math.round(data.mythic_plus_scores_by_season?.[0]?.scores?.all || 0),
+      io: Math.round(seasonData?.scores?.all || 0),
       avatar: data.thumbnail_url || null,
       profileUrl: data.profile_url || null
     };
@@ -302,8 +340,50 @@
     container.innerHTML = '';
     updateRosterMetrics();
 
-    // Sort players
-    const sorted = [...state.players].sort((a, b) => {
+    // Filter players based on search query, role filter, and attendance filter
+    const filtered = state.players.filter(player => {
+      if (state.searchQuery) {
+        const q = state.searchQuery.toLowerCase();
+        const matchesName = player.name.toLowerCase().includes(q);
+        const matchesClass = (player.className || '').toLowerCase().includes(q);
+        const matchesRealm = (player.realm || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesClass && !matchesRealm) return false;
+      }
+
+      if (state.roleFilter && state.roleFilter !== 'all') {
+        if (!player.roles.includes(state.roleFilter)) return false;
+      }
+
+      if (state.attendFilter === 'attending' && !player.attending) return false;
+      if (state.attendFilter === 'absent' && player.attending) return false;
+
+      return true;
+    });
+
+    // Update roster count badge to show filtered vs total
+    const badge = document.getElementById('rosterCountBadge');
+    if (badge) {
+      const attendingCount = state.players.filter(p => p.attending).length;
+      if (filtered.length !== state.players.length) {
+        badge.textContent = `${filtered.length} / ${state.players.length} (${attendingCount} Attending)`;
+      } else {
+        badge.textContent = `${attendingCount} Attending`;
+      }
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state" style="padding: 2.5rem 1rem;">
+          <div class="empty-icon">🔍</div>
+          <h4>No guild members match your filter</h4>
+          <p>Try clearing your search query or role/status filters to see more members.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Sort filtered players
+    const sorted = [...filtered].sort((a, b) => {
       if (state.sortField === 'name') {
         return a.name.localeCompare(b.name);
       }
@@ -1005,7 +1085,7 @@
       title.textContent = 'Edit Guild Member';
       document.getElementById('playerId').value = p.id;
       document.getElementById('playerNameInput').value = p.name;
-      document.getElementById('playerRealmInput').value = p.realm || 'Area 52';
+      document.getElementById('playerRealmInput').value = p.realm || 'Perenolde';
       document.getElementById('playerRegionSelect').value = p.region || 'us';
       document.getElementById('playerIlvlInput').value = p.ilvl || 625;
       document.getElementById('playerIoInput').value = p.io || 2200;
@@ -1019,7 +1099,7 @@
     } else {
       title.textContent = 'Add Guild Member';
       document.getElementById('playerId').value = '';
-      document.getElementById('playerRealmInput').value = 'Area 52';
+      document.getElementById('playerRealmInput').value = 'Perenolde';
       document.getElementById('playerRegionSelect').value = 'us';
       document.getElementById('playerIlvlInput').value = 625;
       document.getElementById('playerIoInput').value = 2200;
@@ -1037,7 +1117,7 @@
 
   async function handleModalLookupRaiderIo() {
     const name = document.getElementById('playerNameInput').value.trim();
-    const realm = document.getElementById('playerRealmInput').value.trim() || 'Area 52';
+    const realm = document.getElementById('playerRealmInput').value.trim() || 'Perenolde';
     const region = document.getElementById('playerRegionSelect').value;
     const btn = document.getElementById('lookupRaiderIoBtn');
 
@@ -1083,7 +1163,7 @@
       const p = attendees[i];
       btn.textContent = `⏳ Syncing (${i + 1}/${attendees.length})...`;
       try {
-        const data = await fetchCharacterRaiderIo(p.name, p.realm || 'Area 52', p.region || 'us');
+        const data = await fetchCharacterRaiderIo(p.name, p.realm || 'Perenolde', p.region || 'us');
         p.ilvl = data.ilvl || p.ilvl;
         p.io = data.io || p.io;
         p.avatar = data.avatar || p.avatar;
@@ -1109,7 +1189,7 @@
     e.preventDefault();
     const id = document.getElementById('playerId').value;
     const name = document.getElementById('playerNameInput').value.trim();
-    const realm = document.getElementById('playerRealmInput').value.trim() || 'Area 52';
+    const realm = document.getElementById('playerRealmInput').value.trim() || 'Perenolde';
     const region = document.getElementById('playerRegionSelect').value;
     const ilvl = parseInt(document.getElementById('playerIlvlInput').value, 10) || 620;
     const io = parseInt(document.getElementById('playerIoInput').value, 10) || 2000;
@@ -1257,6 +1337,106 @@
     playSound('fanfare');
   }
 
+  // --- Clear Groups Action ---
+  function handleClearGroups() {
+    if ((!state.formedGroups || state.formedGroups.length === 0) && (!state.benchedPlayers || state.benchedPlayers.length === 0)) {
+      showToast('No active groups to clear!');
+      return;
+    }
+    if (confirm('Clear all formed groups and reset to empty state?')) {
+      state.formedGroups = [];
+      state.benchedPlayers = [];
+      saveGroups();
+      renderGroups();
+      playSound('click');
+      showToast('Cleared all formed groups!');
+    }
+  }
+
+  // --- Live Raider.IO Guild Roster Import ---
+  async function handleImportGuild() {
+    const btn = document.getElementById('importGuildBtn');
+    if (!btn) return;
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = '<span>⏳ Syncing Guild...</span>';
+    btn.disabled = true;
+
+    try {
+      const url = 'https://raider.io/api/v1/guilds/profile?region=us&realm=perenolde&name=Kith%20and%20Kin&fields=members';
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Failed to load guild roster (HTTP ${res.status})`);
+      }
+      const data = await res.json();
+      if (!data.members || !Array.isArray(data.members)) {
+        throw new Error('No members found in guild data');
+      }
+
+      // Filter to primary raiders (Rank 0: GM, Rank 1: Officers, Rank 2: Raiders, Rank 3: Veterans/Core)
+      const validMembers = data.members.filter(m => m.character && m.character.name && m.rank <= 3);
+
+      const existingMap = new Map();
+      state.players.forEach(p => {
+        existingMap.set(p.name.toLowerCase(), p);
+      });
+
+      const updatedPlayers = validMembers.map(m => {
+        const c = m.character;
+        const lowerName = c.name.toLowerCase();
+        const existing = existingMap.get(lowerName);
+
+        const className = c.class;
+        const activeRole = c.active_spec_role === 'TANK' ? 'Tank' : (c.active_spec_role === 'HEALING' ? 'Healer' : 'DPS');
+        const classRoles = WOW_CLASSES[className]?.roles || [activeRole];
+        const roles = [activeRole, ...classRoles.filter(r => r !== activeRole)];
+
+        // Preselect attendance for GM, Officer, and Raider ranks (rank <= 2)
+        const isRaiderRank = m.rank <= 2;
+
+        if (existing) {
+          return {
+            ...existing,
+            className: className || existing.className,
+            roles: existing.roles?.length ? existing.roles : roles,
+            realm: c.realm || existing.realm || 'Perenolde',
+            region: c.region || existing.region || 'us',
+            rank: m.rank,
+            avatar: c.thumbnail_url || existing.avatar || null
+          };
+        } else {
+          return {
+            id: 'kk-' + c.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+            name: c.name,
+            className: className,
+            roles: roles,
+            keyMin: 5,
+            keyMax: 11,
+            ownedKey: '',
+            realm: c.realm || 'Perenolde',
+            region: c.region || 'us',
+            ilvl: 625,
+            io: 2200,
+            rank: m.rank,
+            attending: isRaiderRank,
+            avatar: c.thumbnail_url || null
+          };
+        }
+      });
+
+      state.players = updatedPlayers;
+      savePlayers();
+      renderRoster();
+      playSound('fanfare');
+      showToast(`Imported ${validMembers.length} Kith & Kin members! Raider ranks pre-selected.`);
+    } catch (err) {
+      console.error('Guild sync error:', err);
+      alert('Could not sync guild from Raider.IO: ' + err.message);
+    } finally {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    }
+  }
+
   // --- Sound Toggle ---
   function toggleSound() {
     state.soundEnabled = !state.soundEnabled;
@@ -1323,6 +1503,49 @@
     // Sync All Raider.IO trigger
     document.getElementById('syncRaiderIoBtn').addEventListener('click', handleSyncAllRaiderIo);
 
+    // Live Guild Sync trigger
+    const importGuildBtn = document.getElementById('importGuildBtn');
+    if (importGuildBtn) {
+      importGuildBtn.addEventListener('click', handleImportGuild);
+    }
+
+    // Search and Filter controls
+    const searchInput = document.getElementById('rosterSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        state.searchQuery = e.target.value.trim();
+        if (clearSearchBtn) {
+          clearSearchBtn.style.display = state.searchQuery ? 'inline-flex' : 'none';
+        }
+        renderRoster();
+      });
+    }
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        state.searchQuery = '';
+        clearSearchBtn.style.display = 'none';
+        renderRoster();
+      });
+    }
+
+    const roleFilter = document.getElementById('roleFilterSelect');
+    if (roleFilter) {
+      roleFilter.addEventListener('change', (e) => {
+        state.roleFilter = e.target.value;
+        renderRoster();
+      });
+    }
+
+    const attendFilter = document.getElementById('attendFilterSelect');
+    if (attendFilter) {
+      attendFilter.addEventListener('change', (e) => {
+        state.attendFilter = e.target.value;
+        renderRoster();
+      });
+    }
+
     // Import / Export triggers
     document.getElementById('openImportBtn').addEventListener('click', openImportExportModal);
     document.getElementById('closeImportModalBtn').addEventListener('click', closeImportExportModal);
@@ -1367,6 +1590,12 @@
     // Group Generation
     document.getElementById('generateGroupsBtn').addEventListener('click', () => handleGenerateGroups(false));
     document.getElementById('rerollUnlockedBtn').addEventListener('click', () => handleGenerateGroups(true));
+
+    // Clear Groups
+    const clearGroupsBtn = document.getElementById('clearGroupsBtn');
+    if (clearGroupsBtn) {
+      clearGroupsBtn.addEventListener('click', handleClearGroups);
+    }
 
     // Discord post copy
     document.getElementById('copyDiscordBtn').addEventListener('click', copyAllToDiscord);
