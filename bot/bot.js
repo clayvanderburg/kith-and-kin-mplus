@@ -47,6 +47,8 @@ client.on('interactionCreate', async (interaction) => {
   try {
     if (interaction.isChatInputCommand()) {
       await handleSlashCommand(interaction);
+    } else if (interaction.isAutocomplete()) {
+      await handleAutocomplete(interaction);
     } else if (interaction.isButton()) {
       await handleButtonInteraction(interaction);
     } else if (interaction.isStringSelectMenu()) {
@@ -64,6 +66,53 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 });
+
+async function handleAutocomplete(interaction) {
+  try {
+    const focusedOption = interaction.options.getFocused(true);
+    if (focusedOption.name === 'character') {
+      const query = (focusedOption.value || '').trim().toLowerCase();
+      let choices = [];
+      try {
+        const rosterData = require('./guild-roster.json');
+        if (Array.isArray(rosterData)) {
+          if (!query) {
+            choices = rosterData.slice(0, 25).map(c => ({
+              name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
+              value: c.name
+            }));
+          } else {
+            const exactMatches = [];
+            const prefixMatches = [];
+            const includesMatches = [];
+            for (const c of rosterData) {
+              const lower = c.name.toLowerCase();
+              if (lower === query) exactMatches.push(c);
+              else if (lower.startsWith(query)) prefixMatches.push(c);
+              else if (lower.includes(query)) includesMatches.push(c);
+            }
+            const combined = [...exactMatches, ...prefixMatches, ...includesMatches];
+            choices = combined.slice(0, 24).map(c => ({
+              name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
+              value: c.name
+            }));
+            if (!exactMatches.length && focusedOption.value) {
+              choices.unshift({
+                name: `➕ "${focusedOption.value}" (Custom / Not in Guild)`,
+                value: focusedOption.value
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Bot Autocomplete] Error reading roster:', err);
+      }
+      await interaction.respond(choices.slice(0, 25));
+    }
+  } catch (err) {
+    console.error('[Bot Autocomplete] Error responding to autocomplete:', err);
+  }
+}
 
 async function handleSlashCommand(interaction) {
   if (interaction.commandName !== 'mplus') return;
@@ -683,7 +732,7 @@ async function handleSelectMenuInteraction(interaction) {
 }
 
 async function handleModalSubmit(interaction) {
-  if (interaction.customId === 'modal_signup_custom') {
+  if (interaction.customId === 'modal_signup_custom' || interaction.customId === 'modal_custom_signup') {
     await interaction.deferReply({ ephemeral: true });
     const charName = interaction.fields.getTextInputValue('char_name').trim();
     const rolesStr = interaction.fields.getTextInputValue('char_roles').trim();

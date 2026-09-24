@@ -15,7 +15,8 @@ const commands = [
         .addStringOption(opt =>
           opt
             .setName('character')
-            .setDescription('Your World of Warcraft character name')
+            .setDescription('Your World of Warcraft character name (type to search guild roster)')
+            .setAutocomplete(true)
             .setRequired(true)
         )
         .addStringOption(opt =>

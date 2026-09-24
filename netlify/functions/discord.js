@@ -84,7 +84,7 @@ async function loadState() {
       const raw = await store.get('current_state');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.players) && parsed.players.length > 0) {
+        if (parsed && Array.isArray(parsed.players)) {
           memoryState = parsed;
           return parsed;
         }
@@ -97,7 +97,7 @@ async function loadState() {
   if (fs.existsSync(TMP_FILE)) {
     try {
       const parsed = JSON.parse(fs.readFileSync(TMP_FILE, 'utf8'));
-      if (parsed && Array.isArray(parsed.players) && parsed.players.length > 0) {
+      if (parsed && Array.isArray(parsed.players)) {
         memoryState = parsed;
         return parsed;
       }
@@ -117,6 +117,14 @@ async function loadState() {
 async function saveState(data) {
   memoryState = data;
   data.lastUpdated = new Date().toISOString();
+
+  // If events exist, keep current event in sync
+  if (data.currentEventId && data.events && data.events[data.currentEventId]) {
+    data.events[data.currentEventId].players = data.players || [];
+    data.events[data.currentEventId].formedGroups = data.formedGroups || [];
+    data.events[data.currentEventId].benchedPlayers = data.benchedPlayers || [];
+    data.events[data.currentEventId].lastUpdated = data.lastUpdated;
+  }
 
   // 1. Write to /tmp immediately (<2ms)
   try {
@@ -250,6 +258,81 @@ exports.handler = async (event, context) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 1 }) // PONG
     };
+  }
+
+  // 2b. Autocomplete Interaction (Type 4)
+  if (interaction.type === 4) {
+    let focusedOption = null;
+    if (interaction.data?.options) {
+      for (const opt of interaction.data.options) {
+        if (opt.focused) {
+          focusedOption = opt;
+          break;
+        }
+        if (opt.options) {
+          for (const subOpt of opt.options) {
+            if (subOpt.focused) {
+              focusedOption = subOpt;
+              break;
+            }
+          }
+        }
+        if (focusedOption) break;
+      }
+    }
+
+    const query = (focusedOption?.value || '').trim().toLowerCase();
+    let choices = [];
+
+    try {
+      const rosterData = require('../../bot/guild-roster.json');
+      if (Array.isArray(rosterData)) {
+        if (!query) {
+          choices = rosterData.slice(0, 25).map(c => ({
+            name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
+            value: c.name
+          }));
+        } else {
+          const exactMatches = [];
+          const prefixMatches = [];
+          const includesMatches = [];
+
+          for (const c of rosterData) {
+            const lowerName = c.name.toLowerCase();
+            if (lowerName === query) {
+              exactMatches.push(c);
+            } else if (lowerName.startsWith(query)) {
+              prefixMatches.push(c);
+            } else if (lowerName.includes(query)) {
+              includesMatches.push(c);
+            }
+          }
+
+          const combined = [...exactMatches, ...prefixMatches, ...includesMatches];
+          choices = combined.slice(0, 24).map(c => ({
+            name: `${c.name} (${c.className || 'Player'} - ${c.realm || 'Cenarius'})`,
+            value: c.name
+          }));
+
+          // If typed query doesn't exactly match someone, offer custom/alt choice
+          if (!exactMatches.length && focusedOption?.value) {
+            choices.unshift({
+              name: `➕ "${focusedOption.value}" (Custom / Not in Guild)`,
+              value: focusedOption.value
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Discord Autocomplete] Error loading roster:', err);
+    }
+
+    return jsonResponse({
+      type: 8, // APPLICATION_COMMAND_AUTOCOMPLETE_RESULT
+      data: {
+        choices: choices.slice(0, 25)
+      }
+    });
   }
 
   const state = await loadState();
@@ -571,6 +654,22 @@ exports.handler = async (event, context) => {
       if (targetPlayer) {
         targetPlayer.discordId = discordUser.id;
         saveState(state).catch(() => {});
+      } else if (selected && selected !== '__custom__') {
+        targetPlayer = {
+          id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name: selected,
+          className: 'Warrior',
+          realm: 'Cenarius',
+          roles: ['DPS'],
+          keyMin: 10,
+          keyMax: 12,
+          keyBrackets: ['10-12'],
+          attending: false,
+          discordId: discordUser.id
+        };
+        state.players = state.players || [];
+        state.players.push(targetPlayer);
+        saveState(state).catch(() => {});
       }
 
       const components = embeds ? embeds.createSignupFormComponents({
@@ -610,14 +709,18 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // 4. Select Key Range
+    // 4. Select Key Goals & Brackets Multi-Select
     if (customId === 'select_key_range') {
-      const range = interaction.data.values?.[0] || '12-15';
-      const parts = range.split('-');
+      const selectedBrackets = interaction.data.values || ['10-12'];
       let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
-      if (targetPlayer && parts.length === 2) {
-        targetPlayer.keyMin = parseInt(parts[0], 10);
-        targetPlayer.keyMax = parseInt(parts[1], 10);
+      if (targetPlayer) {
+        targetPlayer.keyBrackets = selectedBrackets;
+        let minKey = 10, maxKey = 12;
+        if (selectedBrackets.includes('6-8')) { minKey = 6; maxKey = Math.max(maxKey, 8); }
+        if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 10); maxKey = Math.max(maxKey, 12); }
+        if (selectedBrackets.includes('12+')) { maxKey = Math.max(maxKey, 18); }
+        targetPlayer.keyMin = minKey;
+        targetPlayer.keyMax = maxKey;
         saveState(state).catch(() => {});
       }
       const components = embeds ? embeds.createSignupFormComponents({
@@ -628,7 +731,7 @@ exports.handler = async (event, context) => {
       return jsonResponse({
         type: 7,
         data: {
-          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Comfortable Key Range set to: **+${targetPlayer?.keyMin || parts[0]} to +${targetPlayer?.keyMax || parts[1]}**`,
+          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Key goals set to: **${selectedBrackets.join(', ')}** (+${targetPlayer?.keyMin || 10} to +${targetPlayer?.keyMax || 15})`,
           components
         }
       });
@@ -684,16 +787,16 @@ exports.handler = async (event, context) => {
       await saveState(state);
 
       let badges = [];
-      if (player.isLeader) badges.push('👑 Born Leader');
-      if (player.isReserve) badges.push('🍺 Voluntary Reserve');
-      if (player.carryPreference === 'need_carry') badges.push('🎒 Needs Carry');
-      if (player.carryPreference === 'willing_carry') badges.push('🏋️ Stronk Back');
-      if (player.isShitter) badges.push('💩 Shitter');
+      if (rsvpPlayer.isLeader) badges.push('👑 Born Leader');
+      if (rsvpPlayer.isReserve) badges.push('🍺 Voluntary Reserve');
+      if (rsvpPlayer.carryPreference === 'need_carry') badges.push('🎒 Needs Carry');
+      if (rsvpPlayer.carryPreference === 'willing_carry') badges.push('🏋️ Stronk Back');
+      if (rsvpPlayer.isShitter) badges.push('💩 Shitter');
 
       return jsonResponse({
         type: 7,
         data: {
-          content: `🎉 **RSVP Confirmed for ${player.name}!**\n• Role(s): **${(player.roles || []).join('/')}**\n• Keys: **+${player.keyMin} to +${player.keyMax}**${badges.length ? '\n• Preferences: ' + badges.join(', ') : ''}\n\nSynced to the [web dashboard](${WEB_URL})! Click **Refresh 🔄** on the main event card to view the updated roster lineup.`,
+          content: `🎉 **RSVP Confirmed for ${rsvpPlayer.name}!**\n• Role(s): **${(rsvpPlayer.roles || []).join('/')}**\n• Keys: **+${rsvpPlayer.keyMin} to +${rsvpPlayer.keyMax}**${badges.length ? '\n• Preferences: ' + badges.join(', ') : ''}\n\nSynced to the [web dashboard](${WEB_URL})! Click **Refresh 🔄** on the main event card to view the updated roster lineup.`,
           components: []
         }
       });
@@ -852,11 +955,70 @@ exports.handler = async (event, context) => {
   // 5. Modal Submissions (Type 5)
   if (interaction.type === 5) {
     const customId = interaction.data.custom_id;
+    const components = interaction.data.components || [];
+    const getVal = (cid) => components.flatMap(c => c.components || []).find(x => x.custom_id === cid)?.value;
+    const discordUser = interaction.member?.user || interaction.user;
+
+    // Handle Custom / Alt Character Modal Submit
+    if (customId === 'modal_signup_custom' || customId === 'modal_custom_signup') {
+      const charName = getVal('char_name');
+      const rolesStr = getVal('char_roles') || 'DPS';
+      const keyRangeStr = getVal('key_range') || '10-12';
+      const roles = rolesStr.split(/[,/ ]+/).filter(Boolean);
+
+      let [minK, maxK] = [10, 12];
+      const match = keyRangeStr.match(/(\d+)\s*[-–to ]+\s*(\d+)/i);
+      if (match) {
+        minK = parseInt(match[1], 10);
+        maxK = parseInt(match[2], 10);
+      }
+
+      let rIo = null;
+      try {
+        rIo = await lookupRaiderIo(charName);
+      } catch (e) {}
+
+      let player = (state.players || []).find(p => p.name.toLowerCase() === (charName || '').toLowerCase());
+      const playerRecord = {
+        id: player?.id || `discord-${Date.now()}`,
+        discordId: discordUser.id,
+        name: rIo?.name || charName,
+        className: rIo?.className || player?.className || 'Warrior',
+        realm: rIo?.realm || player?.realm || 'Perenolde',
+        ilvl: rIo?.ilvl || player?.ilvl || 320,
+        io: rIo?.io || player?.io || 0,
+        roles: roles.length ? roles : ['DPS'],
+        keyMin: minK,
+        keyMax: maxK,
+        keyBrackets: maxK > 12 ? ['12+'] : (maxK >= 10 ? ['10-12'] : ['6-8']),
+        ownedKey: rIo?.ownedKey || player?.ownedKey || '',
+        attending: true,
+        carryPreference: player?.carryPreference || 'none',
+        isShitter: !!player?.isShitter,
+        isLeader: !!player?.isLeader,
+        isReserve: !!player?.isReserve
+      };
+
+      if (player) {
+        Object.assign(player, playerRecord);
+      } else {
+        state.players = state.players || [];
+        state.players.push(playerRecord);
+      }
+
+      await saveState(state);
+
+      return jsonResponse({
+        type: 4,
+        data: {
+          content: `🎉 Registered custom character **${playerRecord.name}** (${playerRecord.className}) as **${playerRecord.roles.join('/')}**!\n- **Item Level:** ${playerRecord.ilvl} | **IO:** ${playerRecord.io.toLocaleString()}\n- **Key Range:** +${playerRecord.keyMin} to +${playerRecord.keyMax}${playerRecord.ownedKey ? ` | 🔑 ${playerRecord.ownedKey}` : ''}\nSynced with the [live web app](${WEB_URL})!`,
+          flags: 64
+        }
+      });
+    }
+
     if (customId.startsWith('modal_signup_')) {
       const role = customId.replace('modal_signup_', '');
-      const components = interaction.data.components;
-      const getVal = (cid) => components.flatMap(c => c.components).find(x => x.custom_id === cid)?.value;
-
       const charName = getVal('char_name');
       const keyRangeStr = getVal('key_range') || '8-14';
       const manualKey = getVal('owned_key');
@@ -866,9 +1028,8 @@ exports.handler = async (event, context) => {
       if (isNaN(maxK)) maxK = 12;
 
       const rIo = await lookupRaiderIo(charName);
-      const discordUser = interaction.member?.user || interaction.user;
 
-      let player = (state.players || []).find(p => p.name.toLowerCase() === charName.toLowerCase());
+      let player = (state.players || []).find(p => p.name.toLowerCase() === (charName || '').toLowerCase());
       const playerRecord = {
         id: player?.id || `discord-${Date.now()}`,
         discordId: discordUser.id,

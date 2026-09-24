@@ -100,7 +100,9 @@
     sortField: 'io',
     searchQuery: '',
     roleFilter: 'all',
-    attendFilter: 'all'
+    attendFilter: 'all',
+    events: {},
+    currentEventId: 'event-default'
   };
 
   // --- Sound Synthesizer (Web Audio API) ---
@@ -209,30 +211,43 @@
   // --- LocalStorage Persistence ---
   function loadState() {
     try {
+      // 1. Events
+      const savedEvents = localStorage.getItem('kk_mplus_events');
+      if (savedEvents) {
+        try {
+          state.events = JSON.parse(savedEvents) || {};
+        } catch (e) {}
+      }
+      const savedEvId = localStorage.getItem('kk_mplus_current_event_id');
+      if (savedEvId && state.events[savedEvId]) {
+        state.currentEventId = savedEvId;
+      }
+
+      // 2. Players
       const savedPlayers = localStorage.getItem('kk_mplus_players');
       if (savedPlayers) {
         const parsed = JSON.parse(savedPlayers);
-        // If user has old placeholder data or TWW dungeons, migrate to real Kith and Kin Midnight Season 2 roster
         const hasOldDummies = Array.isArray(parsed) && parsed.some(p => p.id === 'kk-1' && p.name === 'MadKing');
         const hasOldTww = Array.isArray(parsed) && parsed.some(p => p.ownedKey && (p.ownedKey.includes('Grim Batol') || p.ownedKey.includes('Ara-Kara') || p.ownedKey.includes('Stonevault') || p.ownedKey.includes('Dawnbreaker')));
         const isNotMn2 = !localStorage.getItem('kk_mplus_version_mn2');
         if (hasOldDummies || hasOldTww || isNotMn2) {
           state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
           localStorage.setItem('kk_mplus_version_mn2', 'true');
-          savePlayers();
+          savePlayersLocal();
         } else {
           state.players = parsed.map(p => ({
             ...p,
             carryPreference: p.carryPreference || 'none',
             isShitter: !!p.isShitter,
             isLeader: !!p.isLeader,
-            isReserve: !!p.isReserve
+            isReserve: !!p.isReserve,
+            keyBrackets: p.keyBrackets || (p.keyMax > 12 ? ['12+'] : (p.keyMax >= 10 ? ['10-12'] : ['6-8']))
           }));
         }
       } else {
         state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
         localStorage.setItem('kk_mplus_version_mn2', 'true');
-        savePlayers();
+        savePlayersLocal();
       }
 
       const soundPref = localStorage.getItem('kk_mplus_sound');
@@ -256,10 +271,162 @@
           state.excludedDungeons = JSON.parse(savedExclusions);
         } catch (e) {}
       }
+
+      initEvents();
     } catch (e) {
       console.warn('Failed to load local state, using defaults', e);
       state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
     }
+  }
+
+  function initEvents() {
+    if (!state.events || Object.keys(state.events).length === 0) {
+      const defaultId = 'event-default';
+      state.events = {
+        [defaultId]: {
+          id: defaultId,
+          name: 'Friday M+ Night (Current)',
+          date: new Date().toISOString(),
+          players: state.players || [],
+          formedGroups: state.formedGroups || [],
+          benchedPlayers: state.benchedPlayers || []
+        }
+      };
+      state.currentEventId = defaultId;
+    }
+    renderEventDropdown();
+  }
+
+  function renderEventDropdown() {
+    const select = document.getElementById('eventSelect');
+    if (!select) return;
+    const entries = Object.values(state.events || {});
+    if (entries.length === 0) {
+      select.innerHTML = '<option value="">(No events)</option>';
+      return;
+    }
+    select.innerHTML = entries.map(ev => 
+      `<option value="${ev.id}" ${ev.id === state.currentEventId ? 'selected' : ''}>${escapeHtml(ev.name)}</option>`
+    ).join('');
+  }
+
+  function handleSwitchEvent(newId) {
+    if (!state.events || !state.events[newId] || newId === state.currentEventId) return;
+
+    // Save current event state first
+    if (state.events[state.currentEventId]) {
+      state.events[state.currentEventId].players = JSON.parse(JSON.stringify(state.players));
+      state.events[state.currentEventId].formedGroups = JSON.parse(JSON.stringify(state.formedGroups));
+      state.events[state.currentEventId].benchedPlayers = JSON.parse(JSON.stringify(state.benchedPlayers));
+      state.events[state.currentEventId].lastUpdated = new Date().toISOString();
+    }
+
+    state.currentEventId = newId;
+    const target = state.events[newId];
+    state.players = target.players || [];
+    state.formedGroups = target.formedGroups || [];
+    state.benchedPlayers = target.benchedPlayers || [];
+
+    savePlayersLocal();
+    saveGroupsLocal();
+    saveEventsLocal();
+    renderEventDropdown();
+    renderRoster();
+    renderGroups();
+    pushRemoteState();
+    showToast(`Switched to: ${target.name}`);
+    playSound('click');
+  }
+
+  function handleCreateEvent() {
+    const defaultName = `Friday M+ Night — ${new Date(Date.now() + 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    const name = prompt('Enter a name for the new Mythic+ Event Lineup:', defaultName);
+    if (!name || !name.trim()) return;
+
+    const newId = 'event-' + Date.now();
+    // Save current first
+    if (state.events[state.currentEventId]) {
+      state.events[state.currentEventId].players = JSON.parse(JSON.stringify(state.players));
+      state.events[state.currentEventId].formedGroups = JSON.parse(JSON.stringify(state.formedGroups));
+      state.events[state.currentEventId].benchedPlayers = JSON.parse(JSON.stringify(state.benchedPlayers));
+    }
+
+    state.events[newId] = {
+      id: newId,
+      name: name.trim(),
+      date: new Date().toISOString(),
+      players: [],
+      formedGroups: [],
+      benchedPlayers: []
+    };
+    state.currentEventId = newId;
+    state.players = [];
+    state.formedGroups = [];
+    state.benchedPlayers = [];
+
+    savePlayersLocal();
+    saveGroupsLocal();
+    saveEventsLocal();
+    renderEventDropdown();
+    renderRoster();
+    renderGroups();
+    pushRemoteState();
+    showToast(`Created new event: ${name.trim()}!`);
+    playSound('fanfare');
+  }
+
+  function handleDeleteEvent() {
+    const current = state.events?.[state.currentEventId];
+    if (!current) return;
+    const count = Object.keys(state.events).length;
+    if (count <= 1) {
+      if (confirm(`Clear all attendees and groups for "${current.name}"?`)) {
+        state.players = [];
+        state.formedGroups = [];
+        state.benchedPlayers = [];
+        current.players = [];
+        current.formedGroups = [];
+        current.benchedPlayers = [];
+        savePlayersLocal();
+        saveGroupsLocal();
+        saveEventsLocal();
+        renderRoster();
+        renderGroups();
+        pushRemoteState();
+        showToast(`Cleared event "${current.name}"!`);
+        playSound('click');
+      }
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete event "${current.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    delete state.events[state.currentEventId];
+    const remainingIds = Object.keys(state.events);
+    state.currentEventId = remainingIds[0];
+    const nextEv = state.events[state.currentEventId];
+    state.players = nextEv.players || [];
+    state.formedGroups = nextEv.formedGroups || [];
+    state.benchedPlayers = nextEv.benchedPlayers || [];
+
+    savePlayersLocal();
+    saveGroupsLocal();
+    saveEventsLocal();
+    renderEventDropdown();
+    renderRoster();
+    renderGroups();
+    pushRemoteState();
+    showToast(`Deleted event. Switched to: ${nextEv.name}`);
+    playSound('click');
+  }
+
+  function saveEventsLocal() {
+    try {
+      localStorage.setItem('kk_mplus_events', JSON.stringify(state.events || {}));
+      localStorage.setItem('kk_mplus_current_event_id', state.currentEventId);
+    } catch (e) {}
   }
 
   function saveExclusions() {
@@ -304,7 +471,7 @@
     updateSyncStatus('syncing', 'Syncing...');
 
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}?_t=${Date.now()}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
         cache: 'no-store'
@@ -313,14 +480,25 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
-      if (data && !data.empty && Array.isArray(data.players) && data.players.length > 0) {
-        state.players = data.players.map(p => ({
-          ...p,
-          carryPreference: p.carryPreference || 'none',
-          isShitter: !!p.isShitter,
-          isLeader: !!p.isLeader,
-          isReserve: !!p.isReserve
-        }));
+      if (data && !data.empty) {
+        if (data.events && typeof data.events === 'object' && Object.keys(data.events).length > 0) {
+          state.events = data.events;
+          if (data.currentEventId && state.events[data.currentEventId]) {
+            state.currentEventId = data.currentEventId;
+          }
+          renderEventDropdown();
+        }
+
+        if (Array.isArray(data.players)) {
+          state.players = data.players.map(p => ({
+            ...p,
+            carryPreference: p.carryPreference || 'none',
+            isShitter: !!p.isShitter,
+            isLeader: !!p.isLeader,
+            isReserve: !!p.isReserve,
+            keyBrackets: p.keyBrackets || (p.keyMax > 12 ? ['12+'] : (p.keyMax >= 10 ? ['10-12'] : ['6-8']))
+          }));
+        }
 
         if (Array.isArray(data.formedGroups)) {
           state.formedGroups = data.formedGroups;
@@ -330,11 +508,11 @@
         }
         if (Array.isArray(data.excludedDungeons)) {
           state.excludedDungeons = data.excludedDungeons;
-          renderDungeonChips();
         }
 
         savePlayersLocal();
         saveGroupsLocal();
+        saveEventsLocal();
         renderRoster();
         renderGroups();
         updateSyncStatus('synced', 'Discord Synced');
@@ -342,9 +520,7 @@
           showToast('✨ Synced roster with Discord bot & cloud!');
         }
       } else {
-        // Remote is uninitialized, push current local state to cloud
         updateSyncStatus('synced', 'Discord Ready');
-        pushRemoteState();
       }
     } catch (err) {
       console.warn('[Cloud Sync] Fetch error, continuing with local state:', err);
@@ -359,11 +535,19 @@
     updateSyncStatus('syncing', 'Saving...');
     pushDebounceTimer = setTimeout(async () => {
       try {
+        if (state.events && state.currentEventId && state.events[state.currentEventId]) {
+          state.events[state.currentEventId].players = state.players;
+          state.events[state.currentEventId].formedGroups = state.formedGroups;
+          state.events[state.currentEventId].benchedPlayers = state.benchedPlayers || [];
+        }
+
         const payload = {
           players: state.players,
           formedGroups: state.formedGroups,
           benchedPlayers: state.benchedPlayers || [],
           excludedDungeons: state.excludedDungeons || [],
+          events: state.events || {},
+          currentEventId: state.currentEventId || null,
           lastUpdated: new Date().toISOString()
         };
         const res = await fetch(API_URL, {
@@ -384,7 +568,7 @@
         console.warn('[Cloud Sync] Push error:', err);
         updateSyncStatus('offline', 'Local Storage');
       }
-    }, 1200);
+    }, 1000);
   }
 
   function savePlayersLocal() {
@@ -631,7 +815,7 @@
           </div>
           <div class="player-key-row">
             ${player.ownedKey ? `<span class="key-owned-pill" title="Active Keystone: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
-            <span class="key-range-pill" title="Comfortable key level range">🎯 Keys +${player.keyMin} – +${player.keyMax}</span>
+            <span class="key-range-pill" title="Comfortable key level range">🎯 ${player.keyBrackets && player.keyBrackets.length > 0 ? player.keyBrackets.map(b => b === '6-8' ? '6-8 (Hero)' : (b === '10-12' ? '10-12 (Vault)' : '12+ (Push)')).join(' • ') : `+${player.keyMin} – +${player.keyMax}`}</span>
           </div>
         </div>
       `;
@@ -1076,9 +1260,155 @@
     playSound('click');
   }
 
+  // --- Keystone Roulette & Party Key Actions ---
+  function updateRouletteTargetGroups() {
+    const targetGroupSelect = document.getElementById('rouletteTargetGroupSelect');
+    const promptEl = document.getElementById('rouletteNoGroupPrompt');
+    const heldKeysWrap = document.getElementById('groupHeldKeysWrap');
+    const filterWrap = document.getElementById('groupFilterWrap');
+    const actionRow = document.getElementById('rouletteActionRow');
+    if (!targetGroupSelect) return;
+
+    if (!state.formedGroups || state.formedGroups.length === 0) {
+      targetGroupSelect.innerHTML = `<option value="">-- No Formed Parties Yet --</option>`;
+      targetGroupSelect.disabled = true;
+      if (promptEl) promptEl.style.display = 'block';
+      if (heldKeysWrap) heldKeysWrap.style.display = 'none';
+      if (filterWrap) filterWrap.style.display = 'none';
+      if (actionRow) actionRow.style.display = 'none';
+      return;
+    }
+
+    targetGroupSelect.disabled = false;
+    let selectedVal = targetGroupSelect.value;
+    let opts = `<option value="">-- Choose a Formed Party --</option>`;
+    state.formedGroups.forEach((g, idx) => {
+      opts += `<option value="${idx}">Party ${idx + 1}: ${escapeHtml(g.name)}</option>`;
+    });
+    targetGroupSelect.innerHTML = opts;
+
+    if (selectedVal !== '' && selectedVal !== null && state.formedGroups[parseInt(selectedVal, 10)]) {
+      targetGroupSelect.value = selectedVal;
+      renderSelectedPartyRoulette(parseInt(selectedVal, 10));
+    } else {
+      targetGroupSelect.value = '0';
+      renderSelectedPartyRoulette(0);
+    }
+  }
+
+  function renderSelectedPartyRoulette(grpIdx) {
+    const promptEl = document.getElementById('rouletteNoGroupPrompt');
+    const heldKeysWrap = document.getElementById('groupHeldKeysWrap');
+    const filterWrap = document.getElementById('groupFilterWrap');
+    const actionRow = document.getElementById('rouletteActionRow');
+    const keysList = document.getElementById('groupKeysList');
+    const chipsContainer = document.getElementById('groupDungeonChips');
+    const rollBtn = document.getElementById('rollKeystoneBtn');
+    const levelInput = document.getElementById('rouletteLevelInput');
+
+    if (isNaN(grpIdx) || !state.formedGroups || !state.formedGroups[grpIdx]) {
+      if (promptEl) promptEl.style.display = 'block';
+      if (heldKeysWrap) heldKeysWrap.style.display = 'none';
+      if (filterWrap) filterWrap.style.display = 'none';
+      if (actionRow) actionRow.style.display = 'none';
+      return;
+    }
+
+    const grp = state.formedGroups[grpIdx];
+    grp.excludedDungeons = grp.excludedDungeons || [];
+
+    if (promptEl) promptEl.style.display = 'none';
+    if (heldKeysWrap) heldKeysWrap.style.display = 'block';
+    if (filterWrap) filterWrap.style.display = 'block';
+    if (actionRow) actionRow.style.display = 'flex';
+
+    // 1. Render Group Held Keys
+    const partyMembers = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
+    const heldKeys = partyMembers.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+
+    if (keysList) {
+      if (heldKeys.length > 0) {
+        keysList.innerHTML = heldKeys.map(p => {
+          const dung = p.ownedKey.split('+')[0].trim();
+          const isExcluded = grp.excludedDungeons.includes(dung);
+          return `<div class="party-held-key-badge ${isExcluded ? 'key-excluded' : ''}" title="${escapeHtml(p.name)}'s key">
+            <strong class="holder-name">${escapeHtml(p.name)}:</strong>
+            <span class="holder-key">🔑 ${escapeHtml(p.ownedKey)}</span>
+            ${isExcluded ? '<span class="pill-excluded-tag">(Excluded)</span>' : ''}
+          </div>`;
+        }).join('');
+      } else {
+        keysList.innerHTML = `<span class="no-keys-hint">No party members currently have an active keystone recorded in bags.</span>`;
+      }
+    }
+
+    // Default source selection
+    const sourceSelect = document.getElementById('rouletteSourceSelect');
+    if (sourceSelect) {
+      if (heldKeys.length > 0 && sourceSelect.value === 'pool') {
+        sourceSelect.value = 'held';
+      } else if (heldKeys.length === 0 && sourceSelect.value === 'held') {
+        sourceSelect.value = 'pool';
+      }
+    }
+
+    // 2. Render Party Exclusion Chips
+    if (chipsContainer) {
+      chipsContainer.innerHTML = DUNGEONS_MIDNIGHT_S2.map(dung => {
+        const isExcluded = grp.excludedDungeons.includes(dung);
+        return `<button type="button" class="dungeon-chip ${isExcluded ? 'excluded' : 'active'}" data-dungeon="${escapeHtml(dung)}" data-group="${grpIdx}">
+          <span class="chip-status">${isExcluded ? '✕' : '✓'}</span>
+          <span class="chip-name">${escapeHtml(dung)}</span>
+        </button>`;
+      }).join('');
+
+      chipsContainer.querySelectorAll('.dungeon-chip').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const chip = e.currentTarget;
+          const dungName = chip.getAttribute('data-dungeon');
+          if (grp.excludedDungeons.includes(dungName)) {
+            grp.excludedDungeons = grp.excludedDungeons.filter(d => d !== dungName);
+          } else {
+            grp.excludedDungeons.push(dungName);
+          }
+          saveGroupsLocal();
+          renderSelectedPartyRoulette(grpIdx);
+          playSound('click');
+        });
+      });
+    }
+
+    // 3. Update Level Input and Roll Button text
+    if (levelInput) {
+      let targetLvl = 12;
+      if (grp.targetKeyStr) {
+        const match = grp.targetKeyStr.match(/\+(\d+)/);
+        if (match) targetLvl = parseInt(match[1], 10);
+      }
+      levelInput.value = targetLvl;
+    }
+
+    if (rollBtn) {
+      rollBtn.innerHTML = `🎲 Roll Keystone for Party ${grpIdx + 1}!`;
+    }
+  }
+
   function handleRollKeystone() {
-    const source = document.getElementById('rouletteSourceSelect')?.value || 'pool';
-    const targetGroup = document.getElementById('rouletteTargetGroupSelect')?.value || 'all';
+    const targetGroupSelect = document.getElementById('rouletteTargetGroupSelect');
+    const selectedVal = targetGroupSelect?.value;
+    if (selectedVal === '' || selectedVal === null || selectedVal === undefined) {
+      showToast('⚠️ Please select a formed party first!');
+      return;
+    }
+
+    const grpIdx = parseInt(selectedVal, 10);
+    const grp = state.formedGroups?.[grpIdx];
+    if (!grp) {
+      showToast('⚠️ Selected party does not exist!');
+      return;
+    }
+
+    const source = document.getElementById('rouletteSourceSelect')?.value || 'held';
     const levelInput = parseInt(document.getElementById('rouletteLevelInput')?.value, 10) || 12;
     const manualDungeon = document.getElementById('rouletteManualDungeonSelect')?.value || 'Murder Row';
 
@@ -1086,53 +1416,48 @@
     let chosenLevel = levelInput;
     let holders = [];
 
-    const attending = state.players.filter(p => p.attending);
-    const heldKeys = attending.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+    const partyMembers = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
+    const partyHeldKeys = partyMembers.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+
+    grp.excludedDungeons = grp.excludedDungeons || [];
 
     if (source === 'manual') {
       chosenDungeon = manualDungeon;
-      holders = heldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
+      holders = partyHeldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
     } else if (source === 'held') {
-      const allowedHeld = heldKeys.filter(p => {
+      const allowedHeld = partyHeldKeys.filter(p => {
         const dung = p.ownedKey.split('+')[0].trim();
-        return !(state.excludedDungeons || []).includes(dung);
+        return !grp.excludedDungeons.includes(dung);
       });
+
       if (allowedHeld.length === 0) {
-        showToast('⚠️ No attending players hold keys from the allowed pool!');
-        return;
+        showToast('⚠️ No party members hold non-excluded keys! Rolling from Midnight pool instead.');
+        const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !grp.excludedDungeons.includes(d));
+        const poolToUse = allowedPool.length > 0 ? allowedPool : DUNGEONS_MIDNIGHT_S2;
+        chosenDungeon = poolToUse[Math.floor(Math.random() * poolToUse.length)];
+      } else {
+        const picked = allowedHeld[Math.floor(Math.random() * allowedHeld.length)];
+        chosenDungeon = picked.ownedKey.split('+')[0].trim();
+        const match = picked.ownedKey.match(/\+(\d+)/);
+        if (match) chosenLevel = parseInt(match[1], 10);
+        holders = [picked];
       }
-      const picked = allowedHeld[Math.floor(Math.random() * allowedHeld.length)];
-      chosenDungeon = picked.ownedKey.split('+')[0].trim();
-      const match = picked.ownedKey.match(/\+(\d+)/);
-      if (match) chosenLevel = parseInt(match[1], 10);
-      holders = [picked];
     } else {
-      // Allowed pool
-      const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !(state.excludedDungeons || []).includes(d));
+      // Midnight S2 pool
+      const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !grp.excludedDungeons.includes(d));
       const poolToUse = allowedPool.length > 0 ? allowedPool : DUNGEONS_MIDNIGHT_S2;
       chosenDungeon = poolToUse[Math.floor(Math.random() * poolToUse.length)];
-      holders = heldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
+      holders = partyHeldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
     }
 
     const fullKeyStr = `${chosenDungeon} +${chosenLevel}`;
+    grp.dungeon = fullKeyStr;
+    grp.assignedDungeon = fullKeyStr;
+    grp.targetKeyStr = `+${chosenLevel} (Assigned)`;
 
-    // Apply to target group(s)
-    if (state.formedGroups && state.formedGroups.length > 0) {
-      if (targetGroup === 'all') {
-        state.formedGroups.forEach(g => {
-          g.dungeon = fullKeyStr;
-          g.targetKeyStr = `+${chosenLevel} (Assigned)`;
-        });
-      } else {
-        const gIdx = parseInt(targetGroup, 10);
-        if (state.formedGroups[gIdx]) {
-          state.formedGroups[gIdx].dungeon = fullKeyStr;
-          state.formedGroups[gIdx].targetKeyStr = `+${chosenLevel} (Assigned)`;
-        }
-      }
-      saveGroups();
-      renderGroups();
-    }
+    saveGroups();
+    renderGroups();
+    renderSelectedPartyRoulette(grpIdx);
 
     // Display Result Banner
     const banner = document.getElementById('rouletteResultBanner');
@@ -1140,16 +1465,16 @@
     const holdersText = document.getElementById('rouletteHoldersText');
     if (banner && resultText) {
       banner.style.display = 'flex';
-      resultText.textContent = `Rolled: ${fullKeyStr}`;
+      resultText.textContent = `Party ${grpIdx + 1} Assigned: ${fullKeyStr}`;
       if (holders.length > 0) {
         holdersText.textContent = `Held in bags by: ${holders.map(h => `${h.name} (${h.ownedKey})`).join(', ')}`;
       } else {
-        holdersText.textContent = `No attending player holds this exact key (Reroll or push key!)`;
+        holdersText.textContent = `Push key from pool (No member holds this exact key)`;
       }
     }
 
     playSound('keystone');
-    showToast(`🎲 Assigned ${fullKeyStr} to ${targetGroup === 'all' ? 'All Groups' : 'Party ' + (parseInt(targetGroup, 10) + 1)}!`);
+    showToast(`🎲 Assigned ${fullKeyStr} to Party ${grpIdx + 1}!`);
   }
 
   async function handleSyncKeystones() {
@@ -1487,15 +1812,7 @@
     });
 
     // Update Keystone Roulette Target Group Dropdown Options
-    const targetGroupSelect = document.getElementById('rouletteTargetGroupSelect');
-    if (targetGroupSelect) {
-      const currentVal = targetGroupSelect.value;
-      targetGroupSelect.innerHTML = `<option value="all">All Formed Groups</option>` +
-        state.formedGroups.map((g, i) => `<option value="${i}">Party ${i + 1} (${escapeHtml(g.name)})</option>`).join('');
-      if (currentVal && targetGroupSelect.querySelector(`option[value="${currentVal}"]`)) {
-        targetGroupSelect.value = currentVal;
-      }
-    }
+    updateRouletteTargetGroups();
 
     // Render Bench / Tavern Reserves
     if (state.benchedPlayers && state.benchedPlayers.length > 0) {
@@ -1625,6 +1942,15 @@
       document.getElementById('roleTank').checked = p.roles.includes('Tank');
       document.getElementById('roleHealer').checked = p.roles.includes('Healer');
       document.getElementById('roleDps').checked = p.roles.includes('DPS');
+
+      const brackets = p.keyBrackets || (p.keyMax > 12 ? ['12+'] : (p.keyMax >= 10 ? ['10-12'] : ['6-8']));
+      const heroEl = document.getElementById('bracketHeroCrest');
+      const vaultEl = document.getElementById('bracketVaultFill');
+      const pushEl = document.getElementById('bracketIoPush');
+      if (heroEl) heroEl.checked = brackets.includes('6-8');
+      if (vaultEl) vaultEl.checked = brackets.includes('10-12');
+      if (pushEl) pushEl.checked = brackets.includes('12+');
+
       document.getElementById('keyMinInput').value = p.keyMin;
       document.getElementById('keyMaxInput').value = p.keyMax;
       document.getElementById('keystoneInput').value = p.ownedKey || '';
@@ -1648,8 +1974,16 @@
       document.getElementById('playerIlvlInput').value = 625;
       document.getElementById('playerIoInput').value = 2200;
       document.getElementById('roleDps').checked = true;
-      document.getElementById('keyMinInput').value = 4;
-      document.getElementById('keyMaxInput').value = 10;
+
+      const heroEl = document.getElementById('bracketHeroCrest');
+      const vaultEl = document.getElementById('bracketVaultFill');
+      const pushEl = document.getElementById('bracketIoPush');
+      if (heroEl) heroEl.checked = false;
+      if (vaultEl) vaultEl.checked = true;
+      if (pushEl) pushEl.checked = false;
+
+      document.getElementById('keyMinInput').value = 10;
+      document.getElementById('keyMaxInput').value = 12;
       document.getElementById('carryPrefNone').checked = true;
       document.getElementById('isShitterCheck').checked = false;
       document.getElementById('playerIsLeader').checked = false;
@@ -1765,8 +2099,17 @@
       return;
     }
 
-    const keyMin = parseInt(document.getElementById('keyMinInput').value, 10) || 2;
-    const keyMax = parseInt(document.getElementById('keyMaxInput').value, 10) || 15;
+    const brackets = [];
+    if (document.getElementById('bracketHeroCrest')?.checked) brackets.push('6-8');
+    if (document.getElementById('bracketVaultFill')?.checked) brackets.push('10-12');
+    if (document.getElementById('bracketIoPush')?.checked) brackets.push('12+');
+    if (brackets.length === 0) brackets.push('10-12');
+
+    let keyMin = 10, keyMax = 12;
+    if (brackets.includes('6-8')) { keyMin = 6; keyMax = Math.max(keyMax, 8); }
+    if (brackets.includes('10-12')) { keyMin = Math.min(keyMin, 10); keyMax = Math.max(keyMax, 12); }
+    if (brackets.includes('12+')) { keyMax = Math.max(keyMax, 18); }
+
     const ownedKey = document.getElementById('keystoneInput').value.trim();
 
     const carryPrefRadio = document.querySelector('input[name="carryPref"]:checked');
@@ -1786,8 +2129,9 @@
         p.io = io;
         p.className = className;
         p.roles = roles;
-        p.keyMin = Math.min(keyMin, keyMax);
-        p.keyMax = Math.max(keyMin, keyMax);
+        p.keyMin = keyMin;
+        p.keyMax = keyMax;
+        p.keyBrackets = brackets;
         p.ownedKey = ownedKey;
         p.carryPreference = carryPreference;
         p.isShitter = isShitter;
@@ -1806,8 +2150,9 @@
         io,
         className,
         roles,
-        keyMin: Math.min(keyMin, keyMax),
-        keyMax: Math.max(keyMin, keyMax),
+        keyMin,
+        keyMax,
+        keyBrackets: brackets,
         ownedKey,
         carryPreference,
         isShitter,
@@ -2184,38 +2529,50 @@
       clearGroupsBtn.addEventListener('click', handleClearGroups);
     }
 
+    // Event Selector & Management
+    const eventSelect = document.getElementById('eventSelect');
+    if (eventSelect) {
+      eventSelect.addEventListener('change', (e) => handleSwitchEvent(e.target.value));
+    }
+    const newEventBtn = document.getElementById('newEventBtn');
+    if (newEventBtn) {
+      newEventBtn.addEventListener('click', handleCreateEvent);
+    }
+    const deleteEventBtn = document.getElementById('deleteEventBtn');
+    if (deleteEventBtn) {
+      deleteEventBtn.addEventListener('click', handleDeleteEvent);
+    }
+
     // Key Sync Button
     const syncKeystonesBtn = document.getElementById('syncKeystonesBtn');
     if (syncKeystonesBtn) {
       syncKeystonesBtn.addEventListener('click', handleSyncKeystones);
     }
 
-    // Dungeon Pool Chips & Exclusion Actions
-    renderDungeonChips();
-
-    const selectAllDungeonsBtn = document.getElementById('selectAllDungeonsBtn');
-    if (selectAllDungeonsBtn) {
-      selectAllDungeonsBtn.addEventListener('click', () => {
-        state.excludedDungeons = [];
-        saveExclusions();
-        renderDungeonChips();
-        playSound('click');
-        showToast('All dungeons included in pool!');
+    // Party Keystone Roulette Controls
+    const rouletteTargetGroupSelect = document.getElementById('rouletteTargetGroupSelect');
+    if (rouletteTargetGroupSelect) {
+      rouletteTargetGroupSelect.addEventListener('change', (e) => {
+        const idx = parseInt(e.target.value, 10);
+        renderSelectedPartyRoulette(idx);
       });
     }
 
-    const resetDungeonPoolBtn = document.getElementById('resetDungeonPoolBtn');
-    if (resetDungeonPoolBtn) {
-      resetDungeonPoolBtn.addEventListener('click', () => {
-        state.excludedDungeons = [];
-        saveExclusions();
-        renderDungeonChips();
-        playSound('click');
-        showToast('Reset dungeon pool to default (all included)!');
+    const resetGroupExclusionsBtn = document.getElementById('resetGroupExclusionsBtn');
+    if (resetGroupExclusionsBtn) {
+      resetGroupExclusionsBtn.addEventListener('click', () => {
+        const sel = document.getElementById('rouletteTargetGroupSelect');
+        const idx = parseInt(sel?.value, 10);
+        if (!isNaN(idx) && state.formedGroups?.[idx]) {
+          state.formedGroups[idx].excludedDungeons = [];
+          saveGroupsLocal();
+          renderSelectedPartyRoulette(idx);
+          playSound('click');
+          showToast('Cleared party dungeon exclusions!');
+        }
       });
     }
 
-    // Keystone Roulette Controls
     const rouletteSourceSelect = document.getElementById('rouletteSourceSelect');
     const rouletteManualDungeonWrap = document.getElementById('rouletteManualDungeonWrap');
     if (rouletteSourceSelect && rouletteManualDungeonWrap) {
@@ -2244,12 +2601,23 @@
     // Initial background sync with Discord bot / cloud state
     fetchRemoteState(true);
 
-    // Periodic background poll every 45s while tab is active
+    // Immediate sync on tab switch or window focus
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        fetchRemoteState(true);
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      fetchRemoteState(true);
+    });
+
+    // High-frequency polling (every 8s) while tab is active for real-time responsiveness
     setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchRemoteState(true);
       }
-    }, 45000);
+    }, 8000);
   }
 
   // Run on DOM ready

@@ -2058,3 +2058,231 @@ button {
 .guild-footer strong {
   color: var(--text-gold);
 }
+
+/* ==========================================================================
+   Event Selector & Management Bar
+   ========================================================================== */
+
+.event-bar-wrapper {
+  margin-bottom: 1.25rem;
+}
+
+.event-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(245, 208, 97, 0.25);
+  border-radius: 10px;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.event-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.event-label {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--text-gold);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.event-select {
+  flex: 1;
+  max-width: 380px;
+  background: #0f172a;
+  border: 1px solid rgba(245, 208, 97, 0.35);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+}
+
+.event-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ==========================================================================
+   Party-Specific Keystone Roulette & Held Keys
+   ========================================================================== */
+
+.roulette-group-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.roulette-group-pick-row label {
+  font-weight: 700;
+  color: var(--text-gold);
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.group-held-keys-wrap {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.group-keys-header {
+  margin-bottom: 0.5rem;
+}
+
+.keys-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.group-keys-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.party-held-key-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(245, 208, 97, 0.12);
+  border: 1px solid rgba(245, 208, 97, 0.35);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.party-held-key-badge.key-excluded {
+  opacity: 0.45;
+  text-decoration: line-through;
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.holder-name {
+  color: #fff;
+}
+
+.holder-key {
+  color: var(--text-gold);
+  font-weight: 700;
+}
+
+.pill-excluded-tag {
+  color: #ef4444;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.no-keys-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.group-filter-wrap {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.group-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.filter-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.group-dungeon-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.45rem;
+}
+
+.roulette-action-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.roulette-no-group-prompt {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: #fde047;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* ==========================================================================
+   Key Level Range Checkbox Pills (Player Modal)
+   ========================================================================== */
+
+.key-bracket-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.bracket-checkbox-pill {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.bracket-checkbox-pill input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.bracket-pill-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.bracket-checkbox-pill input:checked + .bracket-pill-content {
+  background: rgba(245, 208, 97, 0.15);
+  border-color: var(--border-gold);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(245, 208, 97, 0.2);
+}
+
+.bracket-pill-content strong {
+  color: var(--text-gold);
+}

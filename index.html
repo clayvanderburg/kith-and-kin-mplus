@@ -41,6 +41,22 @@
       </div>
     </header>
 
+    <!-- Event Selector & Management Bar -->
+    <div class="event-bar-wrapper">
+      <div class="event-bar card">
+        <div class="event-bar-left">
+          <label for="eventSelect" class="event-label">📅 Event Lineup:</label>
+          <select id="eventSelect" class="form-select event-select">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="event-bar-actions">
+          <button type="button" id="newEventBtn" class="btn btn-sm btn-primary" title="Create a new Mythic+ Night event lineup">➕ New Event</button>
+          <button type="button" id="deleteEventBtn" class="btn btn-sm btn-danger" title="Delete current event lineup">🗑️ Delete Event</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Container -->
     <main class="main-layout">
       <!-- Left Column: Guild Roster Management -->
@@ -158,21 +174,6 @@
             </select>
           </div>
 
-          <!-- Dungeon Pool & Exclusion Chips -->
-          <div class="setting-item dungeon-pool-box" id="dungeonChipsSection">
-            <div class="dungeon-pool-header">
-              <label>🏰 Active Dungeon Pool (Click chip to Exclude)</label>
-              <div class="dungeon-pool-actions">
-                <button type="button" id="selectAllDungeonsBtn" class="btn-link-sm">Include All</button>
-                <span>•</span>
-                <button type="button" id="resetDungeonPoolBtn" class="btn-link-sm">Reset</button>
-              </div>
-            </div>
-            <div class="dungeon-chips-grid" id="dungeonChipsGrid">
-              <!-- Dynamically rendered 8 dungeon chips -->
-            </div>
-          </div>
-
           <div class="setting-item checkbox-item">
             <label class="checkbox-label" title="Balance high-IO and lower-IO players so all groups have a comparable average rating">
               <input type="checkbox" id="balanceIoCheck" checked>
@@ -202,25 +203,55 @@
           </div>
         </div>
 
-        <!-- Keystone Roulette & Quick Assign -->
-        <div class="keystone-roulette-card">
+        <!-- Keystone Roulette & Group Key Roller -->
+        <div class="keystone-roulette-card" id="keystoneRouletteCard">
           <div class="roulette-header">
             <div class="roulette-title">
               <span class="roulette-icon">🎲</span>
               <div>
-                <h4>Keystone Roulette &amp; Quick Assign</h4>
-                <p>Roll a random key from the active pool, pick from held keys, or select a dungeon manually.</p>
+                <h4>Party Keystone Roulette &amp; Assignment</h4>
+                <p>Roll a key specifically for a formed party from their member bags or Midnight pool.</p>
               </div>
             </div>
           </div>
 
           <div class="roulette-controls">
-            <div class="roulette-row">
+            <!-- Group Selector First (No "all groups") -->
+            <div class="roulette-group-pick-row">
+              <label for="rouletteTargetGroupSelect">Target Party:</label>
+              <select id="rouletteTargetGroupSelect" class="form-select">
+                <option value="">-- Select a Formed Party First --</option>
+              </select>
+            </div>
+
+            <!-- Group's Held Keys -->
+            <div class="group-held-keys-wrap" id="groupHeldKeysWrap" style="display: none;">
+              <div class="group-keys-header">
+                <span class="keys-title">👜 Keystones Held in Bags by this Party:</span>
+              </div>
+              <div class="group-keys-list" id="groupKeysList">
+                <!-- Badges of keys in bags for this group -->
+              </div>
+            </div>
+
+            <!-- Group Dungeon Filter (Click chip to Exclude) -->
+            <div class="group-filter-wrap" id="groupFilterWrap" style="display: none;">
+              <div class="group-filter-header">
+                <span class="filter-title">🚫 Exclude Dungeons for this Party (Click to toggle):</span>
+                <button type="button" id="resetGroupExclusionsBtn" class="btn-link-sm">Clear Exclusions</button>
+              </div>
+              <div class="group-dungeon-chips" id="groupDungeonChips">
+                <!-- 8 dungeon chips toggleable for this group -->
+              </div>
+            </div>
+
+            <!-- Roll Controls Row -->
+            <div class="roulette-action-row" id="rouletteActionRow" style="display: none;">
               <div class="form-group-sm">
-                <label for="rouletteSourceSelect">Source</label>
+                <label for="rouletteSourceSelect">Roll Source</label>
                 <select id="rouletteSourceSelect" class="form-select-sm">
-                  <option value="pool" selected>🎲 Random from Allowed Pool</option>
-                  <option value="held">🔑 Random from Held Keys</option>
+                  <option value="held" selected>🔑 From Party's Held Keys</option>
+                  <option value="pool">🎲 Random from Midnight S2 Pool</option>
                   <option value="manual">🎯 Specific Dungeon (Manual)</option>
                 </select>
               </div>
@@ -244,16 +275,14 @@
                 <input type="number" id="rouletteLevelInput" class="form-input-sm" value="12" min="2" max="30" style="width: 70px;">
               </div>
 
-              <div class="form-group-sm">
-                <label for="rouletteTargetGroupSelect">Assign To</label>
-                <select id="rouletteTargetGroupSelect" class="form-select-sm">
-                  <option value="all">All Formed Groups</option>
-                </select>
-              </div>
-
               <button type="button" id="rollKeystoneBtn" class="btn btn-sm btn-accent roulette-btn">
-                🎲 Roll Keystone!
+                🎲 Roll Keystone for Party!
               </button>
+            </div>
+
+            <!-- Prompt when no group is selected -->
+            <div id="rouletteNoGroupPrompt" class="roulette-no-group-prompt">
+              <span>⚠️ Form groups and select a party above to roll keys specifically for them.</span>
             </div>
 
             <!-- Rolled Result Banner -->
@@ -412,15 +441,25 @@
           <span class="form-hint">Flex players (e.g. Tank + DPS) help the group generator fit more teams!</span>
         </div>
 
-        <div class="form-row">
-          <div class="form-group col-half">
-            <label for="keyMinInput">Min Key Comfort</label>
-            <input type="number" id="keyMinInput" class="form-input" min="2" max="30" value="4">
+        <div class="form-group">
+          <label>Comfortable Key Level Goals * (Select all that apply)</label>
+          <div class="key-bracket-pills">
+            <label class="bracket-checkbox-pill">
+              <input type="checkbox" id="bracketHeroCrest" value="6-8">
+              <span class="bracket-pill-content">🌱 <strong>6-8</strong> (Hero Crest Farm)</span>
+            </label>
+            <label class="bracket-checkbox-pill">
+              <input type="checkbox" id="bracketVaultFill" value="10-12" checked>
+              <span class="bracket-pill-content">🗝️ <strong>10-12</strong> (Vault Fill)</span>
+            </label>
+            <label class="bracket-checkbox-pill">
+              <input type="checkbox" id="bracketIoPush" value="12+">
+              <span class="bracket-pill-content">🔥 <strong>Higher than 12</strong> (IO Farming)</span>
+            </label>
           </div>
-          <div class="form-group col-half">
-            <label for="keyMaxInput">Max Key Comfort</label>
-            <input type="number" id="keyMaxInput" class="form-input" min="2" max="30" value="10">
-          </div>
+          <!-- Hidden inputs for legacy/solver range support -->
+          <input type="hidden" id="keyMinInput" value="10">
+          <input type="hidden" id="keyMaxInput" value="12">
         </div>
 
         <div class="form-group">

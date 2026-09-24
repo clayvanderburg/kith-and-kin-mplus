@@ -82,7 +82,7 @@ function getNextFridayTimestamp() {
   return Math.floor(target.getTime() / 1000);
 }
 
-function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = 'MadKing') {
+function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = 'MadKing', formedGroups = [], benchedPlayers = []) {
   const attending = (players || []).filter(p => p.attending === true);
   const absent = (players || []).filter(p => p.absent === true && !p.attending);
   const tanks = attending.filter(p => (p.roles || []).includes('Tank')).length;
@@ -97,6 +97,55 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
   const shitters = attending.filter(p => p.isShitter);
 
   const nextFriday = getNextFridayTimestamp();
+
+  // If groups are formed, display the assembled group lineup directly in the main event card!
+  if (Array.isArray(formedGroups) && formedGroups.length > 0) {
+    const embed = new EmbedBuilder()
+      .setTitle('🏰 Friday Mythic+ Keystone Night — Groups Assembled!')
+      .setColor(0x10B981) // Emerald victory green
+      .setDescription(
+        `👑 **Host:** ${hostName}  •  👥 **Attending:** **${attending.length}**  •  🏰 **Active Groups:** **${formedGroups.length}**\n` +
+        `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM EST\n\n` +
+        `⚔️ **Parties have been forged for tonight!** Review your team, assign keys, and head into voice:\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+      );
+
+    formedGroups.forEach((g, idx) => {
+      const leaderBadge = g.leaderName ? ` • 👑 Leader: **${g.leaderName}**` : '';
+      const keyBadge = g.keystone ? ` • 🔑 \`${g.keystone}\`` : '';
+      const utilBadges = [];
+      if (g.hasLust) utilBadges.push('⚡ Lust');
+      if (g.hasBrez) utilBadges.push('🔄 BRez');
+      const utilStr = utilBadges.length ? ` • ${utilBadges.join(' ')}` : '';
+
+      const lines = [];
+      if (g.tank) lines.push(`🛡️ **${g.tank.name}** (${g.tank.className} • ${(g.tank.io / 1000).toFixed(1)}k)`);
+      if (g.healer) lines.push(`💚 **${g.healer.name}** (${g.healer.className} • ${(g.healer.io / 1000).toFixed(1)}k)`);
+      (g.dps || []).forEach(d => {
+        lines.push(`⚔️ **${d.name}** (${d.className} • ${(d.io / 1000).toFixed(1)}k)`);
+      });
+
+      embed.addFields({
+        name: `🏰 Group ${idx + 1}: ${g.name || 'Keystone Crew'} (Avg IO: ${g.avgIo || 3000})${leaderBadge}${keyBadge}${utilStr}`,
+        value: lines.join('\n') || 'Empty Party',
+        inline: false
+      });
+    });
+
+    if (Array.isArray(benchedPlayers) && benchedPlayers.length > 0) {
+      embed.addFields({
+        name: `🍺 Bench / Reserves (${benchedPlayers.length})`,
+        value: benchedPlayers.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')})${p.isReserve ? ' 🍺' : ''}`).join('\n'),
+        inline: false
+      });
+    }
+
+    embed.setFooter({
+      text: `Kith & Kin • Synced with Live Web App • Click [Refresh 🔄] to update`
+    });
+    embed.setTimestamp();
+    return embed;
+  }
 
   const embed = new EmbedBuilder()
     .setTitle('🏰 Friday Mythic+ Keystone Night')
@@ -324,6 +373,26 @@ function createSignupFormComponents({ players = [], defaultName = '', player = n
     uniquePlayers.push(p);
   });
 
+  // If roster list has fewer than 24, fill with synced guild members
+  try {
+    const guildRoster = require('./guild-roster.json');
+    if (Array.isArray(guildRoster)) {
+      for (const g of guildRoster) {
+        if (uniquePlayers.length >= 24) break;
+        if (!g.name || seenNames.has(g.name.toLowerCase())) continue;
+        seenNames.add(g.name.toLowerCase());
+        uniquePlayers.push({
+          name: g.name,
+          className: g.className || 'Player',
+          roles: [g.role || 'DPS'],
+          io: 0,
+          ilvl: 320,
+          ownedKey: ''
+        });
+      }
+    }
+  } catch (e) {}
+
   uniquePlayers.sort((a, b) => a.name.localeCompare(b.name));
 
   let defaultSelectedName = player ? player.name.toLowerCase() : null;
@@ -384,23 +453,21 @@ function createSignupFormComponents({ players = [], defaultName = '', player = n
     ]
   };
 
-  // 3. Key Range Dropdown
-  const currentRange = player ? `${player.keyMin || 10}-${player.keyMax || 15}` : '12-15';
+  // 3. Key Goals & Brackets Multi-Select Dropdown
+  const activeBrackets = player?.keyBrackets || (player?.keyMax ? (player.keyMax > 12 ? ['12+'] : (player.keyMax >= 10 ? ['10-12'] : ['6-8'])) : ['10-12']);
   const rowRange = {
     type: 1,
     components: [
       {
         type: 3,
         custom_id: 'select_key_range',
-        placeholder: player ? `Comfortable Key Range (Currently: +${player.keyMin}-+${player.keyMax})` : 'Select Comfortable Key Range...',
+        placeholder: 'Select Key Goals (Multi-select: 6-8, 10-12, Higher than 12)...',
         min_values: 1,
-        max_values: 1,
+        max_values: 3,
         options: [
-          { label: '+2 to +6 (Chill / Learning / Low Alts)', value: '2-6', emoji: { name: '🌱' }, default: currentRange === '2-6' },
-          { label: '+7 to +11 (Mid Keys / Weekly Vault)', value: '7-11', emoji: { name: '🗝️' }, default: currentRange === '7-11' },
-          { label: '+12 to +15 (Standard Keystone Run)', value: '12-15', emoji: { name: '🏰' }, default: currentRange === '12-15' || (!player && true) },
-          { label: '+16 to +18 (High Keys / Keystone Push)', value: '16-18', emoji: { name: '🔥' }, default: currentRange === '16-18' },
-          { label: '+19+ (Hardcore Keystone Push)', value: '19-25', emoji: { name: '⚡' }, default: currentRange === '19-25' }
+          { label: '6-8 (Hero Crest Farm)', value: '6-8', emoji: { name: '🌱' }, description: 'Hero crest farming and upgrades', default: activeBrackets.includes('6-8') },
+          { label: '10-12 (Vault Fill)', value: '10-12', emoji: { name: '🗝️' }, description: 'Mythic weekly vault slots and gilded crests', default: activeBrackets.includes('10-12') },
+          { label: 'Higher than 12 (IO Farming)', value: '12+', emoji: { name: '🔥' }, description: 'Keystone score pushing and high keys', default: activeBrackets.includes('12+') }
         ]
       }
     ]
@@ -438,7 +505,7 @@ function createSignupFormComponents({ players = [], defaultName = '', player = n
     type: 1,
     components: [
       { type: 2, style: 3, custom_id: 'btn_confirm_rsvp', label: 'Save My RSVP ✅' },
-      { type: 2, style: 2, custom_id: 'btn_custom_modal', label: 'Type Alt Name ✏️' },
+      { type: 2, style: 1, custom_id: 'btn_custom_modal', label: 'Type Character Name ✏️' },
       { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
     ]
   };

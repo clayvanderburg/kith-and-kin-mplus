@@ -153,6 +153,9 @@ exports.handler = async (event, context) => {
         players: body.players || [],
         formedGroups: body.formedGroups || [],
         benchedPlayers: body.benchedPlayers || [],
+        excludedDungeons: body.excludedDungeons || [],
+        events: body.events || {},
+        currentEventId: body.currentEventId || null,
         lastUpdated: body.lastUpdated || new Date().toISOString()
       };
 
