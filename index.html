@@ -21,7 +21,7 @@
         </div>
       </div>
       <div class="header-titles">
-        <div class="guild-subtitle">World of Warcraft Guild Event</div>
+        <div class="guild-subtitle">World of Warcraft • Midnight Season 2</div>
         <h1 class="guild-title">Kith & Kin <span class="highlight">Mythic+ Night</span></h1>
         <p class="guild-tagline">Assemble the realm's finest dungeon crawlers, match key levels, and conquer the keystones!</p>
       </div>
@@ -142,8 +142,7 @@
           <div class="setting-item">
             <label for="dungeonPoolSelect">Dungeon Pool</label>
             <select id="dungeonPoolSelect" class="form-select">
-              <option value="tww_s1" selected>The War Within — Season 1 Dungeons</option>
-              <option value="all_tww">All Current Khaz Algar Dungeons</option>
+              <option value="midnight_s2" selected>Midnight — Season 2 (Current Pool)</option>
               <option value="none">No Dungeon Assignment (Keys Only)</option>
             </select>
           </div>
@@ -335,7 +334,17 @@
 
         <div class="form-group">
           <label for="keystoneInput">Owned Keystone (Optional)</label>
-          <input type="text" id="keystoneInput" class="form-input" placeholder="e.g. Grim Batol +8, or leave blank">
+          <input type="text" id="keystoneInput" class="form-input" list="midnightDungeonsList" placeholder="e.g. Murder Row +15, or Kings' Rest +12">
+          <datalist id="midnightDungeonsList">
+            <option value="Voidscar Arena +10">
+            <option value="Murder Row +12">
+            <option value="The Blinding Vale +12">
+            <option value="Den of Nalorakk +10">
+            <option value="Kings' Rest +12">
+            <option value="Altar of Fangs +14">
+            <option value="Temple of Sethraliss +12">
+            <option value="Ruby Life Pools +12">
+          </datalist>
         </div>
 
         <!-- Carry & Vibe Preference -->
@@ -387,7 +396,7 @@
           Paste your roster below to bulk import, or copy the text to share with fellow officers.
           <br><small>Format: <code>PlayerName, Class, Role(s), MinKey-MaxKey, [OptionalKey]</code></small>
         </p>
-        <textarea id="importExportText" class="form-textarea" rows="10" placeholder="MadKing, Warrior, Tank/DPS, 7-12, Grim Batol +10&#10;Addie, Priest, Healer, 4-9&#10;Grok, Mage, DPS, 6-11"></textarea>
+        <textarea id="importExportText" class="form-textarea" rows="10" placeholder="Adrenaline, Warrior, Tank/DPS, 14-18, Murder Row +16&#10;Glaiven, Demon Hunter, DPS/Tank, 10-14, Kings' Rest +12&#10;Meanssa, Death Knight, Tank/DPS, 12-16, Voidscar Arena +14"></textarea>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="exportBtn">Export Current Roster</button>

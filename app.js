@@ -23,23 +23,15 @@
     'Warrior':      { color: '#C69B6D', roles: ['Tank', 'DPS'], brez: false, lust: false }
   };
 
-  const DUNGEONS_TWW_S1 = [
-    'Ara-Kara, City of Echoes',
-    'City of Threads',
-    'The Stonevault',
-    'The Dawnbreaker',
-    'Mists of Tirna Scithe',
-    'The Necrotic Wake',
-    'Siege of Boralus',
-    'Grim Batol'
-  ];
-
-  const DUNGEONS_ALL_TWW = [
-    ...DUNGEONS_TWW_S1,
-    'Cinderbrew Meadery',
-    'Darkflame Cleft',
-    'Priory of the Sacred Flame',
-    'The Rookery'
+  const DUNGEONS_MIDNIGHT_S2 = [
+    'Voidscar Arena',
+    'Murder Row',
+    'The Blinding Vale',
+    'Den of Nalorakk',
+    "Kings' Rest",
+    'Altar of Fangs',
+    'Temple of Sethraliss',
+    'Ruby Life Pools'
   ];
 
   const PARTY_NAMES = [
@@ -60,41 +52,41 @@
     'Out of Line of Sight'
   ];
 
-  // Default sample guild roster for Kith and Kin (Perenolde, US)
-  // Ranks 0-2 from Raider.IO roster (GM, Officers, Raiders) with top raiders pre-selected attending
+  // Default sample guild roster for Kith and Kin (Midnight Season 2)
+  // Real live Raider.IO data across connected realms (Perenolde, Frostmane, Korgath, Cairne, Moon Guard)
   const SAMPLE_ROSTER = [
-    // --- Attending Raiders (Forming 3 full groups: 3 Tanks, 3 Healers, 9 DPS) ---
-    { id: 'kk-adrenaline', name: 'Adrenaline', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'Grim Batol +10', realm: 'Perenolde', region: 'us', ilvl: 633, io: 2580, rank: 0, attending: true, carryPreference: 'willing_carry', isShitter: false },
-    { id: 'kk-glaiven', name: 'Glaiven', className: 'Demon Hunter', roles: ['DPS', 'Tank'], keyMin: 7, keyMax: 12, ownedKey: 'Ara-Kara +9', realm: 'Perenolde', region: 'us', ilvl: 635, io: 3138, rank: 1, attending: true, carryPreference: 'willing_carry', isShitter: false },
-    { id: 'kk-gredic', name: 'Gredic', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'The Stonevault +8', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2420, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
-    { id: 'kk-shocktherapy', name: 'Shockthêràpy', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: 'City of Threads +9', realm: 'Perenolde', region: 'us', ilvl: 631, io: 2470, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
-    { id: 'kk-ravenlight', name: 'Ravenlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: 'The Dawnbreaker +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2390, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
-    { id: 'kk-khaidylock', name: 'Khaidylock', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +8', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2350, rank: 1, attending: true, carryPreference: 'need_carry', isShitter: false },
-    { id: 'kk-khaiduus', name: 'Khaiduus', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2310, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
-    { id: 'kk-engorged', name: 'Engorged', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: 'The Necrotic Wake +7', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2260, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
-    { id: 'kk-holyscheisse', name: 'Holyscheisse', className: 'Druid', roles: ['DPS', 'Healer', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Siege of Boralus +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2370, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
-    { id: 'kk-bearackobama', name: 'Bearackobamà', className: 'Druid', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2220, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
-    { id: 'kk-charliestar', name: 'Charliestar', className: 'Warlock', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Grim Batol +8', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2380, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
-    { id: 'kk-meanssa', name: 'Meanssa', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 7, keyMax: 12, ownedKey: 'The Stonevault +10', realm: 'Perenolde', region: 'us', ilvl: 634, io: 2560, rank: 1, attending: true, carryPreference: 'willing_carry', isShitter: false },
-    { id: 'kk-stirlingskat', name: 'Stirlingskat', className: 'Druid', roles: ['Healer', 'Tank', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2190, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
-    { id: 'kk-avaryn', name: 'Avaryn', className: 'Druid', roles: ['Healer', 'DPS', 'Tank'], keyMin: 6, keyMax: 11, ownedKey: 'Ara-Kara +8', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2430, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
-    { id: 'kk-azerite', name: 'Azerite', className: 'Hunter', roles: ['DPS'], keyMin: 6, keyMax: 11, ownedKey: 'Mists of Tirna Scithe +9', realm: 'Perenolde', region: 'us', ilvl: 630, io: 2450, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
+    // --- Attending Raiders (Forming 3 balanced groups: 3 Tanks, 3 Healers, 9 DPS) ---
+    { id: 'kk-adrenaline', name: 'Adrenaline', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 14, keyMax: 18, ownedKey: 'Murder Row +16', realm: 'Perenolde', region: 'us', ilvl: 322, io: 3236, rank: 0, attending: true, carryPreference: 'willing_carry', isShitter: false },
+    { id: 'kk-bungulator', name: 'Bungulator', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 14, keyMax: 18, ownedKey: 'Murder Row +16', realm: 'Korgath', region: 'us', ilvl: 324, io: 3290, rank: 2, attending: true, carryPreference: 'willing_carry', isShitter: false },
+    { id: 'kk-glaiven', name: 'Glaiven', className: 'Demon Hunter', roles: ['DPS', 'Tank'], keyMin: 10, keyMax: 14, ownedKey: "Kings' Rest +12", realm: 'Perenolde', region: 'us', ilvl: 323, io: 3138, rank: 1, attending: true, carryPreference: 'willing_carry', isShitter: false },
+    { id: 'kk-shocktherapy', name: 'Shockthêràpy', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Altar of Fangs +14', realm: 'Perenolde', region: 'us', ilvl: 321, io: 3230, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-meanssa', name: 'Meanssa', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Voidscar Arena +14', realm: 'Frostmane', region: 'us', ilvl: 321, io: 3118, rank: 1, attending: true, carryPreference: 'willing_carry', isShitter: false },
+    { id: 'kk-stirlingskat', name: 'Stirlingskat', className: 'Druid', roles: ['Healer', 'Tank', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Ruby Life Pools +14', realm: 'Moon Guard', region: 'us', ilvl: 317, io: 3118, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-sploosh', name: 'Splõõsh', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +13', realm: 'Korgath', region: 'us', ilvl: 322, io: 3104, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-noxxicc', name: 'Noxxicc', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 8, keyMax: 12, ownedKey: 'Murder Row +10', realm: 'Korgath', region: 'us', ilvl: 317, io: 2939, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-avaryn', name: 'Avaryn', className: 'Druid', roles: ['Healer', 'DPS', 'Tank'], keyMin: 10, keyMax: 14, ownedKey: "Kings' Rest +12", realm: 'Perenolde', region: 'us', ilvl: 319, io: 2931, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-tiblock', name: 'Tiblock', className: 'Warlock', roles: ['DPS'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +13', realm: 'Korgath', region: 'us', ilvl: 323, io: 2883, rank: 2, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-khaiduus', name: 'Khaiduus', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 9, keyMax: 13, ownedKey: 'Voidscar Arena +11', realm: 'Cairne', region: 'us', ilvl: 318, io: 2845, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-ravenlight', name: 'Ravenlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +14', realm: 'Perenolde', region: 'us', ilvl: 319, io: 1457, rank: 1, attending: true, carryPreference: 'none', isShitter: false },
+    { id: 'kk-tyberia', name: 'Tyberia', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 9, keyMax: 13, ownedKey: 'Altar of Fangs +12', realm: 'Korgath', region: 'us', ilvl: 311, io: 1359, rank: 2, attending: true, carryPreference: 'need_carry', isShitter: false },
+    { id: 'kk-engorged', name: 'Engorged', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: 'Den of Nalorakk +4', realm: 'Perenolde', region: 'us', ilvl: 118, io: 0, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
+    { id: 'kk-holyscheisse', name: 'Holyscheisse', className: 'Druid', roles: ['DPS', 'Healer', 'Tank'], keyMin: 2, keyMax: 7, ownedKey: 'The Blinding Vale +5', realm: 'Korgath', region: 'us', ilvl: 291, io: 0, rank: 1, attending: true, carryPreference: 'none', isShitter: true },
 
     // --- Other Kith and Kin Guild Members (Available to toggle on or search) ---
-    { id: 'kk-myssa', name: 'Myssa', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2400, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-knightlight', name: 'Kníghtlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2330, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-ayahuasca', name: 'Ayahuascå', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 624, io: 2240, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 628, io: 2360, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-tyberia', name: 'Tyberia', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2280, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-tiblock', name: 'Tiblock', className: 'Warlock', roles: ['DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 621, io: 2150, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-sploosh', name: 'Splõõsh', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2210, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-veralith', name: 'Veralith', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 629, io: 2390, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-noxxicc', name: 'Noxxicc', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 626, io: 2320, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-haiyu', name: 'Haiyu', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 620, io: 2120, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-valkyrin', name: 'Valkyrin', className: 'Paladin', roles: ['Healer', 'Tank', 'DPS'], keyMin: 6, keyMax: 11, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 627, io: 2340, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-bungulator', name: 'Bungulator', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 622, io: 2180, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-sylana', name: 'Sylana', className: 'Warrior', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 625, io: 2270, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-    { id: 'kk-azernasty', name: 'Azernasty', className: 'Death Knight', roles: ['DPS', 'Tank'], keyMin: 5, keyMax: 10, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 623, io: 2200, rank: 2, attending: false, carryPreference: 'none', isShitter: false }
+    { id: 'kk-myssa', name: 'Myssa', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 9, keyMax: 13, ownedKey: 'Temple of Sethraliss +11', realm: 'Frostmane', region: 'us', ilvl: 297, io: 2788, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-bearackobama', name: 'Bearackobamà', className: 'Druid', roles: ['DPS', 'Tank', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: 'Voidscar Arena +4', realm: 'Perenolde', region: 'us', ilvl: 260, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: true },
+    { id: 'kk-charliestar', name: 'Charliestar', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 143, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: true },
+    { id: 'kk-gredic', name: 'Gredic', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 295, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-khaidylock', name: 'Khaidylock', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Cairne', region: 'us', ilvl: 263, io: 0, rank: 1, attending: false, carryPreference: 'need_carry', isShitter: false },
+    { id: 'kk-knightlight', name: 'Kníghtlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 276, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-veralith', name: 'Veralith', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 269, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-azerite', name: 'Azerite', className: 'Hunter', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 274, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-haiyu', name: 'Haiyu', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 135, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-valkyrin', name: 'Valkyrin', className: 'Paladin', roles: ['Healer', 'Tank', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 248, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-sylana', name: 'Sylana', className: 'Warrior', roles: ['DPS', 'Tank'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 271, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-azernasty', name: 'Azernasty', className: 'Death Knight', roles: ['DPS', 'Tank'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 293, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-ayahuasca', name: 'Ayahuascå', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 311, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
+    { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Frostmane', region: 'us', ilvl: 293, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false }
   ];
 
   // --- App State ---
@@ -214,10 +206,13 @@
       const savedPlayers = localStorage.getItem('kk_mplus_players');
       if (savedPlayers) {
         const parsed = JSON.parse(savedPlayers);
-        // If user has old placeholder data (e.g. kk-1 / MadKing / Area 52), migrate to real Kith and Kin roster
+        // If user has old placeholder data or TWW dungeons, migrate to real Kith and Kin Midnight Season 2 roster
         const hasOldDummies = Array.isArray(parsed) && parsed.some(p => p.id === 'kk-1' && p.name === 'MadKing');
-        if (hasOldDummies) {
+        const hasOldTww = Array.isArray(parsed) && parsed.some(p => p.ownedKey && (p.ownedKey.includes('Grim Batol') || p.ownedKey.includes('Ara-Kara') || p.ownedKey.includes('Stonevault') || p.ownedKey.includes('Dawnbreaker')));
+        const isNotMn2 = !localStorage.getItem('kk_mplus_version_mn2');
+        if (hasOldDummies || hasOldTww || isNotMn2) {
           state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
+          localStorage.setItem('kk_mplus_version_mn2', 'true');
           savePlayers();
         } else {
           state.players = parsed.map(p => ({
@@ -228,6 +223,7 @@
         }
       } else {
         state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
+        localStorage.setItem('kk_mplus_version_mn2', 'true');
         savePlayers();
       }
 
@@ -317,7 +313,7 @@
     if (!name || !name.trim()) throw new Error('Character name is required');
     const cleanName = encodeURIComponent(name.trim());
     const cleanRealm = encodeURIComponent(realm.trim().toLowerCase().replace(/\s+/g, '-').replace(/'/g, ''));
-    const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${cleanRealm}&name=${cleanName}&fields=gear,mythic_plus_scores_by_season:current`;
+    const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${cleanRealm}&name=${cleanName}&fields=gear,mythic_plus_scores_by_season:current,mythic_plus_recent_runs,mythic_plus_best_runs`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Character "${name}" not found on ${realm} (${region.toUpperCase()})`);
@@ -326,13 +322,32 @@
     const seasonData = Array.isArray(data.mythic_plus_scores_by_season) 
       ? data.mythic_plus_scores_by_season[0] 
       : data.mythic_plus_scores_by_season;
+
+    const recentRun = data.mythic_plus_recent_runs?.[0];
+    const bestRun = data.mythic_plus_best_runs?.[0];
+    const run = recentRun || bestRun;
+
+    let ownedKey = '';
+    let keyMin = 2;
+    let keyMax = 8;
+    if (run) {
+      ownedKey = `${run.dungeon} +${run.mythic_level}`;
+      keyMin = Math.max(2, run.mythic_level - 3);
+      keyMax = run.mythic_level + 2;
+    }
+
     return {
       name: data.name,
       className: data.class,
+      realm: data.realm || realm,
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
       io: Math.round(seasonData?.scores?.all || 0),
       avatar: data.thumbnail_url || null,
-      profileUrl: data.profile_url || null
+      profileUrl: data.profile_url || null,
+      ownedKey: ownedKey,
+      keyMin: keyMin,
+      keyMax: keyMax,
+      recentRun: run || null
     };
   }
 
@@ -424,38 +439,45 @@
       const hasTank = player.roles.includes('Tank');
       const hasHealer = player.roles.includes('Healer');
       const hasDps = player.roles.includes('DPS');
-      const ioColor = getIoColor(player.io);
+      const isAltRealm = player.realm && player.realm.toLowerCase() !== 'perenolde';
 
       row.innerHTML = `
-        <label class="player-attend-check" title="Toggle Attendance for Tonight">
-          <input type="checkbox" data-id="${player.id}" class="attend-checkbox" ${player.attending ? 'checked' : ''}>
-        </label>
-        ${player.avatar ? `<img class="player-avatar" src="${player.avatar}" alt="" loading="lazy">` : `<div class="player-avatar-placeholder" title="Character">${hasTank ? '🛡️' : (hasHealer ? '💚' : '⚔️')}</div>`}
-        <div class="player-info">
-          <div class="player-name-row">
-            <span class="player-name" style="color: ${classInfo.color};">${escapeHtml(player.name)}</span>
-            <span class="class-tag" style="color: ${classInfo.color}; border: 1px solid ${classInfo.color}44;">${escapeHtml(player.className)}</span>
-            <span class="ilvl-pill" title="Item Level">${player.ilvl || 620} iLvl</span>
+        <div class="player-left-col">
+          <label class="player-attend-check" title="Toggle Attendance for Tonight">
+            <input type="checkbox" data-id="${player.id}" class="attend-checkbox" ${player.attending ? 'checked' : ''}>
+          </label>
+          ${player.avatar ? `<img class="player-avatar" src="${player.avatar}" alt="" loading="lazy">` : `<div class="player-avatar-placeholder" title="Character">${hasTank ? '🛡️' : (hasHealer ? '💚' : '⚔️')}</div>`}
+        </div>
+        <div class="player-main-col">
+          <div class="player-header-row">
+            <div class="player-identity">
+              <span class="player-name" style="color: ${classInfo.color};">${escapeHtml(player.name)}</span>
+              <span class="class-tag" style="color: ${classInfo.color}; border: 1px solid ${classInfo.color}55;">${escapeHtml(player.className)}</span>
+              ${isAltRealm ? `<span class="realm-pill">${escapeHtml(player.realm)}</span>` : ''}
+            </div>
+            <div class="player-actions">
+              <button class="btn-action-icon edit-player-btn" data-id="${player.id}" title="Edit Member">✏️</button>
+              <button class="btn-action-icon delete delete-player-btn" data-id="${player.id}" title="Remove Member">🗑️</button>
+            </div>
+          </div>
+          <div class="player-badges-row">
+            <span class="ilvl-pill" title="Item Level">${player.ilvl || 320} iLvl</span>
             <span class="io-badge" style="color: ${ioColor}; border-color: ${ioColor}77;" title="Mythic+ Score">${(player.io || 0).toLocaleString()} IO</span>
+            <div class="role-badge-group">
+              <span class="role-icon-mini ${hasTank ? 'active-tank' : 'inactive'}" data-id="${player.id}" data-role="Tank" title="Tank ${hasTank ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">🛡️</span>
+              <span class="role-icon-mini ${hasHealer ? 'active-healer' : 'inactive'}" data-id="${player.id}" data-role="Healer" title="Healer ${hasHealer ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">💚</span>
+              <span class="role-icon-mini ${hasDps ? 'active-dps' : 'inactive'}" data-id="${player.id}" data-role="DPS" title="DPS ${hasDps ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">⚔️</span>
+            </div>
+            ${classInfo.lust ? `<span class="util-icon-tag lust" title="${player.className} brings Bloodlust / Heroism">⚡ Lust</span>` : ''}
+            ${classInfo.brez ? `<span class="util-icon-tag brez" title="${player.className} brings Battle Resurrection">🔄 BRez</span>` : ''}
             ${player.carryPreference === 'need_carry' ? `<span class="carry-pill need" title="I need a carry!">🎒 Needs Carry</span>` : ''}
             ${player.carryPreference === 'willing_carry' ? `<span class="carry-pill stronk" title="My back is stronk (willing to carry)">🏋️ Back is Stronk</span>` : ''}
             ${player.isShitter ? `<span class="shitter-pill" title="I'm a shitter (put me in the shitter alt group)">💩 Shitter</span>` : ''}
           </div>
-          <div class="player-details-row">
-            <div class="role-badge-group">
-              <span class="role-icon-mini ${hasTank ? 'active-tank' : 'inactive'}" data-id="${player.id}" data-role="Tank" title="Tank ${hasTank ? '(Active)' : '(Inactive)'}">🛡️</span>
-              <span class="role-icon-mini ${hasHealer ? 'active-healer' : 'inactive'}" data-id="${player.id}" data-role="Healer" title="Healer ${hasHealer ? '(Active)' : '(Inactive)'}">💚</span>
-              <span class="role-icon-mini ${hasDps ? 'active-dps' : 'inactive'}" data-id="${player.id}" data-role="DPS" title="DPS ${hasDps ? '(Active)' : '(Inactive)'}">⚔️</span>
-            </div>
-            ${classInfo.lust ? `<span class="util-icon-tag lust" title="${player.className} brings Bloodlust / Heroism">⚡ Lust</span>` : ''}
-            ${classInfo.brez ? `<span class="util-icon-tag brez" title="${player.className} brings Battle Resurrection">🔄 BRez</span>` : ''}
-            <span class="key-range-pill" title="Comfortable key level range">+${player.keyMin} – +${player.keyMax}</span>
-            ${player.ownedKey ? `<span class="key-owned-pill" title="In-game keystone: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
+          <div class="player-key-row">
+            ${player.ownedKey ? `<span class="key-owned-pill" title="Active Keystone: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
+            <span class="key-range-pill" title="Comfortable key level range">🎯 Keys +${player.keyMin} – +${player.keyMax}</span>
           </div>
-        </div>
-        <div class="player-actions">
-          <button class="btn-action-icon edit-player-btn" data-id="${player.id}" title="Edit Member">✏️</button>
-          <button class="btn-action-icon delete delete-player-btn" data-id="${player.id}" title="Remove Member">🗑️</button>
         </div>
       `;
       container.appendChild(row);
@@ -758,7 +780,7 @@
     }
 
     // Assign party names and dungeons to new groups
-    const dungeonList = dungeonPoolMode === 'all_tww' ? DUNGEONS_ALL_TWW : (dungeonPoolMode === 'tww_s1' ? DUNGEONS_TWW_S1 : []);
+    const dungeonList = dungeonPoolMode === 'none' ? [] : DUNGEONS_MIDNIGHT_S2;
     const shuffledNames = shuffleArray([...PARTY_NAMES]);
     const shuffledDungeons = shuffleArray([...dungeonList]);
 
@@ -1247,7 +1269,14 @@
       document.getElementById('playerClassSelect').value = data.className;
       document.getElementById('playerIlvlInput').value = data.ilvl;
       document.getElementById('playerIoInput').value = data.io;
-      showToast(`Found ${data.name}! ${data.ilvl} iLvl, ${data.io.toLocaleString()} IO`);
+      if (data.ownedKey) {
+        document.getElementById('keystoneInput').value = data.ownedKey;
+      }
+      if (data.keyMin && data.keyMax) {
+        document.getElementById('keyMinInput').value = data.keyMin;
+        document.getElementById('keyMaxInput').value = data.keyMax;
+      }
+      showToast(`Found ${data.name}! ${data.ilvl} iLvl, ${data.io.toLocaleString()} IO${data.ownedKey ? ', Key: ' + data.ownedKey : ''}`);
       playSound('fanfare');
     } catch (err) {
       alert(err.message || 'Character not found on Raider.IO');
@@ -1279,6 +1308,12 @@
         p.ilvl = data.ilvl || p.ilvl;
         p.io = data.io || p.io;
         p.avatar = data.avatar || p.avatar;
+        if (data.realm) p.realm = data.realm;
+        if (data.ownedKey) p.ownedKey = data.ownedKey;
+        if (data.keyMin && data.keyMax) {
+          p.keyMin = data.keyMin;
+          p.keyMax = data.keyMax;
+        }
         if (data.className && WOW_CLASSES[data.className]) {
           p.className = data.className;
         }

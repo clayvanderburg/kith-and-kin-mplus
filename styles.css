@@ -199,9 +199,15 @@ body {
 
 .main-layout {
   display: grid;
-  grid-template-columns: 460px 1fr;
+  grid-template-columns: minmax(430px, 485px) 1fr;
   gap: 1.5rem;
   align-items: start;
+}
+
+@media (min-width: 1440px) {
+  .main-layout {
+    grid-template-columns: 520px 1fr;
+  }
 }
 
 @media (max-width: 1080px) {
@@ -442,10 +448,10 @@ body {
 /* Individual Player Card in Roster */
 .player-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.65rem 0.85rem;
-  background: rgba(255, 255, 255, 0.02);
+  padding: 0.75rem 0.85rem;
+  background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-left: 4px solid var(--border-gold);
   border-radius: 8px;
@@ -460,7 +466,15 @@ body {
 .player-row.inactive {
   opacity: 0.45;
   filter: grayscale(0.5);
-  border-left-color: #555;
+  border-left-color: #555 !important;
+}
+
+.player-left-col {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .player-attend-check {
@@ -475,24 +489,45 @@ body {
   cursor: pointer;
 }
 
-.player-info {
+.player-main-col {
   flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.player-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.player-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
   min-width: 0;
 }
 
-.player-name-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
+.player-name {
+  font-weight: 800;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.player-name {
-  font-weight: 700;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.realm-pill {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.08rem 0.35rem;
+  border-radius: 3px;
+  font-family: var(--font-main);
+  text-transform: capitalize;
 }
 
 .class-tag {
@@ -505,11 +540,33 @@ body {
   letter-spacing: 0.03em;
 }
 
-.player-details-row {
+.player-badges-row {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.35rem;
   flex-wrap: wrap;
+}
+
+.player-key-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.1rem;
+}
+
+.key-owned-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #fde047;
+  padding: 0.12rem 0.48rem;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  letter-spacing: 0.01em;
 }
 
 .role-badge-group {
