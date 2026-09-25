@@ -197,37 +197,44 @@ Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it
   // Dynamic discovery fallback: query available models on the key
   try {
     const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    if (listRes.ok) {
-      const listData = await listRes.json();
-      const available = (listData.models || []).find(m =>
-        m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('flash')
-      ) || (listData.models || []).find(m =>
-        m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
-      );
+    const listText = await listRes.text();
+    if (!listRes.ok) {
+      throw new Error(`ListModels failed (${listRes.status}): ${listText}`);
+    }
 
-      if (available) {
-        const modelPath = available.name.replace(/^models\//, '');
-        const dynUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPath}:generateContent?key=${apiKey}`;
-        const dynRes = await fetch(dynUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.8, maxOutputTokens: 1000 }
-          })
-        });
-        if (dynRes.ok) {
-          const dynJson = await dynRes.json();
-          const dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (dynText) return { text: dynText, modelName: modelPath };
-        }
+    const listData = JSON.parse(listText);
+    const available = (listData.models || []).find(m =>
+      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('flash')
+    ) || (listData.models || []).find(m =>
+      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+    );
+
+    if (available) {
+      const modelPath = available.name.replace(/^models\//, '');
+      const dynUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPath}:generateContent?key=${apiKey}`;
+      const dynRes = await fetch(dynUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.8, maxOutputTokens: 1000 }
+        })
+      });
+      if (dynRes.ok) {
+        const dynJson = await dynRes.json();
+        const dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (dynText) return { text: dynText, modelName: modelPath };
+      } else {
+        const dynErrText = await dynRes.text();
+        throw new Error(`Model ${modelPath} failed (${dynRes.status}): ${dynErrText}`);
       }
+    } else {
+      const names = (listData.models || []).map(m => m.name).slice(0, 10).join(', ');
+      throw new Error(`No models with generateContent found. Available: ${names || 'None'}`);
     }
   } catch (discoveryErr) {
-    console.warn('[chronicler] Model discovery failed:', discoveryErr.message);
+    throw new Error(`Gemini candidate error: ${lastError ? lastError.message : ''} | Discovery error: ${discoveryErr.message}`);
   }
-
-  throw lastError || new Error('No compatible Gemini model found');
 }
 
 // Call OpenAI fallback if configured
