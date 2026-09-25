@@ -3284,4 +3284,193 @@ button {
   box-shadow: 0 0 12px rgba(234, 179, 8, 0.4) !important;
 }
 
+/* ==========================================================================
+   Guild Chronicler (End-of-Night AI Recap & Discord Exporter)
+   ========================================================================== */
+
+.chronicler-modal-card {
+  max-width: 680px;
+  width: 95%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chronicler-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(18, 5, 5, 0.75);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 8px;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.chronicler-tone-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-gold);
+  font-weight: 700;
+}
+
+.chronicler-tone-wrap select {
+  background: #0d0e12;
+  color: #f8fafc;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.chronicler-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  letter-spacing: 0.02em;
+}
+
+.badge-gemini {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.badge-openai {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.badge-rule {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+}
+
+.badge-neutral {
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.chronicler-key-section {
+  margin-bottom: 0.85rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+}
+
+.chronicler-content-box {
+  background: #08090d;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 8px;
+  padding: 1.25rem 1.4rem;
+  min-height: 280px;
+  max-height: 52vh;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.65;
+  color: #e2e8f0;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+.chronicler-content-box::-webkit-scrollbar {
+  width: 7px;
+}
+.chronicler-content-box::-webkit-scrollbar-thumb {
+  background: rgba(220, 38, 38, 0.4);
+  border-radius: 4px;
+}
+
+.chronicler-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.chronicler-spinner {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  animation: pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+
+.chronicler-content-box .recap-h2 {
+  font-family: var(--font-fantasy);
+  color: var(--text-gold);
+  font-size: 1.35rem;
+  margin: 0.4rem 0 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.chronicler-content-box .recap-h3 {
+  font-family: var(--font-fantasy);
+  color: #fff;
+  font-size: 1.15rem;
+  margin: 1rem 0 0.4rem;
+}
+
+.chronicler-content-box .recap-h4 {
+  font-family: var(--font-fantasy);
+  color: #fca5a5;
+  font-size: 1rem;
+  margin: 0.8rem 0 0.3rem;
+}
+
+.chronicler-content-box .recap-p {
+  margin-bottom: 0.75rem;
+  font-size: 0.92rem;
+}
+
+.chronicler-content-box .recap-quote {
+  border-left: 3px solid #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+  padding: 0.5rem 0.85rem;
+  margin: 0.6rem 0 0.9rem;
+  font-style: italic;
+  color: #f8fafc;
+  border-radius: 0 6px 6px 0;
+}
+
+.chronicler-content-box .recap-ul {
+  padding-left: 1.3rem;
+  margin: 0.4rem 0 0.8rem;
+}
+
+.chronicler-content-box .recap-li {
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.recap-error {
+  padding: 1.5rem;
+  text-align: center;
+  color: #fca5a5;
+}
+
+
 

@@ -279,6 +279,9 @@
               <button id="autoMatchAllRunsBtn" class="btn btn-sm btn-accent" title="Auto-match and log recently finished keys from Raider.IO for all parties">
                 ⚡ Auto-Match Runs
               </button>
+              <button id="chroniclerRecapBtn" class="btn btn-sm btn-primary" title="Generate an end-of-night chronicle recap for Discord">
+                📜 Chronicle Night
+              </button>
               <button id="copyDiscordBtn" class="btn btn-sm btn-discord">
                 <span class="discord-icon">💬</span> Copy Discord Post
               </button>
@@ -619,6 +622,57 @@
     </div>
   </div>
 
+  <!-- Modal: Guild Chronicler (End-of-Night Recap & Discord Exporter) -->
+  <div class="modal-backdrop" id="chroniclerModal">
+    <div class="modal card chronicler-modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-family:Cinzel,serif; color:var(--text-gold); margin:0;">📜 The Guild Chronicler</h3>
+          <small class="text-muted" style="font-size:0.78rem;">End-of-Night M+ Chronicle &amp; Discord Exporter</small>
+        </div>
+        <button class="modal-close" id="closeChroniclerBtn">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding-top: 0.5rem;">
+        <div class="chronicler-controls-bar">
+          <div class="chronicler-tone-wrap">
+            <label for="chroniclerToneSelect">Narrative Tone:</label>
+            <select id="chroniclerToneSelect" class="form-select">
+              <option value="bard" selected>📜 Bard of Cairne (Epic &amp; Heroic)</option>
+              <option value="dwarf">🍺 Grumpy Dwarven Veteran (Hilarious &amp; Sarcastic)</option>
+              <option value="gothic">🩸 Vampiric Midnight (Dark Gothic &amp; Dramatic)</option>
+              <option value="sportscaster">🎙️ Goblin Caster (Chaotic Hype)</option>
+            </select>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span class="chronicler-badge badge-neutral" id="chroniclerGeneratorBadge">Loading records...</span>
+            <button type="button" class="btn btn-sm btn-secondary" id="chroniclerToggleKeyBtn" style="font-size:0.75rem; padding:0.25rem 0.5rem;">🔑 Custom Gemini Key</button>
+          </div>
+        </div>
+
+        <div id="chroniclerKeyWrap" class="chronicler-key-section" style="display: none;">
+          <label style="font-size: 0.8rem; color: #cbd5e1; display: block; margin-bottom: 0.3rem;">
+            Optional Gemini API Key (stored locally in browser if server key isn't set):
+          </label>
+          <input type="password" id="chroniclerGeminiKeyInput" class="form-input" style="font-size:0.85rem;" placeholder="AIzaSy...">
+        </div>
+
+        <div class="chronicler-content-box" id="chroniclerContentBox"></div>
+      </div>
+
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; gap:0.6rem;">
+        <button type="button" class="btn btn-secondary" id="chroniclerGenerateBtn">✨ Re-Chronicle</button>
+        <div style="display:flex; gap:0.5rem;">
+          <button type="button" class="btn btn-secondary" id="closeChroniclerBtn2">Close</button>
+          <button type="button" class="btn btn-discord" id="chroniclerCopyBtn" disabled>
+            <span class="discord-icon">💬</span> Copy Discord Post
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
@@ -639,8 +693,9 @@
     .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
-  <script src="player-stats.js?v=stats-2"></script>
-  <script src="run-matcher.js?v=match-1"></script>
-  <script src="app.js?v=match-1"></script>
+  <script src="player-stats.js?v=chronicler-1"></script>
+  <script src="run-matcher.js?v=chronicler-1"></script>
+  <script src="chronicler.js?v=chronicler-1"></script>
+  <script src="app.js?v=chronicler-1"></script>
 </body>
 </html>
