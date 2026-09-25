@@ -226,12 +226,14 @@ exports.handler = async (event) => {
 
     let recapMarkdown = '';
     let generatorUsed = 'rule-based';
+    let geminiError = null;
 
     if (geminiKey) {
       try {
         recapMarkdown = await callGemini(geminiKey, summary, tone);
         generatorUsed = 'gemini-1.5-flash';
       } catch (err) {
+        geminiError = err.message;
         console.warn('[chronicler] Gemini call failed, falling back:', err.message);
       }
     }
@@ -256,6 +258,8 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         success: true,
         generator: generatorUsed,
+        hasGeminiKey: !!geminiKey,
+        geminiError,
         summary,
         recap: recapMarkdown
       })
