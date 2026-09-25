@@ -24,7 +24,7 @@
     html = html.replace(/^# (.*$)/gim, '<h2 class="recap-h2">$1</h2>');
 
     // Blockquotes
-    html = html.replace(/^\> (.*$)/gim, '<blockquote class="recap-quote">$1</blockquote>');
+    html = html.replace(/^&gt; (.*$)/gim, '<blockquote class="recap-quote">$1</blockquote>');
 
     // Bold & Italics
     html = html.replace(/\*\*\*(.*?)\*\*\*/gim, '<strong><em>$1</em></strong>');

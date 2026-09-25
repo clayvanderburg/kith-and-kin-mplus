@@ -484,13 +484,13 @@ function createSignupFormComponents({ player = null } = {}) {
       {
         type: 3,
         custom_id: 'select_key_range',
-        placeholder: 'Select Key Goals (Multi-select: 6-8, 10-12, Higher than 12)...',
+        placeholder: 'Select Key Goals (6-8, 9-12, 12+)...',
         min_values: 1,
         max_values: 3,
         options: [
           { label: '6-8 (Hero Crest Farm)', value: '6-8', emoji: { name: '🌱' }, description: 'Hero crest farming and upgrades', default: activeBrackets.includes('6-8') },
-          { label: '10-12 (Vault Fill)', value: '10-12', emoji: { name: '🗝️' }, description: 'Mythic weekly vault slots and gilded crests', default: activeBrackets.includes('10-12') },
-          { label: 'Higher than 12 (IO Farming)', value: '12+', emoji: { name: '🔥' }, description: 'Keystone score pushing and high keys', default: activeBrackets.includes('12+') }
+          { label: '9-12 (Myth Crests & Vault)', value: '10-12', emoji: { name: '🗝️' }, description: 'Myth crests start at +9; max Vault reward at +10', default: activeBrackets.includes('10-12') },
+          { label: '12+ (Score Push)', value: '12+', emoji: { name: '🔥' }, description: 'Keystone score pushing and high keys', default: activeBrackets.includes('12+') }
         ]
       }
     ]

@@ -1,6 +1,6 @@
 /**
  * One shared roster for the website and the Discord interaction endpoint.
- * Reads are strongly consistent. Writes merge by player so a stale page
+ * Reads are strongly consistent (read-your-writes). Writes merge by player so a stale page
  * cannot wipe a newer signup.
  */
 
@@ -18,7 +18,7 @@ async function useStore(event, run) {
       console.error('[live-state] connectLambda failed:', err.message);
     }
   }
-  return run(getStore(STORE_NAME, { consistency: 'eventual' }));
+  return run(getStore(STORE_NAME, { consistency: 'strong' }));
 }
 
 function timeOf(value) {
@@ -206,7 +206,7 @@ async function writeMergedState(event, incoming) {
 
 function loadEmbeds() {
   const candidates = [
-    path.join(__dirname, '..', '..', 'bot', 'embeds.js'),
+    path.join(__dirname, '..', '..', '..', 'bot', 'embeds.js'),
     path.join(process.cwd(), 'bot', 'embeds.js')
   ];
   for (const candidate of candidates) {

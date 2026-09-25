@@ -5,7 +5,7 @@
 [functions]
   directory = "netlify/functions"
   # Only the shared bot modules. Never bundle bot/.env (bot token) or bot/node_modules.
-  included_files = ["bot/*.js", "bot/guild-roster.json", "!bot/.env", "!bot/node_modules/**"]
+  included_files = ["bot/*.js", "bot/guild-roster.json", "leaderboard-engine.js", "!bot/.env", "!bot/node_modules/**"]
 
 [[redirects]]
   from = "/api/*"

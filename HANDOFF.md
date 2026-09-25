@@ -55,7 +55,7 @@ It is backed by a **100% serverless Discord application** hosted on Netlify Func
 - Output can be copied directly to Discord announcements.
 
 ### E. Discord Bot (`netlify/functions/discord.js` & `bot/embeds.js`)
-- Runs serverlessly on Netlify Edge via Ed25519 webhook signature verification.
+- Runs serverlessly on Netlify Functions via Ed25519 webhook signature verification.
 - Slash command `/mplus leaderboard` renders rich embeds matching the web leaderboard dais and standings 4–10.
 - Interactive buttons allow refreshing standings and reviewing the scoring code directly in Discord.
 
@@ -65,15 +65,11 @@ It is backed by a **100% serverless Discord application** hosted on Netlify Func
 
 1. **Universal Calculation Engine (`leaderboard-engine.js`):**
    - The engine is isomorphic (works in Browser `window.LeaderboardEngine` and Node.js `require`).
-   - Copies exist at:
-     - `leaderboard-engine.js` (Web root)
-     - `bot/leaderboard-engine.js` (Bot)
-     - `netlify/functions/leaderboard-engine.js` (Netlify Function)
-   - *Rule:* Always update all three copies or use `Copy-Item` from root when modifying scoring rules or demo players.
+   - One file at the web root. `bot/leaderboard-engine.js` is a one-line re-export; functions load it through `netlify.toml` `included_files`.
+   - *Rule:* Edit only the root `leaderboard-engine.js`; the bot copy re-exports it.
 2. **Fallback Logic:**
    - In `computeLeaderboardStandings(players, state, forceLive = false)`, the engine safely defaults to `DEMO_PLAYERS` unless `forceLive` is explicitly passed or the live season database has accumulated $\ge 10$ logged dungeon runs. This ensures the demo showcase displays cleanly during officer previews even with partial database stubs.
-3. **Password Gate Status:**
-   - The officer passphrase gate (`#officerGate` in `index.html`) is currently disabled in `app.js` and `player-stats.js` for frictionless testing. Do not re-enable it without Clay's instruction.
+3. **Officer access:** open to view; saving, notes and the Chronicler need `OFFICER_KEY` once per session.
 4. **Discord REST Deployment:**
    - When adding or modifying slash commands, run `node bot/deploy-commands.js` to push definitions to Discord's API.
 

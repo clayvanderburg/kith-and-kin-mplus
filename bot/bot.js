@@ -616,8 +616,8 @@ async function handleSelectMenuInteraction(interaction) {
       let minKey = 30;
       let maxKey = 2;
       if (selectedBrackets.includes('6-8')) { minKey = Math.min(minKey, 6); maxKey = Math.max(maxKey, 8); }
-      if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 10); maxKey = Math.max(maxKey, 12); }
-      if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 13); maxKey = Math.max(maxKey, 18); }
+      if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 9); maxKey = Math.max(maxKey, 12); }
+      if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 12); maxKey = Math.max(maxKey, 18); }
       player.keyMin = minKey;
       player.keyMax = maxKey;
       await pushRemoteState(state);

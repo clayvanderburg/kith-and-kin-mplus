@@ -3,7 +3,7 @@
  * Generates entertaining, flavorful narrative recaps of M+ night.
  */
 
-const { readLiveState } = require('./live-state');
+const { readLiveState } = require('./lib/live-state');
 const { isOfficerRequest, header } = require('./lib/auth');
 
 const CORS_HEADERS = {
@@ -31,8 +31,12 @@ function summarizeNight(state) {
   const allRuns = [];
   const seenRunIds = new Set();
 
+  // Only tonight's keys: logged in the last 16 hours (the recap is written at the end of the night).
+  const cutoff = Date.now() - 16 * 60 * 60 * 1000;
   players.forEach(p => {
     (p.runLog || []).forEach(r => {
+      const at = Date.parse(r.at || '');
+      if (!Number.isFinite(at) || at < cutoff) return;
       const id = r.id || `${r.at}-${r.key}`;
       if (!seenRunIds.has(id)) {
         seenRunIds.add(id);

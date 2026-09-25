@@ -53,9 +53,9 @@ kith-and-kin-mplus/
 │
 ├── netlify/functions/             # Serverless backend (AWS Lambda on Netlify)
 │   ├── discord.js                 # Discord Interactions HTTP POST webhook endpoint
-│   ├── live-state.js              # State API (Netlify Blobs reader & writer)
-│   ├── state.js                   # Legacy state endpoint fallback
-│   ├── leaderboard-engine.js      # Universal calculation engine copy for Lambda
+│   ├── state.js                   # /api/state: public view (GET), officer full view + writes (x-sync-secret)
+│   ├── lib/live-state.js          # Netlify Blobs reader/merger/writer (helper, not an endpoint)
+│   ├── lib/auth.js                # Secret checks + public state projection (helper)
 │   ├── chronicler-recap.js        # Gemini Flash AI chronicle generator
 │   ├── bnet-login.js              # Battle.net OAuth redirect
 │   ├── bnet-callback.js           # Battle.net OAuth token handler
@@ -72,7 +72,7 @@ kith-and-kin-mplus/
 │   ├── roll-ui.js                 # Keystone rolling button workflows
 │   ├── roster-search.js           # Fuzzy search across guild roster
 │   ├── sync.js                    # Remote state sync & Raider.IO polling
-│   ├── leaderboard-engine.js      # Universal calculation engine copy for bot
+│   ├── leaderboard-engine.js      # Re-exports ../leaderboard-engine.js (single source)
 │   └── guild-roster.json          # 689 imported Kith & Kin characters
 ```
 
@@ -82,7 +82,7 @@ kith-and-kin-mplus/
 
 State is persisted serverlessly using **Netlify Blobs** (`@netlify/blobs`):
 - **Store Name:** `mplus-state`
-- **Blob Key:** `guild_state`
+- **Blob Key:** `current_state` (strong consistency)
 - **Fallback:** Local `/tmp/kk_mplus_state.json` if blobs are unreachable.
 
 ### State Schema
@@ -134,7 +134,7 @@ State is persisted serverlessly using **Netlify Blobs** (`@netlify/blobs`):
 The bot operates **100% serverlessly** via `netlify/functions/discord.js`. Discord sends Ed25519-signed HTTP POST requests directly to `https://knkmplus.netlify.app/api/discord`.
 
 ### Registered Slash Commands
-- `/mplus leaderboard [view: demo|live]`: Displays the rich participation leaderboard embed with Top 3 podium and standings 4–10. Defaults to `demo` so fake stats are visible immediately.
+- `/mplus leaderboard [view: auto|live|demo]`: Participation leaderboard embed. `auto` (default) shows live standings once 10+ keys are logged, otherwise a clearly labeled DEMO.
 - `/mplus roster`: Returns the current Friday night signup roster card.
 - `/mplus post-signup`: Posts an interactive signup card into the channel with buttons.
 - `/mplus signup [character] [role] [min_key] [max_key]`: Self-service signup command.
@@ -157,11 +157,13 @@ node bot/deploy-commands.js
    - Any commit pushed to `origin/main` automatically triggers Netlify continuous deployment.
    - Always keep `gh-pages` fast-forwarded: `git checkout gh-pages; git merge main; git push origin gh-pages; git checkout main`.
 2. **Universal Leaderboard Engine:**
-   - `leaderboard-engine.js` is isomorphic and replicated in 3 places (`./leaderboard-engine.js`, `bot/leaderboard-engine.js`, `netlify/functions/leaderboard-engine.js`). If you modify scoring rules or formulas, update all 3 or copy from root.
-3. **Officer Password Gate:**
-   - The password prompt is intentionally bypassed across `index.html`, `app.js`, and `player-stats.js` for officer testing. Do not restore the blocking gate without Clay's explicit request.
+   - `leaderboard-engine.js` lives only at the repo root. `bot/leaderboard-engine.js` re-exports it; `netlify.toml` bundles it into functions.
+3. **Officer access:**
+   - Viewing the Control Center is open. Saving, private notes and the Chronicler ask for `OFFICER_KEY` once per browser session (kept in sessionStorage). There are no default secrets: missing env vars mean access is refused.
 4. **Environment Variables on Netlify:**
    - `DISCORD_PUBLIC_KEY`: Discord application public key for Ed25519 request signature verification.
    - `DISCORD_TOKEN` / `DISCORD_CLIENT_ID`: Bot token and application ID.
-   - `GEMINI_API_KEY`: Used by `netlify/functions/chronicler-recap.js` for lore chronicles.
+   - `GEMINI_API_KEY`: Used by `netlify/functions/chronicler-recap.js` for lore chronicles (officer-only endpoint).
+   - `SYNC_SECRET`: trusted writer key (bot scripts). `OFFICER_KEY`: passphrase officers type. `SESSION_SECRET`: signs Battle.net login cookies.
+   - Optional: `EVENT_TIME_ZONE` (default America/New_York), `EVENT_HOUR` (default 20), `HOST_NAME` (default MadKing).
    - `BNET_CLIENT_ID` / `BNET_CLIENT_SECRET`: Battle.net OAuth.

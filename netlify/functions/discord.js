@@ -28,7 +28,7 @@ const solver = loadModule('solver');
 const embeds = loadModule('embeds');
 const rosterSearch = loadModule('roster-search');
 const rollUi = loadModule('roll-ui');
-const liveState = require('./live-state');
+const liveState = require('./lib/live-state');
 
 function foldName(value) {
   return String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
@@ -75,7 +75,7 @@ function ephemeral(content) {
 
 function signupPreferencesMessage(player) {
   return {
-    content: `### 📝 Friday Mythic+ Night Sign-Up\nCharacter: **${player.name}** (${player.className}${player.realm ? ` — ${player.realm}` : ''})\nPick one or more roles, key goals (**6-8 Hero Crest**, **10-12 Vault**, **Higher than 12 IO**), and vibes, then **Save My RSVP**.`,
+    content: `### 📝 Friday Mythic+ Night Sign-Up\nCharacter: **${player.name}** (${player.className}${player.realm ? ` — ${player.realm}` : ''})\nPick one or more roles, key goals (**6-8 Hero Crests**, **9-12 Myth Crests & Vault**, **12+ Score Push**), and vibes, then **Save My RSVP**.`,
     components: embeds ? embeds.createSignupFormComponents({ player }) : []
   };
 }
@@ -704,8 +704,8 @@ exports.handler = async (event, context) => {
         let minKey = 30;
         let maxKey = 2;
         if (selectedBrackets.includes('6-8')) { minKey = Math.min(minKey, 6); maxKey = Math.max(maxKey, 8); }
-        if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 10); maxKey = Math.max(maxKey, 12); }
-        if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 13); maxKey = Math.max(maxKey, 18); }
+        if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 9); maxKey = Math.max(maxKey, 12); }
+        if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 12); maxKey = Math.max(maxKey, 18); }
         targetPlayer.keyMin = minKey;
         targetPlayer.keyMax = maxKey;
         targetPlayer.attending = true;

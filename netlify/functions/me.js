@@ -1,6 +1,6 @@
 const path = require('path');
 const { readSession, bnetConfigured } = require('./player-session');
-const { readLiveState, writeMergedState } = require('./live-state');
+const { readLiveState, writeMergedState } = require('./lib/live-state');
 
 function loadKeystone() {
   try {
@@ -20,8 +20,8 @@ function bracketsToRange(brackets) {
   let keyMin = 30;
   let keyMax = 2;
   if (brackets.includes('6-8')) { keyMin = Math.min(keyMin, 6); keyMax = Math.max(keyMax, 8); }
-  if (brackets.includes('10-12')) { keyMin = Math.min(keyMin, 10); keyMax = Math.max(keyMax, 12); }
-  if (brackets.includes('12+')) { keyMin = Math.min(keyMin, 13); keyMax = Math.max(keyMax, 18); }
+  if (brackets.includes('10-12')) { keyMin = Math.min(keyMin, 9); keyMax = Math.max(keyMax, 12); }
+  if (brackets.includes('12+')) { keyMin = Math.min(keyMin, 12); keyMax = Math.max(keyMax, 18); }
   if (keyMin > keyMax) { keyMin = 10; keyMax = 12; }
   return { keyMin, keyMax };
 }
@@ -588,7 +588,13 @@ async function rollOwnGroup(event, state, mine, body = {}) {
     };
   }
 
-  const picked = pool[Math.floor(Math.random() * pool.length)];
+  // Same rule as Discord: roll among keys people typed in. Only if nobody typed one, pick a member to check their bags.
+  const typed = pool.filter(member => {
+    const entry = rosterPlayer(state, member);
+    return entry.keyManual && String(entry.ownedKey || '').trim();
+  });
+  const rollFrom = typed.length ? typed : pool;
+  const picked = rollFrom[Math.floor(Math.random() * rollFrom.length)];
   const live = rosterPlayer(state, picked);
   const who = live.name || picked.name;
   const rawKey = live.keyManual && String(live.ownedKey || '').trim();

@@ -897,7 +897,7 @@
             </div>
             <div class="player-key-row">
               ${player.keyManual && player.ownedKey ? `<span class="key-owned-pill" title="Keystone they typed in: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
-              <span class="key-range-pill" title="Comfortable key level range">🎯 ${player.keyBrackets && player.keyBrackets.length > 0 ? player.keyBrackets.map(b => b === '6-8' ? '6-8 (Hero)' : (b === '10-12' ? '10-12 (Vault)' : '12+ (Push)')).join(' • ') : `+${player.keyMin} – +${player.keyMax}`}</span>
+              <span class="key-range-pill" title="Comfortable key level range">🎯 ${player.keyBrackets && player.keyBrackets.length > 0 ? player.keyBrackets.map(b => b === '6-8' ? '6-8 (Hero)' : (b === '10-12' ? '9-12 (Myth/Vault)' : '12+ (Push)')).join(' • ') : `+${player.keyMin} – +${player.keyMax}`}</span>
               ${isAltRealm ? `<span class="realm-pill">${escapeHtml(player.realm)}</span>` : ''}
             </div>
             <div class="player-actions-row">
@@ -2397,8 +2397,8 @@
     let keyMin = 30;
     let keyMax = 2;
     if (brackets.includes('6-8')) { keyMin = Math.min(keyMin, 6); keyMax = Math.max(keyMax, 8); }
-    if (brackets.includes('10-12')) { keyMin = Math.min(keyMin, 10); keyMax = Math.max(keyMax, 12); }
-    if (brackets.includes('12+')) { keyMin = Math.min(keyMin, 13); keyMax = Math.max(keyMax, 18); }
+    if (brackets.includes('10-12')) { keyMin = Math.min(keyMin, 9); keyMax = Math.max(keyMax, 12); }
+    if (brackets.includes('12+')) { keyMin = Math.min(keyMin, 12); keyMax = Math.max(keyMax, 18); }
 
     const ownedKey = document.getElementById('keystoneInput').value.trim();
 
