@@ -17,5 +17,5 @@ if (!root) {
 const src = path.join(__dirname, '..', 'addon', 'KithKinKeys');
 const dest = path.join(root, 'Interface', 'AddOns', 'KithKinKeys');
 fs.mkdirSync(dest, { recursive: true });
-for (const file of fs.readdirSync(src)) fs.copyFileSync(path.join(src, file), path.join(dest, file));
+fs.cpSync(src, dest, { recursive: true, force: true });
 console.log(`Installed KithKinKeys to ${dest}`);

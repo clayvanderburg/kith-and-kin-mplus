@@ -1,9 +1,10 @@
 ## Interface: 120100, 120005, 120001, 120000
 ## Title: Kith & Kin Keys
-## Notes: Collects guild keystones (via BigWigs / Details! / Astral Keys) for the Kith & Kin M+ site.
+## Notes: Collects guild keystones from BigWigs, Details!, Astral Keys, LiteKeystone and chat links for the Kith & Kin M+ site. Works on its own; no other addon required.
 ## Author: MadKing
-## Version: 1.0.0
+## Version: 2.0.0
 ## SavedVariables: KithKinKeysDB
-## OptionalDeps: BigWigs, Details, AstralKeys, LiteKeystone
 
+Libs\LibStub.lua
+Libs\LibDeflate.lua
 KithKinKeys.lua
