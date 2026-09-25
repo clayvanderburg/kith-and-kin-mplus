@@ -2738,6 +2738,18 @@
       });
     }
 
+    const strategyToggle = document.getElementById('strategyToggle');
+    const strategyCard = document.getElementById('strategyCard');
+    const strategyChevron = document.getElementById('strategyChevron');
+    if (strategyToggle && strategyCard) {
+      strategyToggle.addEventListener('click', () => {
+        const collapsed = strategyCard.classList.toggle('is-collapsed');
+        strategyToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        if (strategyChevron) strategyChevron.textContent = collapsed ? 'Show' : 'Hide';
+        playSound('click');
+      });
+    }
+
     const rouletteToggle = document.getElementById('rouletteToggle');
     const rouletteCard = document.getElementById('keystoneRouletteCard');
     const rouletteChevron = document.getElementById('rouletteChevron');

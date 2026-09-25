@@ -881,6 +881,55 @@ body {
   flex-direction: column;
 }
 
+/* Grouping Strategy Collapsible Section */
+.strategy-card {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.strategy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1.1rem 1.4rem;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.strategy-header:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.strategy-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.strategy-icon {
+  font-size: 1.4rem;
+  color: var(--text-gold);
+}
+
+.strategy-chevron {
+  color: var(--text-gold);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.strategy-card.is-collapsed .settings-box {
+  display: none;
+}
+
 .settings-box {
   display: grid;
   grid-template-columns: 1fr 1fr;

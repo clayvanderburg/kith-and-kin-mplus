@@ -152,58 +152,65 @@
 
       <!-- Right Column: Group Generation & Deployment -->
       <section class="generator-panel card">
-        <div class="panel-header">
-          <div>
-            <h2 class="panel-title">⚡ Keystone Activation</h2>
-            <p class="panel-desc">Configure party preferences and forge balanced 5-man dungeon groups.</p>
-          </div>
-        </div>
+        <!-- Grouping Strategy Section (Collapsible, collapsed by default) -->
+        <div class="strategy-card is-collapsed" id="strategyCard">
+          <button type="button" class="strategy-header" id="strategyToggle" aria-expanded="false">
+            <div class="strategy-title">
+              <span class="strategy-icon">⚡</span>
+              <div>
+                <h2 class="panel-title" style="margin: 0; font-size: 1.15rem;">Grouping Strategy</h2>
+                <p class="panel-desc" style="margin: 0.15rem 0 0;">Configure party preferences and forge balanced 5-man dungeon groups.</p>
+              </div>
+            </div>
+            <span class="strategy-chevron" id="strategyChevron">Show</span>
+          </button>
 
-        <!-- Algorithm Settings Box -->
-        <div class="settings-box">
-          <div class="setting-item">
-            <label for="matchingModeSelect">Grouping Strategy</label>
-            <select id="matchingModeSelect" class="form-select">
-              <option value="balanced" selected>🎯 Balanced Key Levels (Match similar key comfort)</option>
-              <option value="guildMixer">🤝 Guild Mixer (Spread key ranges &amp; classes evenly)</option>
-              <option value="pureChaos">🎲 Complete Chaos (Pure random valid comps)</option>
-            </select>
-          </div>
+          <!-- Algorithm Settings Box -->
+          <div class="settings-box" id="strategySettingsBox">
+            <div class="setting-item">
+              <label for="matchingModeSelect">Grouping Strategy</label>
+              <select id="matchingModeSelect" class="form-select">
+                <option value="balanced" selected>🎯 Balanced Key Levels (Match similar key comfort)</option>
+                <option value="guildMixer">🤝 Guild Mixer (Spread key ranges &amp; classes evenly)</option>
+                <option value="pureChaos">🎲 Complete Chaos (Pure random valid comps)</option>
+              </select>
+            </div>
 
-          <div class="setting-item">
-            <label for="dungeonPoolSelect">Dungeon Pool Mode</label>
-            <select id="dungeonPoolSelect" class="form-select">
-              <option value="midnight_s2" selected>Midnight — Season 2 (Current Pool)</option>
-              <option value="none">No Dungeon Assignment (Keys Only)</option>
-            </select>
-          </div>
+            <div class="setting-item">
+              <label for="dungeonPoolSelect">Dungeon Pool Mode</label>
+              <select id="dungeonPoolSelect" class="form-select">
+                <option value="midnight_s2" selected>Midnight — Season 2 (Current Pool)</option>
+                <option value="none">No Dungeon Assignment (Keys Only)</option>
+              </select>
+            </div>
 
-          <div class="setting-item checkbox-item">
-            <label class="checkbox-label" title="Balance high-IO and lower-IO players so all groups have a comparable average rating">
-              <input type="checkbox" id="balanceIoCheck" checked>
-              <span>⚖️ Equalize Average Group M+ Score (IO)</span>
-            </label>
-          </div>
+            <div class="setting-item checkbox-item">
+              <label class="checkbox-label" title="Balance high-IO and lower-IO players so all groups have a comparable average rating">
+                <input type="checkbox" id="balanceIoCheck" checked>
+                <span>⚖️ Equalize Average Group M+ Score (IO)</span>
+              </label>
+            </div>
 
-          <div class="setting-item checkbox-item">
-            <label class="checkbox-label" title="Distribute Bloodlust/Heroism classes (Mage, Shaman, Hunter, Evoker) evenly">
-              <input type="checkbox" id="ensureLustCheck" checked>
-              <span>⚡ Ensure Bloodlust / Heroism in Each Group</span>
-            </label>
-          </div>
+            <div class="setting-item checkbox-item">
+              <label class="checkbox-label" title="Distribute Bloodlust/Heroism classes (Mage, Shaman, Hunter, Evoker) evenly">
+                <input type="checkbox" id="ensureLustCheck" checked>
+                <span>⚡ Ensure Bloodlust / Heroism in Each Group</span>
+              </label>
+            </div>
 
-          <div class="setting-item checkbox-item">
-            <label class="checkbox-label" title="Distribute Battle Resurrection classes (Druid, Paladin, Death Knight, Warlock) evenly">
-              <input type="checkbox" id="ensureBrezCheck" checked>
-              <span>🔄 Ensure Battle Resurrection in Each Group</span>
-            </label>
-          </div>
+            <div class="setting-item checkbox-item">
+              <label class="checkbox-label" title="Distribute Battle Resurrection classes (Druid, Paladin, Death Knight, Warlock) evenly">
+                <input type="checkbox" id="ensureBrezCheck" checked>
+                <span>🔄 Ensure Battle Resurrection in Each Group</span>
+              </label>
+            </div>
 
-          <div class="setting-item checkbox-item">
-            <label class="checkbox-label" title="Try to assign distinct classes within the same 5-man group">
-              <input type="checkbox" id="avoidClassDupes" checked>
-              <span>Avoid Duplicate Classes in Groups</span>
-            </label>
+            <div class="setting-item checkbox-item">
+              <label class="checkbox-label" title="Try to assign distinct classes within the same 5-man group">
+                <input type="checkbox" id="avoidClassDupes" checked>
+                <span>Avoid Duplicate Classes in Groups</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -532,6 +539,6 @@
     .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
-  <script src="app.js?v=sync-11"></script>
+  <script src="app.js?v=sync-12"></script>
 </body>
 </html>
