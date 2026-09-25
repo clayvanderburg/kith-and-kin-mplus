@@ -34,7 +34,7 @@
   --class-mage: #3FC7EB;
   --class-monk: #00FF98;
   --class-paladin: #F48CBA;
-  --class-priest: #E2E8F0;
+  --class-priest: #FFFFFF;
   --class-rogue: #FFF468;
   --class-shaman: #0070DD;
   --class-warlock: #8788EE;
@@ -644,7 +644,7 @@ body {
 }
 
 .player-row.inactive {
-  opacity: 0.45;
+  opacity: 0.62; /* still readable: names were below 3:1 contrast at 0.45 */
   filter: grayscale(0.5);
   border-left-color: #555 !important;
 }
@@ -4240,3 +4240,19 @@ button {
 
 /* The hidden attribute must win over component display rules. */
 [hidden] { display: none !important; }
+
+/* Keyboard users: always show where focus is. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--text-gold);
+  outline-offset: 2px;
+}
+
+/* Respect the OS "reduce motion" setting. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

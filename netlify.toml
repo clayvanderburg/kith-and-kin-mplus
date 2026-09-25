@@ -26,10 +26,21 @@
     Pragma = "no-cache"
     Expires = "0"
 
+# Scripts and styles: browsers keep a copy and re-check it each visit (cheap 304 when unchanged).
 [[headers]]
   for = "/*.js"
   [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
 
 [[headers]]
   for = "/api/*"

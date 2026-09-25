@@ -16,7 +16,7 @@
     'Mage':         { color: '#3FC7EB', roles: ['DPS'], brez: false, lust: true },
     'Monk':         { color: '#00FF98', roles: ['Tank', 'Healer', 'DPS'], brez: false, lust: false },
     'Paladin':      { color: '#F48CBA', roles: ['Tank', 'Healer', 'DPS'], brez: true, lust: false },
-    'Priest':       { color: '#E2E8F0', roles: ['Healer', 'DPS'], brez: false, lust: false },
+    'Priest':       { color: '#FFFFFF', roles: ['Healer', 'DPS'], brez: false, lust: false },
     'Rogue':        { color: '#FFF468', roles: ['DPS'], brez: false, lust: false },
     'Shaman':       { color: '#0070DD', roles: ['Healer', 'DPS'], brez: false, lust: true },
     'Warlock':      { color: '#8788EE', roles: ['DPS'], brez: true, lust: false },
@@ -1654,7 +1654,7 @@
         <div class="empty-state">
           <div class="empty-icon">🛡️⚔️💚</div>
           <h4>No groups formed yet</h4>
-          <p>Make sure at least 5 guild members (including at least 1 Tank &amp; 1 Healer) are marked attending, then click <strong>Activate Keystone</strong>!</p>
+          <p>Make sure at least 5 guild members (including at least 1 Tank &amp; 1 Healer) are marked attending, then click <strong>Form Groups</strong>.</p>
         </div>
       `;
       return;

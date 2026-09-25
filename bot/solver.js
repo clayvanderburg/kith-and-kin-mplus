@@ -12,7 +12,7 @@ const WOW_CLASSES = {
   'Mage':         { color: 0x3FC7EB, hex: '#3FC7EB', roles: ['DPS'], brez: false, lust: true },
   'Monk':         { color: 0x00FF98, hex: '#00FF98', roles: ['Tank', 'Healer', 'DPS'], brez: false, lust: false },
   'Paladin':      { color: 0xF48CBA, hex: '#F48CBA', roles: ['Tank', 'Healer', 'DPS'], brez: true, lust: false },
-  'Priest':       { color: 0xE2E8F0, hex: '#E2E8F0', roles: ['Healer', 'DPS'], brez: false, lust: false },
+  'Priest':       { color: 0xFFFFFF, hex: '#FFFFFF', roles: ['Healer', 'DPS'], brez: false, lust: false },
   'Rogue':        { color: 0xFFF468, hex: '#FFF468', roles: ['DPS'], brez: false, lust: false },
   'Shaman':       { color: 0x0070DD, hex: '#0070DD', roles: ['Healer', 'DPS'], brez: false, lust: true },
   'Warlock':      { color: 0x8788EE, hex: '#8788EE', roles: ['DPS'], brez: true, lust: false },
