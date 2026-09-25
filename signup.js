@@ -6,6 +6,15 @@
   const saveStatus = document.getElementById('saveStatus');
   let selected = null;
   let characters = [];
+  let currentSignup = null;
+  let satisfaction = 3;
+
+  const FACES = ['', '😠', '🙁', '😐', '🙂', '😄'];
+  const CLASS_COLORS = {
+    'Death Knight': '#C41E3A', 'Demon Hunter': '#A330C9', Druid: '#FF7C0A', Evoker: '#33937F',
+    Hunter: '#AAD372', Mage: '#3FC7EB', Monk: '#00FF98', Paladin: '#F48CBA', Priest: '#E2E8F0',
+    Rogue: '#FFF468', Shaman: '#0070DD', Warlock: '#8788EE', Warrior: '#C69B6D'
+  };
 
   function checkedValues(container) {
     return [...container.querySelectorAll('input:checked')].map(input => input.value);
@@ -60,28 +69,101 @@
     renderCharacters();
   }
 
+  function prefText(member) {
+    const bits = [];
+    if (member.isLeader) bits.push('👑 Lead');
+    if (member.carryPreference === 'need_carry') bits.push('🎒 Carry');
+    if (member.carryPreference === 'willing_carry') bits.push('🏋️ Can carry');
+    if (member.isReserve) bits.push('🍺 Bench');
+    if (member.isShitter) bits.push('💩 Alt');
+    if (member.keyBrackets?.length) bits.push(member.keyBrackets.join(' · '));
+    return bits.join(' · ');
+  }
+
+  function recordText(record) {
+    if (!record?.runs) return 'No keys logged yet';
+    const face = record.avgSatisfaction ? ` · ${FACES[record.avgSatisfaction] || ''}` : '';
+    return `${record.runs} keys · ${record.rate}% timed${face}`;
+  }
+
+  function renderHistory(log) {
+    const list = document.getElementById('historyList');
+    if (!list) return;
+    if (!log?.length) {
+      list.innerHTML = '<p class="player-lead">No keys logged yet. Add one after the run.</p>';
+      return;
+    }
+    list.innerHTML = log.map(entry => {
+      const when = new Date(entry.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return `<article class="history-item">
+        <strong>${FACES[entry.satisfaction] || ''} ${escapeHtml(entry.key)}</strong>
+        <small> ${entry.success ? 'Timed' : 'Depleted'} · ${escapeHtml(when)}${entry.groupName ? ` · ${escapeHtml(entry.groupName)}` : ''}</small>
+        ${entry.note ? `<div>${escapeHtml(entry.note)}</div>` : ''}
+      </article>`;
+    }).join('');
+  }
+
+  function showSignedUp(signup) {
+    currentSignup = signup;
+    const summary = document.getElementById('signupSummary');
+    const form = document.getElementById('signupForm');
+    const card = document.getElementById('signupCard');
+    const night = document.getElementById('nightCard');
+    if (!signup) {
+      summary.hidden = true;
+      form.hidden = false;
+      card.classList.remove('is-collapsed');
+      night.hidden = true;
+      return;
+    }
+    summary.hidden = false;
+    card.classList.add('is-collapsed');
+    night.hidden = false;
+    document.getElementById('summaryName').textContent = signup.name;
+    const goals = (signup.keyBrackets || []).join(', ') || `+${signup.keyMin}–${signup.keyMax}`;
+    document.getElementById('summaryDetail').textContent = `${signup.className} · ${(signup.roles || []).join('/')} · ${goals} · ${signup.io || 0} IO`;
+    document.querySelectorAll('#statusRow .status-btn').forEach(button => {
+      button.classList.toggle('is-on', button.dataset.status === (signup.nightStatus || 'waiting'));
+    });
+    const keyInput = document.getElementById('runKeyInput');
+    if (keyInput && !keyInput.value) keyInput.value = signup.ownedKey || '';
+    renderHistory(signup.runLog);
+  }
+
   function renderGroups(groups) {
     const list = document.getElementById('groupList');
     groupCard.hidden = false;
-    if (!groups || !groups.length) {
-      list.innerHTML = '<p class="player-lead">Parties have not been formed yet. Your signup is still saved.</p>';
+    const ordered = [...(groups || [])].sort((a, b) => Number(b.mine) - Number(a.mine));
+    if (!ordered.length) {
+      list.innerHTML = '<p class="player-lead">Parties have not been formed yet. Your signup is saved, and you can still set Waiting or In key.</p>';
       return;
     }
-    list.innerHTML = groups.map(group => {
-      const people = group.members.map(member => `${escapeHtml(member.name)} (${escapeHtml(member.className)})`).join(', ');
+    list.innerHTML = ordered.map(group => {
+      const rows = group.members.map(member => {
+        const color = CLASS_COLORS[member.className] || '#f5d061';
+        const status = member.nightStatus === 'in-key' ? 'in-key' : 'waiting';
+        return `<div class="member-row">
+          <div class="class-pip" style="--pip:${color}"></div>
+          <div>
+            <div class="member-name">${escapeHtml(member.name)}</div>
+            <div class="member-meta">${escapeHtml(member.className || 'Player')} · ${escapeHtml((member.roles || []).join('/'))}</div>
+            <div class="member-meta">${escapeHtml(prefText(member))}</div>
+            <div class="member-key">${member.ownedKey ? `Key in bags: ${escapeHtml(member.ownedKey)}` : 'No key listed'}</div>
+            <div class="member-record"><span class="status-pill ${status}">${status === 'in-key' ? 'In key' : 'Waiting'}</span>${escapeHtml(recordText(member.record))}</div>
+          </div>
+          <div class="member-score"><b>${member.io || 0}</b><span>IO</span><div>${member.ilvl || '—'} ilvl</div></div>
+        </div>`;
+      }).join('');
       const roll = group.mine
         ? `<button type="button" class="btn btn-sm btn-accent" data-roll="${group.index}">Roll a key for this party</button>`
         : '';
-      const key = group.dungeon ? `<div>Key: <strong>${escapeHtml(group.dungeon)}</strong></div>` : '';
-      const held = group.heldKeys?.length
-        ? `<div>Keys in bags: ${group.heldKeys.map(item => `${escapeHtml(item.name)} ${escapeHtml(item.ownedKey)}`).join(', ')}</div>`
-        : '';
       return `<article class="party-card ${group.mine ? 'mine' : ''}">
-        <strong>${group.mine ? 'Your party · ' : ''}${escapeHtml(group.name)}</strong>
-        ${group.leaderName ? `<div>Leader: ${escapeHtml(group.leaderName)}</div>` : ''}
-        <div>${people}</div>
-        ${key}
-        ${held}
+        <div class="party-head">
+          <strong>${group.mine ? 'Your party · ' : ''}${escapeHtml(group.name)}</strong>
+          <span>${group.dungeon ? escapeHtml(group.dungeon) : 'No key rolled yet'}</span>
+        </div>
+        ${group.leaderName ? `<div class="member-meta">Leader: ${escapeHtml(group.leaderName)}</div>` : ''}
+        ${rows}
         ${roll}
       </article>`;
     }).join('');
@@ -142,8 +224,23 @@
     }
     saveStatus.textContent = data.signup?.attending === false
       ? 'Marked you as out.'
-      : `Saved ${data.signup.name}. Raider.IO score and key were pulled when available.`;
+      : `Saved ${data.signup.name}.`;
+    showSignedUp(data.signup);
     renderGroups(data.groups);
+  }
+
+  async function postMe(body) {
+    const res = await fetch('/api/me', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || data.message || 'Save failed.');
+    showSignedUp(data.signup);
+    renderGroups(data.groups);
+    return data;
   }
 
   function rememberSessionFromHash() {
@@ -203,8 +300,47 @@
     }
     fillForm(data.signup);
     renderCharacters();
+    showSignedUp(data.signup);
     renderGroups(data.groups);
     document.getElementById('saveBtn').addEventListener('click', saveSignup);
+    document.getElementById('editSignupBtn').addEventListener('click', () => {
+      document.getElementById('signupCard').classList.remove('is-collapsed');
+      document.getElementById('signupForm').hidden = false;
+    });
+    document.querySelectorAll('#statusRow .status-btn').forEach(button => {
+      button.addEventListener('click', async () => {
+        document.getElementById('nightStatus').textContent = 'Saving status...';
+        try {
+          await postMe({ action: 'status', nightStatus: button.dataset.status });
+          document.getElementById('nightStatus').textContent = button.dataset.status === 'in-key' ? 'Marked in key.' : 'Marked waiting.';
+        } catch (err) {
+          document.getElementById('nightStatus').textContent = err.message;
+        }
+      });
+    });
+    document.querySelectorAll('#faceRow .face-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        satisfaction = Number(button.dataset.face);
+        document.querySelectorAll('#faceRow .face-btn').forEach(face => face.classList.toggle('is-on', face === button));
+      });
+    });
+    document.getElementById('logRunBtn').addEventListener('click', async () => {
+      const line = document.getElementById('nightStatus');
+      line.textContent = 'Saving the key...';
+      try {
+        await postMe({
+          action: 'log-run',
+          key: document.getElementById('runKeyInput').value,
+          success: document.getElementById('runResult').value === 'yes',
+          note: document.getElementById('runNote').value,
+          satisfaction
+        });
+        document.getElementById('runNote').value = '';
+        line.textContent = 'Added to your record.';
+      } catch (err) {
+        line.textContent = err.message;
+      }
+    });
   }
 
   boot().catch(() => {

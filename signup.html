@@ -20,10 +20,36 @@
     .choice-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.4rem 0 0.9rem; }
     .choice-row label { border: 1px solid var(--border-card); border-radius: 999px; padding: 0.35rem 0.7rem; cursor: pointer; }
     .choice-row input { margin-right: 0.3rem; }
-    .party-card { border: 1px solid var(--border-card); border-radius: 12px; padding: 0.8rem; margin-bottom: 0.6rem; }
-    .party-card.mine { border-color: var(--border-gold); }
+    .party-card { border: 1px solid var(--border-card); border-radius: 16px; padding: 0.9rem; margin-bottom: 0.8rem; background: rgba(0,0,0,0.18); }
+    .party-card.mine { border-color: var(--border-gold); box-shadow: 0 0 0 1px rgba(245, 208, 97, 0.25); }
+    .party-head { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; margin-bottom: 0.7rem; }
+    .party-head strong { font-family: Cinzel, serif; color: var(--text-gold); }
+    .member-row { display: grid; grid-template-columns: 6px 1fr auto; gap: 0.7rem; align-items: center; padding: 0.65rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
+    .class-pip { width: 6px; height: 100%; min-height: 42px; border-radius: 99px; background: var(--pip, #f5d061); }
+    .member-name { font-weight: 700; }
+    .member-meta, .member-key, .member-record { color: var(--text-muted); font-size: 0.82rem; }
+    .member-score { text-align: right; font-variant-numeric: tabular-nums; }
+    .member-score b { display: block; color: var(--text-gold); }
+    .status-pill, .pref-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.12rem 0.45rem; margin-right: 0.25rem; border: 1px solid var(--border-card); font-size: 0.75rem; }
+    .status-pill.in-key { color: #86efac; border-color: rgba(134, 239, 172, 0.45); }
+    .status-pill.waiting { color: #fde68a; border-color: rgba(253, 230, 138, 0.35); }
+    .signup-summary { display: flex; justify-content: space-between; gap: 0.8rem; align-items: center; }
+    .signup-summary p { margin: 0.2rem 0 0; color: var(--text-muted); }
+    #signupCard.is-collapsed #signupForm { display: none; }
+    .desk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+    .face-row { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .face-btn, .status-btn { border: 1px solid var(--border-card); background: rgba(0,0,0,0.25); color: var(--text-main); border-radius: 12px; padding: 0.45rem 0.6rem; cursor: pointer; }
+    .face-btn.is-on, .status-btn.is-on { border-color: var(--border-gold); box-shadow: 0 0 0 1px rgba(245, 208, 97, 0.35); }
+    .face-btn { font-size: 1.35rem; line-height: 1; }
+    .history-item { padding: 0.55rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
+    .history-item small { color: var(--text-muted); }
     .status-line { min-height: 1.2rem; color: var(--text-gold); }
     .login-panel { text-align: center; padding: 1.5rem 0.5rem 0.5rem; }
+    @media (max-width: 700px) {
+      .desk-grid, .member-row { grid-template-columns: 1fr; }
+      .member-score { text-align: left; }
+      .signup-summary { align-items: flex-start; flex-direction: column; }
+    }
   </style>
 </head>
 <body>
@@ -46,6 +72,14 @@
       </section>
 
       <section class="card player-card" id="signupCard" hidden>
+        <div class="signup-summary" id="signupSummary" hidden>
+          <div>
+            <h2 id="summaryName">Signed up</h2>
+            <p id="summaryDetail"></p>
+          </div>
+          <button type="button" class="btn btn-accent" id="editSignupBtn">Edit signup</button>
+        </div>
+        <div id="signupForm">
         <h2 id="hello">Your signup</h2>
         <p class="player-lead" id="tagLine"></p>
         <h3>Which night</h3>
@@ -76,15 +110,51 @@
         </div>
         <button type="button" class="btn btn-primary" id="saveBtn">Save my signup</button>
         <p class="status-line" id="saveStatus"></p>
+        </div>
+      </section>
+
+      <section class="card player-card" id="nightCard" hidden>
+        <h2>Your night</h2>
+        <p class="player-lead">Let the party know if you are waiting on a reroll or already in a key. Log the key when you finish so your record stays with you.</p>
+        <div class="face-row" id="statusRow">
+          <button type="button" class="status-btn" data-status="waiting">⏳ Waiting</button>
+          <button type="button" class="status-btn" data-status="in-key">🗝️ In key</button>
+        </div>
+        <div class="desk-grid" style="margin-top: 0.9rem;">
+          <label>Key you ran
+            <input id="runKeyInput" class="form-input" maxlength="80" placeholder="Murder Row +16">
+          </label>
+          <label>Result
+            <select id="runResult" class="form-select">
+              <option value="yes">Timed</option>
+              <option value="no">Depleted</option>
+            </select>
+          </label>
+        </div>
+        <label>Note
+          <textarea id="runNote" class="form-input" maxlength="280" rows="2" placeholder="Smooth run, or what made it rough"></textarea>
+        </label>
+        <p class="player-lead" style="margin-top: 0.8rem;">How did the group feel?</p>
+        <div class="face-row" id="faceRow">
+          <button type="button" class="face-btn" data-face="1" title="Rough">😠</button>
+          <button type="button" class="face-btn" data-face="2" title="Meh">🙁</button>
+          <button type="button" class="face-btn is-on" data-face="3" title="Okay">😐</button>
+          <button type="button" class="face-btn" data-face="4" title="Good">🙂</button>
+          <button type="button" class="face-btn" data-face="5" title="Great">😄</button>
+        </div>
+        <button type="button" class="btn btn-primary" id="logRunBtn" style="margin-top: 0.8rem;">Add to my record</button>
+        <p class="status-line" id="nightStatus"></p>
+        <h3>Your history</h3>
+        <div id="historyList"></div>
       </section>
 
       <section class="card player-card" id="groupCard" hidden>
         <h2>Tonight's parties</h2>
-        <p class="player-lead">You can see every party. Keystone roulette only works for the party you are in.</p>
+        <p class="player-lead">IO, preferences, keys, and whether people are waiting or already in a dungeon. Your record is the keys you log.</p>
         <div id="groupList"></div>
       </section>
     </main>
   </div>
-  <script src="signup.js?v=player-3"></script>
+  <script src="signup.js?v=player-4"></script>
 </body>
 </html>

@@ -56,8 +56,31 @@ function publicPlayer(player) {
     isReserve: !!player.isReserve,
     isShitter: !!player.isShitter,
     carryPreference: player.carryPreference || 'none',
-    eventId: player.eventId || ''
+    eventId: player.eventId || '',
+    nightStatus: player.nightStatus === 'in-key' ? 'in-key' : 'waiting',
+    record: recordOf(player),
+    runLog: (Array.isArray(player.runLog) ? player.runLog : []).slice(0, 40)
   };
+}
+
+function recordOf(player) {
+  const log = Array.isArray(player?.runLog) ? player.runLog : [];
+  const runs = log.length;
+  const successes = log.filter(entry => entry.success).length;
+  const rated = log.filter(entry => Number(entry.satisfaction) >= 1);
+  const avgSatisfaction = rated.length
+    ? Math.round(rated.reduce((sum, entry) => sum + Number(entry.satisfaction), 0) / rated.length)
+    : null;
+  return {
+    runs,
+    successes,
+    rate: runs ? Math.round((successes / runs) * 100) : null,
+    avgSatisfaction
+  };
+}
+
+function rosterPlayer(state, member) {
+  return (state.players || []).find(player => fold(player.name) === fold(member?.name)) || member || {};
 }
 
 function groupMembers(group) {
@@ -75,11 +98,24 @@ function publicGroups(state, myName) {
       leaderName: group.leaderName || '',
       dungeon: group.dungeon || group.assignedDungeon || '',
       mine: mineHere,
-      members: members.map(member => ({
-        name: member.name,
-        className: member.className,
-        roles: member.roles || []
-      })),
+      members: members.map(member => {
+        const live = rosterPlayer(state, member);
+        return {
+          name: live.name || member.name,
+          className: live.className || member.className || '',
+          roles: live.roles || member.roles || [],
+          io: live.io || 0,
+          ilvl: live.ilvl || 0,
+          ownedKey: live.ownedKey || '',
+          keyBrackets: live.keyBrackets || [],
+          isLeader: !!live.isLeader,
+          isReserve: !!live.isReserve,
+          isShitter: !!live.isShitter,
+          carryPreference: live.carryPreference || 'none',
+          nightStatus: live.nightStatus === 'in-key' ? 'in-key' : 'waiting',
+          record: recordOf(live)
+        };
+      }),
       heldKeys: mineHere ? members.filter(member => member.ownedKey).map(member => ({
         name: member.name,
         ownedKey: member.ownedKey
@@ -197,6 +233,12 @@ exports.handler = async (event) => {
     if (body.action === 'roll') {
       return rollOwnGroup(event, state, mine);
     }
+    if (body.action === 'status') {
+      return saveNightStatus(event, state, mine, body);
+    }
+    if (body.action === 'log-run') {
+      return saveRunLog(event, state, mine, body);
+    }
     return await saveSignup(event, state, session, body, mine);
   } catch (err) {
     console.error('[me] save failed:', err);
@@ -207,6 +249,55 @@ exports.handler = async (event) => {
     };
   }
 };
+
+function playerResponse(saved, savedMe) {
+  return {
+    ok: true,
+    signup: publicPlayer(savedMe),
+    groups: publicGroups(saved, savedMe?.name)
+  };
+}
+
+async function saveNightStatus(event, state, mine, body) {
+  if (!mine) {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Save your signup before setting a status.' }) };
+  }
+  mine.nightStatus = body.nightStatus === 'in-key' ? 'in-key' : 'waiting';
+  mine.touchedAt = new Date().toISOString();
+  const saved = await writeMergedState(event, { players: [mine] });
+  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
+}
+
+async function saveRunLog(event, state, mine, body) {
+  if (!mine) {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Save your signup before logging a key.' }) };
+  }
+  const key = String(body.key || '').trim().slice(0, 80);
+  if (!key) {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Enter the key you ran.' }) };
+  }
+  const satisfaction = Math.max(1, Math.min(5, parseInt(body.satisfaction, 10) || 3));
+  const myGroup = (state.formedGroups || []).find(group =>
+    groupMembers(group).some(member => fold(member.name) === fold(mine.name))
+  );
+  const entry = {
+    id: `run-${Date.now()}`,
+    at: new Date().toISOString(),
+    eventId: mine.eventId || state.currentEventId || '',
+    groupName: myGroup?.name || '',
+    key,
+    success: body.success === true,
+    note: String(body.note || '').trim().slice(0, 280),
+    satisfaction,
+    members: myGroup ? groupMembers(myGroup).map(member => member.name).filter(Boolean) : []
+  };
+  mine.runLog = [entry, ...(Array.isArray(mine.runLog) ? mine.runLog : [])].slice(0, 100);
+  mine.touchedAt = entry.at;
+  const saved = await writeMergedState(event, { players: [mine] });
+  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
+}
 
 async function saveSignup(event, state, session, body, existing) {
   const character = findOwnedCharacter(session, body);
