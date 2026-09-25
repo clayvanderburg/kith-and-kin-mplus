@@ -2615,9 +2615,14 @@
     // Sound toggle
     document.getElementById('soundToggleBtn').addEventListener('click', toggleSound);
 
-    // Keystone sigil click easter egg
-    document.getElementById('keystoneSigil').addEventListener('click', () => {
+    // Keystone sigil / guild emblem click easter egg
+    document.getElementById('keystoneSigil')?.addEventListener('click', () => {
       playSound('keystone');
+      const sigil = document.getElementById('keystoneSigil');
+      if (sigil) {
+        sigil.classList.add('is-pulsing');
+        setTimeout(() => sigil.classList.remove('is-pulsing'), 600);
+      }
     });
 
     loadGuildNameList();

@@ -7,7 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=player-11">
+  <link rel="icon" type="image/jpeg" href="assets/kith-and-kin-logo.jpg">
+  <link rel="stylesheet" href="styles.css?v=logo-1">
 </head>
 <body>
   <!-- Ambient Audio Elements synthesized via Web Audio API -->
@@ -19,14 +20,15 @@
     </nav>
     <header class="guild-header">
       <div class="guild-crest">
-        <div class="keystone-sigil" id="keystoneSigil" title="Click to pulse the keystone!">
-          <div class="keystone-gem"></div>
-          <div class="keystone-ring"></div>
+        <div class="guild-emblem" id="keystoneSigil" title="Kith & Kin — Click to pulse the crest!">
+          <img src="assets/kith-and-kin-logo.jpg" alt="Kith & Kin" class="emblem-img">
+          <div class="emblem-glow"></div>
+          <div class="emblem-ring"></div>
         </div>
       </div>
       <div class="header-titles">
         <div class="guild-subtitle">World of Warcraft • Midnight Season 2</div>
-        <h1 class="guild-title">Kith & Kin <span class="highlight">Mythic+ Night</span></h1>
+        <h1 class="guild-title"><span class="brand-kith">Kith</span> <span class="brand-amp">&amp;</span> <span class="brand-kin">Kin</span> <span class="highlight">Mythic+ Night</span></h1>
         <p class="guild-tagline">Assemble the realm's finest dungeon crawlers, match key levels, and conquer the keystones!</p>
       </div>
       <div class="header-actions">
@@ -317,7 +319,13 @@
 
     <!-- Footer -->
     <footer class="guild-footer">
-      <p>⚔️ For the Guild! Crafted for <strong>Kith and Kin</strong> Mythic+ Nights • World of Warcraft</p>
+      <div class="footer-brand">
+        <img src="assets/kith-and-kin-logo.jpg" alt="Kith & Kin" class="footer-logo">
+        <div class="footer-copy">
+          <p>For the Guild! Crafted for <strong>Kith & Kin</strong> • World of Warcraft</p>
+          <small class="footer-realm">Perenolde / Cairne US • Midnight Season 2</small>
+        </div>
+      </div>
     </footer>
   </div>
 
@@ -539,6 +547,6 @@
     .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
-  <script src="app.js?v=sync-13"></script>
+  <script src="app.js?v=logo-1"></script>
 </body>
 </html>

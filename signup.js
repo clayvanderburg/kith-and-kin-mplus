@@ -575,6 +575,14 @@
     document.getElementById('ownedDungeonSelect')?.addEventListener('change', syncOwnedKeyFromDropdowns);
     document.getElementById('ownedKeyLevelSelect')?.addEventListener('change', syncOwnedKeyFromDropdowns);
 
+    document.getElementById('keystoneSigil')?.addEventListener('click', () => {
+      const sigil = document.getElementById('keystoneSigil');
+      if (sigil) {
+        sigil.classList.add('is-pulsing');
+        setTimeout(() => sigil.classList.remove('is-pulsing'), 600);
+      }
+    });
+
     document.getElementById('saveKeyBtn').addEventListener('click', async () => {
       syncOwnedKeyFromDropdowns();
       document.getElementById('nightStatus').textContent = 'Saving your key...';
