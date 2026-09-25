@@ -256,7 +256,7 @@ IMPORTANT: Output ONLY the final markdown text. Do not include any meta commenta
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.8,
-            maxOutputTokens: 1000
+            maxOutputTokens: 1600
           }
         })
       });
@@ -303,7 +303,7 @@ IMPORTANT: Output ONLY the final markdown text. Do not include any meta commenta
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.8, maxOutputTokens: 1000 }
+          generationConfig: { temperature: 0.8, maxOutputTokens: 1600 }
         })
       });
       if (dynRes.ok) {
