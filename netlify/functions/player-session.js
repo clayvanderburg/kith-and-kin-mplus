@@ -1,14 +1,6 @@
 const crypto = require('crypto');
-const { getStore } = require('@netlify/blobs');
 
-async function useStore(name, run) {
-  try {
-    return await run(getStore(name, { consistency: 'strong' }));
-  } catch (err) {
-    if (err?.name !== 'BlobsConsistencyError') throw err;
-    return run(getStore(name));
-  }
-}
+const MAX_COOKIE = 3200;
 
 function signingSecret() {
   return process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
@@ -29,8 +21,7 @@ function readCookies(event) {
   return cookies;
 }
 
-function sessionCookie(id, maxAgeSeconds) {
-  const token = `${id}.${sign(id)}`;
+function sessionCookie(token, maxAgeSeconds) {
   return `kk_session=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`;
 }
 
@@ -38,26 +29,42 @@ function stateCookie(state) {
   return `bnet_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`;
 }
 
-async function createSession(event, data) {
-  const id = crypto.randomBytes(24).toString('base64url');
-  const record = {
-    ...data,
-    exp: Date.now() + 30 * 24 * 60 * 60 * 1000
-  };
-  await useStore('mplus-sessions', (store) => store.setJSON(id, record));
-  return { id, cookie: sessionCookie(id, 30 * 24 * 60 * 60) };
+function packSession(data) {
+  let characters = [...(data.characters || [])].sort((a, b) => (b.level || 0) - (a.level || 0));
+  let payload = '';
+  do {
+    payload = Buffer.from(JSON.stringify({
+      bnetId: data.bnetId,
+      battleTag: data.battleTag,
+      characters,
+      exp: Date.now() + 30 * 24 * 60 * 60 * 1000
+    })).toString('base64url');
+    if (payload.length + sign(payload).length + 1 <= MAX_COOKIE || characters.length <= 8) break;
+    characters = characters.slice(0, Math.max(8, characters.length - 4));
+  } while (characters.length >= 8);
+  return `${payload}.${sign(payload)}`;
 }
 
-async function readSession(event) {
+function createSession(event, data) {
+  return {
+    cookie: sessionCookie(packSession(data), 30 * 24 * 60 * 60)
+  };
+}
+
+function readSession(event) {
   const raw = readCookies(event).kk_session || '';
   const dot = raw.lastIndexOf('.');
   if (dot === -1) return null;
-  const id = raw.slice(0, dot);
+  const payload = raw.slice(0, dot);
   const sig = raw.slice(dot + 1);
-  if (!id || sig !== sign(id)) return null;
-  const record = await useStore('mplus-sessions', (store) => store.get(id, { type: 'json' }));
-  if (!record || record.exp < Date.now()) return null;
-  return record;
+  if (!payload || sig !== sign(payload)) return null;
+  try {
+    const record = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!record || record.exp < Date.now()) return null;
+    return record;
+  } catch (err) {
+    return null;
+  }
 }
 
 function bnetConfigured() {

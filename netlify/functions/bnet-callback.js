@@ -36,6 +36,7 @@ async function fetchCharacters(token, region) {
 }
 
 exports.handler = async (event) => {
+  try {
   const params = event.queryStringParameters || {};
   if (params.error) return html(400, 'Battle.net login was cancelled.');
 
@@ -95,4 +96,8 @@ exports.handler = async (event) => {
     },
     body: ''
   };
+  } catch (err) {
+    console.error('[bnet-callback]', err);
+    return html(500, 'Login could not be finished. Start again from the signup page.');
+  }
 };

@@ -11,12 +11,7 @@ const STORE_NAME = 'mplus-state';
 const STATE_KEY = 'current_state';
 
 async function useStore(run) {
-  try {
-    return await run(getStore(STORE_NAME, { consistency: 'strong' }));
-  } catch (err) {
-    if (err?.name !== 'BlobsConsistencyError') throw err;
-    return run(getStore(STORE_NAME));
-  }
+  return run(getStore(STORE_NAME));
 }
 
 function timeOf(value) {
