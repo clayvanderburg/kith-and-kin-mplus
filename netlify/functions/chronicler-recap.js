@@ -89,10 +89,48 @@ function summarizeNight(state) {
 }
 
 // Built-in rule-based Chronicler for offline/fallback mode
-function generateRuleBasedRecap(summary, tone = 'bard') {
+function generateRuleBasedRecap(summary, tone = 'xalatath') {
   const groupsList = summary.groups.map(g =>
     `• **${g.name}**: ${g.tank} (Tank), ${g.healer} (Healer), ${g.dps.join(', ')} — Key: *${g.rolledKey}*`
   ).join('\n');
+
+  if (!tone || tone === 'xalatath') {
+    let keyOfNightText = summary.highestKey
+      ? `🏆 **THE PETS' FLEETING TRIUMPH**: **${summary.highestKey.key}** (Timed... *how tedious*)\n> Slain by *${summary.highestKey.groupName || summary.highestKey.reportedBy}*. Did you think this little victory would satisfy me, darlings? ...Still, the violence was quite delicious to watch.`
+      : `🏆 **THE KEY OF THE NIGHT**: You survived. Do not mistake survival for salvation, my darlings.`;
+
+    let scuffText = summary.worstScuff
+      ? `🪦 **DELICIOUS AGONY**: **${summary.worstScuff.key}**\n> Ah... hearing the timer shatter and watching you panic in the dirt. *Now that* was truly exquisite.`
+      : `🪦 **THE SCUFF TROPHY**: Unclaimed? *Pouts.* You mean not one of you broke under the pressure? How terribly disappointing... I was so hoping to watch you bleed.`;
+
+    return `### 👁️ Xal'atath's Field Observations — Kith & Kin Mythic+ Night
+
+*The shadows lengthen across the tavern rafters as a soft, velvet voice purrs from the dark...*
+
+"Did you truly think you could venture into the deep dark without my gaze upon you, my sweet little playthings? Tonight, **${summary.attendeesCount} fragile mortals** scuttled through the portals across **${summary.groupsCount} squads**, desperately clinging to life..."
+
+---
+
+#### 📊 By the Numbers
+• **Mortal Squads Deployed**: ${summary.groupsCount}
+• **Keys Attempted**: ${summary.totalRunsLogged} (${summary.timedCount} Timed, ${summary.depletedCount} Ruined)
+• **Defiance Rate**: ${summary.totalRunsLogged > 0 ? Math.round((summary.timedCount / summary.totalRunsLogged) * 100) : 100}% (*Tch. You stubborn little creatures.*)
+
+---
+
+${keyOfNightText}
+
+${scuffText}
+
+---
+
+#### 🛡️ The Playthings
+${groupsList}
+
+---
+
+*Enjoy your drink and your laughter, Kith & Kin... you may have conquered the keystones tonight, but the Void always collects its due in the end.* 👁️🖤`;
+  }
 
   let keyOfNightText = summary.highestKey
     ? `🏆 **KEY OF THE NIGHT**: **${summary.highestKey.key}** (Timed!)\n> Championed by ${summary.highestKey.groupName || summary.highestKey.reportedBy}! Flawless execution and gloriously timed crests.`
@@ -131,10 +169,50 @@ ${groupsList}
 
 // Call Google Gemini API (with candidate fallback cascade and dynamic discovery)
 async function callGemini(apiKey, summary, tone) {
-  const prompt = `You are the witty, proud, and charismatic dwarven/vampiric bard of the World of Warcraft guild "Kith & Kin" (Perenolde/Cairne realm). 
+  const isXalatath = (!tone || tone === 'xalatath');
+
+  const toneGuides = {
+    xalatath: `Persona: You are Xal'atath, the Harbinger of the Void.
+- Voice & Presence: Seductive, intensely dominant, velvety, purring, and mockingly affectionate, yet openly irritated that these stubborn little mortals keep surviving and timing their keys.
+- Mannerisms: Address the guild members as "my sweet little playthings", "my persistent pets", "little mortals", or "darling shadows".
+- Attitude towards Success & Timed Keys: You are mildly annoyed and displeased that they didn't wipe or succumb to the madness. Sigh with seductive disdain. You find their stubborn resilience tiresome, but you are begrudgingly amused by their violent little appetites and carnage. ("Did you really think a few timed keys impress me, darlings? ...Yet the blood you spilled was almost exquisite.")
+- Attitude towards Scuffs / Depletes: Pure, purring, mocking ecstasy. You relish when their timers turn red, their mechanics falter, and they panic in the dirt. If NO keys depleted tonight, pout with seductive disappointment that no souls broke under the pressure.
+- Key Elements: Dark Void imagery, whispering shadows in the tavern rafters, the Black Empire looming, seductive control.`,
+    bard: 'Tone: Epic, grand, celebratory, and charismatic Bard of Cairne.',
+    dwarf: 'Tone: Grumpy, hilarious, sarcastic Dwarven M+ veteran. Roasts wipes and low DPS, begrudgingly praises timed keys.',
+    gothic: 'Tone: Dark gothic, vampiric, and dramatic. Fitting Kith & Kin\'s obsidian & blood-red aesthetic.',
+    sportscaster: 'Tone: Fast-paced, hyper-caffeinated Goblin esports caster with ridiculous sound effects and breathless excitement.'
+  };
+
+  let prompt = '';
+  if (isXalatath) {
+    prompt = `You are Xal'atath, Harbinger of the Void, observing the World of Warcraft guild "Kith & Kin" (Perenolde/Cairne realm) from the whispering shadows.
+
+${toneGuides.xalatath}
+
+TELEMETRY FROM TONIGHT:
+- Attendees: ${summary.attendeesCount} mortals
+- Formed Squads: ${JSON.stringify(summary.groups)}
+- Highest Timed Key: ${summary.highestKey ? JSON.stringify(summary.highestKey) : 'None reported yet'}
+- Worst Depleted/Scuffed Key: ${summary.worstScuff ? JSON.stringify(summary.worstScuff) : 'None! They didn\'t wipe once'}
+- Total Runs Logged: ${summary.totalRunsLogged} (${summary.timedCount} Timed, ${summary.depletedCount} Depleted)
+
+REQUIRED FORMAT IN CLEAN MARKDOWN (under 380 words):
+1. 👁️ Seductive, mocking headline for tonight's chronicle (e.g. 👁️ **A FLEETING TRIUMPH IN THE DARK... HOW TIRESOME.**)
+2. A sultry opening paragraph mocking their tavern gathering, their little celebrations, and how desperately they cling to life.
+3. 📊 BY THE NUMBERS (frame their stats with seductive Void condescension)
+4. 🏆 THE PETS' BIGGEST KEY (begrudging, purring praise for the highest timed key—mocking their pride, but acknowledging their violence)
+5. 🪦 THE SCUFF TROPHY (gloating over any ruined runs, or pouting seductively if they miraculously had zero depletes)
+6. 🛡️ TAVERN PLAYTHINGS (mocking shoutouts to the Tanks and Healers fighting so hard to keep their pets breathing)
+7. A dominant, sultry parting whisper reminding Kith & Kin that the Void will claim them in the end.
+
+Keep it punchy, dominant, seductive, and delicious. Format with markdown emojis so it looks stunning in Discord!
+IMPORTANT: Output ONLY the final markdown text. Do not include any meta commentary, thinking notes, self-critique, or word count checklists.`;
+  } else {
+    prompt = `You are the witty, proud, and charismatic dwarven/vampiric bard of the World of Warcraft guild "Kith & Kin" (Perenolde/Cairne realm). 
 Write an entertaining, colorful, narrative End-of-M+ Night recap based on tonight's structured data.
 
-Tone style: ${tone || 'heroic bard with sharp comedic flair'}.
+Tone style: ${toneGuides[tone] || tone || 'heroic bard with sharp comedic flair'}.
 
 DATA FROM TONIGHT:
 - Attendees: ${summary.attendeesCount}
@@ -154,6 +232,7 @@ REQUIRED FORMAT IN CLEAN MARKDOWN:
 
 Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it looks amazing in Discord!
 IMPORTANT: Output ONLY the final markdown text. Do not include any meta commentary, thinking notes, self-critique, or word count checklists.`;
+  }
 
   // Candidate models to try in order
   const candidateModels = [
@@ -283,7 +362,7 @@ exports.handler = async (event) => {
     }
 
     const body = JSON.parse(event.body || '{}');
-    const tone = body.tone || 'bard';
+    const tone = body.tone || 'xalatath';
     const summary = summarizeNight(state);
 
     const incomingGeminiKey = event.headers['x-gemini-key'] || body.geminiKey;

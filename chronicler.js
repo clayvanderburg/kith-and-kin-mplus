@@ -5,7 +5,7 @@
 
 (function () {
   let currentRecapMarkdown = '';
-  let currentTone = 'bard';
+  let currentTone = 'xalatath';
   let isLoading = false;
 
   // Simple Markdown to HTML formatter for the modal preview
@@ -62,7 +62,7 @@
 
     const toneSelect = document.getElementById('chroniclerToneSelect');
     if (toneSelect) {
-      currentTone = toneSelect.value || 'bard';
+      currentTone = toneSelect.value || 'xalatath';
     }
 
     const keyInput = document.getElementById('chroniclerGeminiKeyInput');
