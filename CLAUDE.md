@@ -180,4 +180,4 @@ node bot/deploy-commands.js
 | Current keystones | No web API exposes bag keystones. The `addon/KithKinKeys` addon collects guild keys from BigWigs (LibKeystone) and Details! (LibOpenRaid) users; `tools/key-uploader.js` on an officer's PC posts them to `/api/keys` after `/reload`/logout. Keys older than the Tuesday reset are cleared. | `addon/`, `tools/`, `netlify/functions/keys.js` |
 | Officer "Sync Raider.IO" button | `POST /api/refresh-now`: attendees' scores + latest Friday's runs immediately. | `netlify/functions/refresh-now.js` |
 
-Setup on the officer PC: `tools\setup-keys.cmd` (installs the addon, registers a logon task running the uploader).
+Setup on the officer PC: `node tools\install-addon.js` once, then `tools\start-key-uploader.cmd` (minimized window; add a shortcut to shell:startup to auto-start).

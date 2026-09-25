@@ -89,8 +89,9 @@ async function main() {
   const seen = new Map();
   const tick = async () => {
     const files = savedVariableFiles();
-    if (!files.length) {
-      console.log('[keys] KithKinKeys.lua not found. Install the addon, log in once, then /reload. Set WOW_PATH in bot/.env if WoW is somewhere unusual.');
+    if (!files.length && !tick.warned) {
+      tick.warned = true;
+      console.log('[keys] KithKinKeys.lua not found yet. In WoW: /kkkeys, then /reload. (Set WOW_PATH in bot/.env if WoW is somewhere unusual.)');
     }
     for (const file of files) {
       const mtime = fs.statSync(file).mtimeMs;
