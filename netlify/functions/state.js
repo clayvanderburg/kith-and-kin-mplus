@@ -3,22 +3,8 @@
  * Provides a cloud-synchronized JSON store for both the web application and Discord bot.
  */
 
-const fs = require('fs');
-const path = require('path');
-
-// Netlify Blobs support if configured
-let getStore = null;
-try {
-  getStore = require('@netlify/blobs').getStore;
-} catch (e) {
-  // @netlify/blobs not installed or in local node environment
-}
-
-const TMP_FILE = path.join('/tmp', 'kk_mplus_state.json');
+const { readLiveState, writeMergedState, updateDiscordCard } = require('./live-state');
 const SYNC_SECRET = process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
-
-// Persistent in-memory fallback for warm lambdas
-let memoryCache = null;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -26,63 +12,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Content-Type': 'application/json'
 };
-
-async function readFromStorage() {
-  // 1. Try Netlify Blobs
-  if (getStore) {
-    try {
-      const store = getStore({ name: 'mplus-state', consistency: 'strong' });
-      const raw = await store.get('current_state');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        memoryCache = parsed;
-        return parsed;
-      }
-    } catch (err) {
-      // Blobs not configured or unauthenticated; fall through
-    }
-  }
-
-  // 2. Try in-memory cache
-  if (memoryCache) {
-    return memoryCache;
-  }
-
-  // 3. Try /tmp filesystem cache
-  try {
-    if (fs.existsSync(TMP_FILE)) {
-      const raw = fs.readFileSync(TMP_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      memoryCache = parsed;
-      return parsed;
-    }
-  } catch (err) {
-    // /tmp read failed; fall through
-  }
-
-  return null;
-}
-
-async function writeToStorage(data) {
-  memoryCache = data;
-
-  // 1. Write to /tmp filesystem
-  try {
-    fs.writeFileSync(TMP_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (err) {
-    // Non-fatal if /tmp write fails
-  }
-
-  // 2. Write to Netlify Blobs
-  if (getStore) {
-    try {
-      const store = getStore({ name: 'mplus-state', consistency: 'strong' });
-      await store.set('current_state', JSON.stringify(data));
-    } catch (err) {
-      // Non-fatal if Blobs write fails
-    }
-  }
-}
 
 exports.handler = async (event, context) => {
   // Handle CORS preflight
@@ -97,7 +26,7 @@ exports.handler = async (event, context) => {
   // GET: Fetch current state
   if (event.httpMethod === 'GET') {
     try {
-      const data = await readFromStorage();
+      const data = await readLiveState(event);
       if (!data) {
         return {
           statusCode: 200,
@@ -156,19 +85,23 @@ exports.handler = async (event, context) => {
         excludedDungeons: body.excludedDungeons || [],
         events: body.events || {},
         currentEventId: body.currentEventId || null,
+        groupsTouchedAt: body.groupsTouchedAt || null,
         lastUpdated: body.lastUpdated || new Date().toISOString()
       };
 
-      await writeToStorage(stateToSave);
+      const saved = await writeMergedState(event, stateToSave);
+      updateDiscordCard(saved).catch(err => {
+        console.error('[State] Discord card refresh failed:', err.message);
+      });
 
       return {
         statusCode: 200,
         headers: CORS_HEADERS,
         body: JSON.stringify({
           success: true,
-          playerCount: stateToSave.players.length,
-          groupCount: stateToSave.formedGroups.length,
-          lastUpdated: stateToSave.lastUpdated
+          playerCount: saved.players.length,
+          groupCount: saved.formedGroups.length,
+          lastUpdated: saved.lastUpdated
         })
       };
     } catch (err) {

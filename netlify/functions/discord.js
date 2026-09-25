@@ -27,6 +27,7 @@ function loadModule(name) {
 const solver = loadModule('solver');
 const embeds = loadModule('embeds');
 const rosterSearch = loadModule('roster-search');
+const liveState = require('./live-state');
 
 function bindSignupCharacter(state, discordUser, rawName) {
   if (!rosterSearch) return null;
@@ -94,76 +95,50 @@ const INITIAL_ROSTER = [
   { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Frostmane', region: 'us', ilvl: 293, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false }
 ];
 
-// Fast in-memory cache for warm lambdas
-let memoryState = null;
+// The lambda event for this invocation. Strong blob reads must not use a warm cache.
+let activeLambdaEvent = null;
+
+function touchPlayer(player) {
+  if (!player) return player;
+  player.touchedAt = new Date().toISOString();
+  return player;
+}
+
+function rememberDiscordCard(interaction, state) {
+  const message = interaction.message;
+  const flags = message?.flags || 0;
+  const isEphemeral = (flags & 64) === 64;
+  const channelId = interaction.channel_id || interaction.channel?.id;
+  if (!message?.id || !channelId || isEphemeral) return;
+  state.discordCard = {
+    channelId,
+    messageId: message.id,
+    applicationId: interaction.application_id || null
+  };
+}
 
 async function loadState() {
-  if (memoryState && Array.isArray(memoryState.players) && memoryState.players.length > 0) {
-    return memoryState;
+  try {
+    const live = await liveState.readLiveState(activeLambdaEvent);
+    if (live && Array.isArray(live.players)) return live;
+  } catch (err) {
+    console.error('[Discord] Could not read shared state:', err.message);
   }
 
-  // 1. Read from Netlify Blobs if available (direct & fast)
-  if (getStore) {
-    try {
-      const store = getStore({ name: 'mplus-state' });
-      const raw = await store.get('current_state');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.players)) {
-          memoryState = parsed;
-          return parsed;
-        }
-      }
-    } catch (e) {}
-  }
-
-  // 2. Read from /tmp filesystem
-  const fs = require('fs');
-  if (fs.existsSync(TMP_FILE)) {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(TMP_FILE, 'utf8'));
-      if (parsed && Array.isArray(parsed.players)) {
-        memoryState = parsed;
-        return parsed;
-      }
-    } catch (e) {}
-  }
-
-  // 3. Fallback clean state with empty attending roster
-  memoryState = {
+  return {
     players: JSON.parse(JSON.stringify(INITIAL_ROSTER)),
     formedGroups: [],
     benchedPlayers: [],
     lastUpdated: new Date().toISOString()
   };
-  return memoryState;
 }
 
 async function saveState(data) {
-  memoryState = data;
-  data.lastUpdated = new Date().toISOString();
-
-  // If events exist, keep current event in sync
-  if (data.currentEventId && data.events && data.events[data.currentEventId]) {
-    data.events[data.currentEventId].players = data.players || [];
-    data.events[data.currentEventId].formedGroups = data.formedGroups || [];
-    data.events[data.currentEventId].benchedPlayers = data.benchedPlayers || [];
-    data.events[data.currentEventId].lastUpdated = data.lastUpdated;
-  }
-
-  // 1. Write to /tmp immediately (<2ms)
-  try {
-    const fs = require('fs');
-    fs.writeFileSync(TMP_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (e) {}
-
-  // 2. Write to Netlify Blobs directly (<30ms)
-  if (getStore) {
-    try {
-      const store = getStore({ name: 'mplus-state' });
-      await store.set('current_state', JSON.stringify(data));
-    } catch (e) {}
-  }
+  const saved = await liveState.writeMergedState(activeLambdaEvent, data);
+  liveState.updateDiscordCard(saved).catch(err => {
+    console.error('[Discord] Card refresh failed:', err.message);
+  });
+  return saved;
 }
 
 /**
@@ -242,6 +217,7 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
 }
 
 exports.handler = async (event, context) => {
+  activeLambdaEvent = event;
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, body: '' };
   }
@@ -375,6 +351,7 @@ exports.handler = async (event, context) => {
       if (subcommand === 'clear') {
         state.formedGroups = [];
         state.benchedPlayers = [];
+        state.groupsTouchedAt = new Date().toISOString();
         await saveState(state);
         return jsonResponse({
           type: 4,
@@ -569,6 +546,7 @@ exports.handler = async (event, context) => {
     const customId = interaction.data.custom_id;
     const discordUser = interaction.member?.user || interaction.user;
     const defaultName = discordUser?.global_name || discordUser?.username || 'Player';
+    rememberDiscordCard(interaction, state);
     let player = (state.players || []).find(p =>
       (p.discordId && p.discordId === discordUser.id) ||
       (defaultName && p.name.toLowerCase() === defaultName.toLowerCase())
@@ -579,6 +557,7 @@ exports.handler = async (event, context) => {
       if (player) {
         player.attending = false;
         player.absent = true;
+        touchPlayer(player);
         await saveState(state);
         return jsonResponse({
           type: 4,
@@ -641,7 +620,8 @@ exports.handler = async (event, context) => {
           data: { content: '⚠️ Type a character name to search the guild roster.', flags: 64 }
         });
       }
-      saveState(state).catch(() => {});
+      touchPlayer(targetPlayer);
+      await saveState(state);
       return jsonResponse({
         type: 7,
         data: signupPreferencesMessage(targetPlayer)
@@ -654,7 +634,10 @@ exports.handler = async (event, context) => {
       let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
       if (targetPlayer) {
         targetPlayer.roles = selectedRoles;
-        saveState(state).catch(() => {});
+        targetPlayer.attending = true;
+        targetPlayer.absent = false;
+        touchPlayer(targetPlayer);
+        await saveState(state);
       }
       const components = embeds ? embeds.createSignupFormComponents({
         players: state.players || [],
@@ -683,7 +666,10 @@ exports.handler = async (event, context) => {
         if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 13); maxKey = Math.max(maxKey, 18); }
         targetPlayer.keyMin = minKey;
         targetPlayer.keyMax = maxKey;
-        saveState(state).catch(() => {});
+        targetPlayer.attending = true;
+        targetPlayer.absent = false;
+        touchPlayer(targetPlayer);
+        await saveState(state);
       }
       const components = embeds ? embeds.createSignupFormComponents({
         players: state.players || [],
@@ -708,7 +694,10 @@ exports.handler = async (event, context) => {
         targetPlayer.isReserve = vibes.includes('vibe_reserve');
         targetPlayer.carryPreference = vibes.includes('vibe_need_carry') ? 'need_carry' : (vibes.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
         targetPlayer.isShitter = vibes.includes('vibe_shitter');
-        saveState(state).catch(() => {});
+        targetPlayer.attending = true;
+        targetPlayer.absent = false;
+        touchPlayer(targetPlayer);
+        await saveState(state);
       }
       const components = embeds ? embeds.createSignupFormComponents({
         players: state.players || [],
@@ -746,6 +735,7 @@ exports.handler = async (event, context) => {
       rsvpPlayer.attending = true;
       rsvpPlayer.absent = false;
       rsvpPlayer.discordId = discordUser.id;
+      touchPlayer(rsvpPlayer);
       await saveState(state);
 
       let badges = [];
@@ -786,6 +776,7 @@ exports.handler = async (event, context) => {
       const result = solver ? solver.solveGroups(attending) : { groups: [], benched: [] };
       state.formedGroups = result.groups;
       state.benchedPlayers = result.benched;
+      state.groupsTouchedAt = new Date().toISOString();
       await saveState(state);
 
       const embed = embeds
@@ -870,6 +861,7 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'btn_refresh_roster') {
+      await saveState(state);
       const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
       const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : [];
       return jsonResponse({

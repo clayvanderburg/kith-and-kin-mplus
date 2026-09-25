@@ -73,9 +73,10 @@ function attachCharacter(state, discordUserId, rawName) {
       keyMin: 10,
       keyMax: 12,
       keyBrackets: ['10-12'],
-      attending: false,
+      attending: true,
       absent: false,
       discordId: discordUserId || null,
+      touchedAt: new Date().toISOString(),
       io: 0,
       ilvl: 0,
       carryPreference: 'none',
@@ -86,6 +87,9 @@ function attachCharacter(state, discordUserId, rawName) {
     state.players.push(target);
   } else {
     if (discordUserId) target.discordId = discordUserId;
+    target.attending = true;
+    target.absent = false;
+    target.touchedAt = new Date().toISOString();
     if (rosterHit?.className && (!target.className || target.className === 'Warrior' || target.className === 'Adventurer')) {
       target.className = rosterHit.className;
     }

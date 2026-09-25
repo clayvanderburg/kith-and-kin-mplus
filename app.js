@@ -443,6 +443,7 @@
   const SYNC_SECRET = 'kith_and_kin_mythic_key_2026';
   let pushDebounceTimer = null;
   let isFetchingRemote = false;
+  let localEditedAt = 0;
 
   function updateSyncStatus(status, label) {
     const badge = document.getElementById('discordSyncStatus');
@@ -481,6 +482,11 @@
       const data = await res.json();
 
       if (data && !data.empty) {
+        const remoteTime = Date.parse(data.lastUpdated) || 0;
+        if (localEditedAt && localEditedAt > remoteTime) {
+          updateSyncStatus('synced', 'Discord Synced');
+          return;
+        }
         if (data.events && typeof data.events === 'object' && Object.keys(data.events).length > 0) {
           state.events = data.events;
           if (data.currentEventId && state.events[data.currentEventId]) {
@@ -537,6 +543,7 @@
   }
 
   function pushRemoteState() {
+    localEditedAt = Date.now();
     clearTimeout(pushDebounceTimer);
     updateSyncStatus('syncing', 'Saving...');
     pushDebounceTimer = setTimeout(async () => {
@@ -554,6 +561,7 @@
           excludedDungeons: state.excludedDungeons || [],
           events: state.events || {},
           currentEventId: state.currentEventId || null,
+          groupsTouchedAt: state.groupsTouchedAt || null,
           lastUpdated: new Date().toISOString()
         };
         const res = await fetch(API_URL, {
@@ -600,6 +608,7 @@
   }
 
   function saveGroups() {
+    state.groupsTouchedAt = new Date().toISOString();
     saveGroupsLocal();
     pushRemoteState();
   }
@@ -839,6 +848,8 @@
         const player = state.players.find(p => p.id === id);
         if (player) {
           player.attending = e.target.checked;
+          player.absent = !e.target.checked;
+          player.touchedAt = new Date().toISOString();
           savePlayers();
           renderRoster();
           playSound('click');
@@ -2170,6 +2181,7 @@
     const isShitter = document.getElementById('isShitterCheck').checked;
     const isLeader = document.getElementById('playerIsLeader')?.checked || false;
     const isReserve = document.getElementById('playerIsReserve')?.checked || false;
+    const touchedAt = new Date().toISOString();
 
     if (id) {
       // Edit existing
@@ -2190,6 +2202,7 @@
         p.isShitter = isShitter;
         p.isLeader = isLeader;
         p.isReserve = isReserve;
+        p.touchedAt = touchedAt;
       }
       showToast(`Updated ${name}`);
     } else {
@@ -2211,7 +2224,8 @@
         isShitter,
         isLeader,
         isReserve,
-        attending: true
+        attending: true,
+        touchedAt
       };
       state.players.push(newPlayer);
       showToast(`Added ${name} to roster!`);
@@ -2561,13 +2575,13 @@
 
     // Attendance bulk actions
     document.getElementById('selectAllBtn').addEventListener('click', () => {
-      state.players.forEach(p => p.attending = true);
+      state.players.forEach(p => { p.attending = true; p.absent = false; p.touchedAt = new Date().toISOString(); });
       savePlayers();
       renderRoster();
       playSound('click');
     });
     document.getElementById('deselectAllBtn').addEventListener('click', () => {
-      state.players.forEach(p => p.attending = false);
+      state.players.forEach(p => { p.attending = false; p.absent = true; p.touchedAt = new Date().toISOString(); });
       savePlayers();
       renderRoster();
       playSound('click');
