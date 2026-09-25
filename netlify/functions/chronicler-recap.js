@@ -152,7 +152,8 @@ REQUIRED FORMAT IN CLEAN MARKDOWN:
 6. 🛡️ TAVERN MVPs (give specific shoutouts to the healers who prevented cardiac arrest and the tanks who pulled half the dungeon)
 7. A rousing closing rallying cry for Kith & Kin
 
-Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it looks amazing in Discord!`;
+Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it looks amazing in Discord!
+IMPORTANT: Output ONLY the final markdown text. Do not include any meta commentary, thinking notes, self-critique, or word count checklists.`;
 
   // Candidate models to try in order
   const candidateModels = [
@@ -188,8 +189,11 @@ Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it
       }
 
       const json = await response.json();
-      const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return { text, modelName: model.name };
+      let text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        text = text.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
+        return { text, modelName: model.name };
+      }
     } catch (err) {
       lastError = err;
     }
