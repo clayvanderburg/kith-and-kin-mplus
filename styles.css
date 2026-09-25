@@ -3225,3 +3225,63 @@ button {
   color: #fff !important;
 }
 
+/* ==========================================================================
+   Smart Run Matcher Modal
+   ========================================================================== */
+
+.match-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.match-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.match-preview-key {
+  font-family: var(--font-fantasy);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.match-preview-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.match-preview-links {
+  margin-top: 0.2rem;
+}
+
+.auto-match-party-btn {
+  background: rgba(234, 179, 8, 0.15) !important;
+  border: 1px solid rgba(234, 179, 8, 0.4) !important;
+  color: #fde047 !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  padding: 0.35rem 0.75rem !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.auto-match-party-btn:hover {
+  background: rgba(234, 179, 8, 0.3) !important;
+  border-color: #fde047 !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.4) !important;
+}
+
+

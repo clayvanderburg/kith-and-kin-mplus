@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/jpeg" href="assets/kith-and-kin-logo.jpg">
-  <link rel="stylesheet" href="styles.css?v=stats-2">
+  <link rel="stylesheet" href="styles.css?v=match-1">
 </head>
 <body>
   <!-- Ambient Audio Elements synthesized via Web Audio API -->
@@ -276,6 +276,9 @@
           <div class="groups-header">
             <h3 class="section-title" id="resultsTitle">Active Dungeon Parties</h3>
             <div class="groups-actions" id="groupsActions" style="display: none;">
+              <button id="autoMatchAllRunsBtn" class="btn btn-sm btn-accent" title="Auto-match and log recently finished keys from Raider.IO for all parties">
+                ⚡ Auto-Match Runs
+              </button>
               <button id="copyDiscordBtn" class="btn btn-sm btn-discord">
                 <span class="discord-icon">💬</span> Copy Discord Post
               </button>
@@ -601,6 +604,21 @@
     </div>
   </div>
 
+  <!-- Modal: Run Matcher Confirmation -->
+  <div class="modal-backdrop" id="runMatchModal">
+    <div class="modal card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 id="runMatchTitle">⚡ Raider.IO Run Found</h3>
+        <button class="modal-close" id="closeRunMatchBtn">&times;</button>
+      </div>
+      <div class="modal-body" id="runMatchBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelRunMatchBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmRunMatchBtn">Log for All Party Members</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
@@ -622,6 +640,7 @@
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
   <script src="player-stats.js?v=stats-2"></script>
-  <script src="app.js?v=stats-2"></script>
+  <script src="run-matcher.js?v=match-1"></script>
+  <script src="app.js?v=match-1"></script>
 </body>
 </html>

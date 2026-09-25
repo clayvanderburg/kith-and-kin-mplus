@@ -422,6 +422,11 @@
           <div class="party-members">
             ${memberRows}
           </div>
+          <div class="party-footer" style="display:flex; justify-content:flex-end; align-items:center; gap:0.5rem; margin-top:0.6rem;">
+            <button type="button" class="btn btn-sm auto-match-party-btn" data-group-index="${group.index}" title="Check Raider.IO for completed key for this party">
+              ⚡ Auto-Match Key
+            </button>
+          </div>
         </article>
       `;
     }).join('');
@@ -443,6 +448,50 @@
         if (window.openPlayerStats) {
           window.openPlayerStats(name, { formedGroups: groups, players: [] });
         }
+      });
+    });
+
+    list.querySelectorAll('.auto-match-party-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const idx = parseInt(btn.getAttribute('data-group-index'), 10);
+        const group = groups[idx];
+        if (!group || !window.autoMatchParty) return;
+
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '🔍 Checking...';
+
+        await window.autoMatchParty(group, { formedGroups: groups, players: currentSignup ? [currentSignup] : [] }, {
+          onFound: async (match, count) => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            // If current user is in this group, save to their account via postMe
+            const myRun = (group.members || []).some(m => currentSignup && m.name.toLowerCase() === currentSignup.name.toLowerCase());
+            if (myRun) {
+              try {
+                await postMe({
+                  action: 'log-run',
+                  key: `${match.run.dungeon} +${match.run.mythic_level}`,
+                  success: match.run.num_keystone_upgrades > 0,
+                  rioUrl: match.run.url
+                });
+              } catch (e) {
+                console.warn('[signup] Could not auto-sync to backend:', e);
+              }
+            }
+            alert(`🎉 Matched and logged ${match.run.dungeon} +${match.run.mythic_level} (${match.run.num_keystone_upgrades > 0 ? 'Timed' : 'Depleted'})!`);
+          },
+          onNotFound: () => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            alert(`No recently completed runs found on Raider.IO for Party ${group.index + 1} yet.\n\n(Raider.IO usually updates within 5-10 minutes of key completion).`);
+          },
+          onError: (err) => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            alert(`Error matching run: ${err.message}`);
+          }
+        });
       });
     });
   }

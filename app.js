@@ -1752,9 +1752,12 @@
           ${(grp.dps || []).map(dps => renderMemberSlot('DPS', dps)).join('')}
         </div>
 
-        <div class="party-footer">
+        <div class="party-footer" style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">
           <button class="btn btn-sm btn-ghost copy-party-btn" data-id="${grp.id}" title="Copy party lineup for Discord">
             📋 Copy Lineup
+          </button>
+          <button class="btn btn-sm auto-match-party-btn" data-id="${grp.id}" title="Check Raider.IO for completed key for this party">
+            ⚡ Auto-Match Key
           </button>
         </div>
       `;
@@ -1814,6 +1817,42 @@
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.getAttribute('data-group-index'), 10);
         rollPartyKey(idx);
+      });
+    });
+
+    // Auto-Match Run for this party
+    document.querySelectorAll('.auto-match-party-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const grp = state.formedGroups.find(g => g.id === id);
+        if (!grp || !window.autoMatchParty) return;
+
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '🔍 Checking...';
+
+        await window.autoMatchParty(grp, state, {
+          onFound: (match, count) => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            playSound('fanfare');
+            savePlayers();
+            saveGroups();
+            renderGroups();
+            renderRoster();
+            showToast(`🎉 Logged ${match.run.dungeon} +${match.run.mythic_level} for ${grp.name}! (${count} members updated)`);
+          },
+          onNotFound: () => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            alert(`No recently completed runs found on Raider.IO for ${grp.name} yet.\n\n(Raider.IO usually updates within 5-10 minutes of key completion).`);
+          },
+          onError: (err) => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            alert(`Error matching run: ${err.message}`);
+          }
+        });
       });
     });
 
@@ -2774,6 +2813,37 @@
     const clearGroupsBtn = document.getElementById('clearGroupsBtn');
     if (clearGroupsBtn) {
       clearGroupsBtn.addEventListener('click', handleClearGroups);
+    }
+
+    // Auto-Match All Parties Finished Runs
+    const autoMatchAllBtn = document.getElementById('autoMatchAllRunsBtn');
+    if (autoMatchAllBtn) {
+      autoMatchAllBtn.addEventListener('click', async () => {
+        if (!window.autoMatchAllParties) return;
+        const origHtml = autoMatchAllBtn.innerHTML;
+        autoMatchAllBtn.disabled = true;
+        autoMatchAllBtn.innerHTML = '🔍 Scanning Parties...';
+
+        await window.autoMatchAllParties(state, {
+          onProgress: (current, total, name) => {
+            autoMatchAllBtn.innerHTML = `🔍 Checking (${current}/${total})...`;
+          },
+          onComplete: (foundCount, matches) => {
+            autoMatchAllBtn.disabled = false;
+            autoMatchAllBtn.innerHTML = origHtml;
+            if (foundCount > 0) {
+              playSound('fanfare');
+              savePlayers();
+              saveGroups();
+              renderGroups();
+              renderRoster();
+              showToast(`🎉 Auto-matched and logged runs for ${foundCount} parties!`);
+            } else {
+              alert('No newly completed runs found on Raider.IO for any active parties yet.');
+            }
+          }
+        });
+      });
     }
 
     // Event Selector & Management
