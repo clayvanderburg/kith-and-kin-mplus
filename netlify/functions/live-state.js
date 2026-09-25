@@ -49,8 +49,56 @@ function mergePlayer(prev, next) {
   return newer;
 }
 
+function hasGroups(list) {
+  return Array.isArray(list) && list.length > 0;
+}
+
+function rosterScore(players, groups, stamp) {
+  let score = timeOf(stamp);
+  for (const player of players || []) score = Math.max(score, timeOf(player?.touchedAt));
+  if (hasGroups(groups) && score === 0) score = 1;
+  return score;
+}
+
+function markGroupedPlayersAttending(players, groups) {
+  const names = new Set();
+  for (const group of groups || []) {
+    for (const member of [group?.tank, group?.healer, ...(group?.dps || [])]) {
+      if (member?.name) names.add(playerKey(member));
+    }
+  }
+  return (players || []).map(player => {
+    if (!names.has(playerKey(player))) return player;
+    return { ...player, attending: true, absent: false };
+  });
+}
+
+function reconcileState(state) {
+  if (!state || typeof state !== 'object') return state;
+  const event = state.currentEventId && state.events ? state.events[state.currentEventId] : null;
+  if (!event) return state;
+
+  const topScore = rosterScore(state.players, state.formedGroups, state.groupsTouchedAt);
+  const eventScore = rosterScore(event.players, event.formedGroups, event.groupsTouchedAt || event.rosterUpdatedAt);
+  const useEvent = eventScore > topScore || (eventScore === topScore && hasGroups(event.formedGroups) && !hasGroups(state.formedGroups));
+
+  if (useEvent) {
+    state.players = markGroupedPlayersAttending(event.players || state.players || [], event.formedGroups || []);
+    state.formedGroups = event.formedGroups || [];
+    state.benchedPlayers = event.benchedPlayers || [];
+    if (event.groupsTouchedAt) state.groupsTouchedAt = event.groupsTouchedAt;
+  } else {
+    state.players = markGroupedPlayersAttending(state.players || [], state.formedGroups || []);
+    event.players = state.players;
+    event.formedGroups = state.formedGroups || [];
+    event.benchedPlayers = state.benchedPlayers || [];
+    if (state.groupsTouchedAt) event.groupsTouchedAt = state.groupsTouchedAt;
+  }
+  return state;
+}
+
 function mergeStates(latest, incoming) {
-  const base = latest && typeof latest === 'object' ? latest : {};
+  const base = reconcileState(latest && typeof latest === 'object' ? latest : {});
   const next = incoming && typeof incoming === 'object' ? incoming : {};
   const map = new Map();
 
@@ -72,15 +120,19 @@ function mergeStates(latest, incoming) {
   const nextGroupsTime = timeOf(next.groupsTouchedAt);
   const baseGroupsTime = timeOf(base.groupsTouchedAt);
   const useNextGroups = Boolean(next.groupsTouchedAt) && nextGroupsTime >= baseGroupsTime;
-  const formedGroups = useNextGroups ? (next.formedGroups || []) : (base.formedGroups || next.formedGroups || []);
-  const benchedPlayers = useNextGroups ? (next.benchedPlayers || []) : (base.benchedPlayers || next.benchedPlayers || []);
-  const events = next.events && Object.keys(next.events).length ? next.events : (base.events || {});
+  const formedGroups = useNextGroups
+    ? (next.formedGroups || [])
+    : (hasGroups(base.formedGroups) ? base.formedGroups : (hasGroups(next.formedGroups) ? next.formedGroups : (base.formedGroups || [])));
+  const benchedPlayers = useNextGroups
+    ? (next.benchedPlayers || [])
+    : (Array.isArray(base.benchedPlayers) && base.benchedPlayers.length ? base.benchedPlayers : (next.benchedPlayers || base.benchedPlayers || []));
+  const events = mergeEventMaps(base.events, next.events);
   const currentEventId = next.currentEventId || base.currentEventId || null;
 
   const merged = {
     ...base,
     ...next,
-    players: [...map.values()],
+    players: markGroupedPlayersAttending([...map.values()], formedGroups),
     formedGroups,
     benchedPlayers,
     excludedDungeons: Array.isArray(next.excludedDungeons) ? next.excludedDungeons : (base.excludedDungeons || []),
@@ -91,19 +143,37 @@ function mergeStates(latest, incoming) {
     lastUpdated: new Date().toISOString()
   };
 
-  if (merged.currentEventId && merged.events && merged.events[merged.currentEventId]) {
-    merged.events[merged.currentEventId].players = merged.players;
-    merged.events[merged.currentEventId].formedGroups = merged.formedGroups;
-    merged.events[merged.currentEventId].benchedPlayers = merged.benchedPlayers;
-    merged.events[merged.currentEventId].lastUpdated = merged.lastUpdated;
-  }
+  return reconcileState(merged);
+}
 
-  return merged;
+function mergeEventMaps(baseEvents, nextEvents) {
+  const events = { ...(baseEvents || {}) };
+  if (!nextEvents || !Object.keys(nextEvents).length) return events;
+  for (const [id, incoming] of Object.entries(nextEvents)) {
+    if (!incoming) continue;
+    const existing = events[id];
+    if (!existing) {
+      events[id] = incoming;
+      continue;
+    }
+    if (rosterScore(incoming.players, incoming.formedGroups, incoming.groupsTouchedAt || incoming.rosterUpdatedAt)
+      < rosterScore(existing.players, existing.formedGroups, existing.groupsTouchedAt || existing.rosterUpdatedAt)) {
+      continue;
+    }
+    const keptGroups = hasGroups(existing.formedGroups) && !hasGroups(incoming.formedGroups) && !incoming.groupsTouchedAt;
+    events[id] = { ...existing, ...incoming };
+    if (keptGroups) {
+      events[id].formedGroups = existing.formedGroups;
+      events[id].benchedPlayers = existing.benchedPlayers;
+      events[id].groupsTouchedAt = existing.groupsTouchedAt;
+    }
+  }
+  return events;
 }
 
 async function readLiveState(event) {
   const data = await useStore(event, (store) => store.get(STATE_KEY, { type: 'json' }));
-  return data && typeof data === 'object' ? data : null;
+  return data && typeof data === 'object' ? reconcileState(data) : null;
 }
 
 async function writeMergedState(event, incoming) {
@@ -175,6 +245,7 @@ async function updateDiscordCard(state) {
 
 module.exports = {
   mergeStates,
+  reconcileState,
   readLiveState,
   writeMergedState,
   updateDiscordCard

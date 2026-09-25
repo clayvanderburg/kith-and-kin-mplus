@@ -842,8 +842,15 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'btn_refresh_roster') {
-      await saveState(state);
-      const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
+      rememberDiscordCard(interaction, state);
+      const saved = await liveState.writeMergedState(activeLambdaEvent, {
+        discordCard: state.discordCard || null
+      });
+      const view = liveState.reconcileState(saved);
+      liveState.updateDiscordCard(view).catch(err => {
+        console.error('[Discord] Card refresh failed:', err.message);
+      });
+      const embed = embeds ? embeds.createRosterEmbed(view.players || [], WEB_URL, 'MadKing', view.formedGroups || [], view.benchedPlayers || []).toJSON() : { title: 'Roster' };
       const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : [];
       return jsonResponse({
         type: 7, // UPDATE_MESSAGE
