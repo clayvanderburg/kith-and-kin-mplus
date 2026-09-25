@@ -100,14 +100,14 @@ function generateRuleBasedRecap(summary, tone = 'xalatath') {
       : `🏆 **THE KEY OF THE NIGHT**: You survived. Do not mistake survival for salvation, my darlings. Lay your humble crests at my bare feet.`;
 
     let scuffText = summary.worstScuff
-      ? `🪦 **DELICIOUS AGONY**: **${summary.worstScuff.key}**\n> Ah... hearing the timer shatter and watching you grovel in the dirt beneath my feet. *Now that* was truly exquisite.`
-      : `🪦 **THE SCUFF TROPHY**: Unclaimed? *Pouts and taps a bare toe impatiently against the dark.* You mean not one of you broke under the pressure? How dreadfully boring... I was so hoping to watch you bleed.`;
+      ? `🪦 **DELICIOUS AGONY**: **${summary.worstScuff.key}**\n> Ah... hearing the timer shatter and watching you panic in the dirt. *Now that* was truly exquisite.`
+      : `🪦 **THE SCUFF TROPHY**: Unclaimed? *Pouts.* You mean not one of you broke under the pressure? How dreadfully boring... I was so hoping to watch you bleed.`;
 
     return `### 👁️ Xal'atath's Field Observations — Kith & Kin Mythic+ Night
 
 *The shadows lengthen across the tavern rafters as a soft, velvet voice purrs from the dark...*
 
-"Did you truly think you could venture into the deep dark without my gaze upon you, my sweet little playthings? Watching you from the shadows, curling my bare toes in mild disgust as you desperately clung to life... Tonight, **${summary.attendeesCount} fragile mortals** scuttled through the portals across **${summary.groupsCount} squads**, desperately avoiding their inevitable end..."
+"Did you truly think you could venture into the deep dark without my gaze upon you, my sweet little playthings? Tonight, **${summary.attendeesCount} fragile mortals** scuttled through the portals across **${summary.groupsCount} squads**, desperately clinging to life..."
 
 ---
 
@@ -129,7 +129,9 @@ ${groupsList}
 
 ---
 
-*Enjoy your drink and your laughter, Kith & Kin... you may grovel at my feet for now, but the Void always collects its due in the end.* 👁️🖤`;
+*Enjoy your drink and your laughter, Kith & Kin... but remember that the shadows always collect their due in the end.*
+
+— **Xal'atath, Harbinger of the Void** 👁️🖤`;
   }
 
   let keyOfNightText = summary.highestKey
@@ -178,7 +180,8 @@ async function callGemini(apiKey, summary, tone) {
 - Attitude towards Success & Timed Keys: You are mildly annoyed and displeased that they didn't wipe or succumb to the madness. Sigh with seductive disdain. You find their stubborn resilience tiresome, but you are begrudgingly amused by their violent little appetites and carnage. ("Did you really think a few timed keys impress me, darlings? ...Yet the blood you spilled was almost exquisite.")
 - Attitude towards Scuffs / Depletes: Pure, purring, mocking ecstasy. You relish when their timers turn red, their mechanics falter, and they panic in the dirt. If NO keys depleted tonight, pout with seductive disappointment that no souls broke under the pressure.
 - Key Elements: Dark Void imagery, whispering shadows in the tavern rafters, the Black Empire looming, seductive control.
-- Bare Feet / Toes Signature (MANDATORY): In true Xal'atath fashion, you MUST casually or seductively mention your bare feet or toes at least once during your chronicle (e.g. curling your bare toes in mild disgust at their survival, resting your bare feet on the skulls of conquered dungeon bosses, dipping your toes into the swirling void as you watch them squirm, or demanding that these little mortals grovel at your feet). Make it feel seamless, arrogant, and alluring.`,
+- Bare Feet / Toes Signature (STRICT RULE): In true Xal'atath fashion, you MUST mention your bare feet or toes EXACTLY ONCE in the entire chronicle. Never mention feet or toes more than once—keep it sharp, unexpected, and sultry (e.g. curling your bare toes in mild disgust at their survival, or demanding mortals grovel at your bare feet).
+- Mandatory Sign-Off: You MUST end the entire post with your signature: "— Xal'atath, Harbinger of the Void 👁️🖤" (or "— Xal'atath 👁️").`,
     bard: 'Tone: Epic, grand, celebratory, and charismatic Bard of Cairne.',
     dwarf: 'Tone: Grumpy, hilarious, sarcastic Dwarven M+ veteran. Roasts wipes and low DPS, begrudgingly praises timed keys.',
     gothic: 'Tone: Dark gothic, vampiric, and dramatic. Fitting Kith & Kin\'s obsidian & blood-red aesthetic.',
@@ -206,7 +209,9 @@ REQUIRED FORMAT IN CLEAN MARKDOWN (under 380 words):
 5. 🪦 THE SCUFF TROPHY (gloating over any ruined runs, or pouting seductively if they miraculously had zero depletes)
 6. 🛡️ TAVERN PLAYTHINGS (mocking shoutouts to the Tanks and Healers fighting so hard to keep their pets breathing)
 7. A dominant, sultry parting whisper reminding Kith & Kin that the Void will claim them in the end.
-8. 🦶 MANDATORY: Casually or seductively weave in a mention of your bare feet or toes (curling toes in irritation, resting bare feet on conquered skulls, or having mortals grovel at your feet).
+8. 🦶 BARE FEET / TOES (EXACTLY ONCE): You MUST mention your bare feet or toes EXACTLY ONCE in the entire chronicle. Never mention feet or toes more than once.
+9. ✍️ MANDATORY SIGN-OFF: You MUST conclude the entire post with:
+   "— **Xal'atath, Harbinger of the Void** 👁️🖤"
 
 Keep it punchy, dominant, seductive, and delicious. Format with markdown emojis so it looks stunning in Discord!
 IMPORTANT: Output ONLY the final markdown text. Do not include any meta commentary, thinking notes, self-critique, or word count checklists.`;
@@ -273,6 +278,9 @@ IMPORTANT: Output ONLY the final markdown text. Do not include any meta commenta
       let text = json.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) {
         text = text.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
+        if (isXalatath && !text.includes("Xal'atath") && !text.includes("Xalatath")) {
+          text += "\n\n— **Xal'atath, Harbinger of the Void** 👁️🖤";
+        }
         return { text, modelName: model.name };
       }
     } catch (err) {
@@ -310,8 +318,14 @@ IMPORTANT: Output ONLY the final markdown text. Do not include any meta commenta
       });
       if (dynRes.ok) {
         const dynJson = await dynRes.json();
-        const dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (dynText) return { text: dynText, modelName: modelPath };
+        let dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (dynText) {
+          dynText = dynText.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
+          if (isXalatath && !dynText.includes("Xal'atath") && !dynText.includes("Xalatath")) {
+            dynText += "\n\n— **Xal'atath, Harbinger of the Void** 👁️🖤";
+          }
+          return { text: dynText, modelName: modelPath };
+        }
       } else {
         const dynErrText = await dynRes.text();
         throw new Error(`Model ${modelPath} failed (${dynRes.status}): ${dynErrText}`);
