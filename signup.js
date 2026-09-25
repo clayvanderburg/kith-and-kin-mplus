@@ -352,8 +352,9 @@
                 </div>
                 <span class="slot-key-range">${member.keyBrackets?.length ? member.keyBrackets.join(' · ') : `+${member.keyMin}–+${member.keyMax}`}</span>
               </div>
-              <div class="member-record" style="margin-top:0.25rem;">
+              <div class="member-record" style="margin-top:0.35rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
                 <span style="color:var(--text-muted); font-size:0.78rem;">${escapeHtml(recordText(member.record))}</span>
+                <button type="button" class="btn-action-icon stats-player-btn view-member-stats-btn" data-name="${escapeHtml(member.name)}" style="padding:0.18rem 0.6rem; font-size:0.72rem;" title="View Season Stats &amp; Dossier">📊 Stats &amp; History</button>
               </div>
             </div>
           </div>
@@ -431,6 +432,16 @@
         const row = trigger.closest('.party-member-row');
         if (row) {
           row.classList.toggle('is-collapsed');
+        }
+      });
+    });
+
+    list.querySelectorAll('.view-member-stats-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = btn.getAttribute('data-name');
+        if (window.openPlayerStats) {
+          window.openPlayerStats(name, { formedGroups: groups, players: [] });
         }
       });
     });
@@ -554,6 +565,11 @@
     document.getElementById('editSignupBtn').addEventListener('click', () => {
       document.getElementById('signupCard').classList.remove('is-collapsed');
       document.getElementById('signupForm').hidden = false;
+    });
+    document.getElementById('myStatsBtn')?.addEventListener('click', () => {
+      if (currentSignup && window.openPlayerStats) {
+        window.openPlayerStats(currentSignup, { players: [currentSignup] });
+      }
     });
     document.querySelectorAll('#statusRow .status-btn').forEach(button => {
       button.addEventListener('click', async () => {

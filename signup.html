@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/jpeg" href="assets/kith-and-kin-logo.jpg">
-  <link rel="stylesheet" href="styles.css?v=logo-2">
+  <link rel="stylesheet" href="styles.css?v=stats-1">
   <style>
     .player-shell { max-width: 880px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
     .player-card { padding: 1.25rem; margin-bottom: 1rem; }
@@ -84,7 +84,10 @@
             <h2 id="summaryName">Signed up</h2>
             <p id="summaryDetail"></p>
           </div>
-          <button type="button" class="btn btn-accent" id="editSignupBtn">Edit signup</button>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary" id="myStatsBtn">📊 My Season Stats</button>
+            <button type="button" class="btn btn-accent" id="editSignupBtn">Edit signup</button>
+          </div>
         </div>
         <div id="signupForm">
         <h2 id="hello">Your signup</h2>
@@ -261,6 +264,87 @@
       </div>
     </footer>
   </div>
+
+  <!-- Modal: Player Season Stats & Dossier -->
+  <div class="modal-backdrop" id="playerStatsModal">
+    <div class="modal card modal-wide player-stats-modal-card">
+      <div class="modal-header">
+        <div class="stats-modal-header-left">
+          <div class="stats-modal-avatar-wrap" id="statsModalAvatarWrap"></div>
+          <div>
+            <h3 id="statsModalPlayerName">Player Name</h3>
+            <div class="stats-modal-sub" id="statsModalSub">Level 80 • Class • Realm</div>
+          </div>
+        </div>
+        <button class="modal-close" id="closeStatsModalBtn" title="Close Dossier">&times;</button>
+      </div>
+
+      <div class="modal-body stats-modal-body">
+        <!-- Vital Stats Grid -->
+        <div class="stats-summary-grid">
+          <div class="stat-card">
+            <span class="stat-icon">🛡️</span>
+            <div class="stat-meta">
+              <span class="stat-label">Attendance</span>
+              <strong class="stat-val" id="statsModalAttendance">—</strong>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">🔑</span>
+            <div class="stat-meta">
+              <span class="stat-label">Keys Logged</span>
+              <strong class="stat-val" id="statsModalKeysLogged">0 Runs</strong>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">📈</span>
+            <div class="stat-meta">
+              <span class="stat-label">Timed Rate</span>
+              <strong class="stat-val" id="statsModalSuccessRate">—</strong>
+            </div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">👥</span>
+            <div class="stat-meta">
+              <span class="stat-label">Guild Synergy</span>
+              <strong class="stat-val" id="statsModalSynergy">0 Members</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Frequent Guild Companions -->
+        <div class="stats-teammates-box" id="statsModalTeammatesBox">
+          <span class="stats-box-title">⚔️ Frequent Guild Companions</span>
+          <div class="stats-buddies-list" id="statsModalBuddiesList"></div>
+        </div>
+
+        <!-- External Profile Links -->
+        <div class="stats-external-links" id="statsModalExternalLinks"></div>
+
+        <!-- Tabs: Season Runs (Raider.IO) vs Guild Night History -->
+        <div class="stats-tabs">
+          <button type="button" class="stats-tab-btn is-active" data-tab="season">🏆 Season Runs (Raider.IO)</button>
+          <button type="button" class="stats-tab-btn" data-tab="night">📜 Guild Night History</button>
+        </div>
+
+        <!-- Tab Panes -->
+        <div class="stats-tab-content" id="statsTabContentSeason">
+          <div id="statsSeasonRunsList" class="stats-runs-list">
+            <div class="stats-loading">Loading live Raider.IO season runs...</div>
+          </div>
+        </div>
+
+        <div class="stats-tab-content" id="statsTabContentNight" style="display: none;">
+          <div id="statsNightRunsList" class="stats-runs-list"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="closeStatsModalBtn2">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div id="rollFlash" class="roll-flash" role="dialog" aria-live="assertive">
     <div class="roll-flash-card">
       <div>Your party rolled</div>
@@ -269,6 +353,7 @@
       <button type="button" class="btn btn-primary" id="rollFlashClose">Got it</button>
     </div>
   </div>
-  <script src="signup.js?v=logo-1"></script>
+  <script src="player-stats.js?v=stats-1"></script>
+  <script src="signup.js?v=stats-1"></script>
 </body>
 </html>

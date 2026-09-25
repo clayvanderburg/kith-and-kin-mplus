@@ -848,6 +848,7 @@
               ${isAltRealm ? `<span class="realm-pill">${escapeHtml(player.realm)}</span>` : ''}
             </div>
             <div class="player-actions-row">
+              <button class="btn-action-icon stats-player-btn" data-id="${player.id}" title="View Player Season Stats & Dossier">📊 Stats</button>
               <button class="btn-action-icon edit-player-btn" data-id="${player.id}" title="Edit Member">✏️ Edit</button>
               <button class="btn-action-icon delete delete-player-btn" data-id="${player.id}" title="Remove Member">🗑️ Remove</button>
             </div>
@@ -934,6 +935,32 @@
           savePlayers();
           renderRoster();
           showToast(`Removed ${player.name}`);
+        }
+      });
+    });
+
+    // View Season Stats button
+    document.querySelectorAll('.stats-player-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const player = state.players.find(p => p.id === id);
+        if (player && window.openPlayerStats) {
+          window.openPlayerStats(player, state);
+        }
+      });
+    });
+
+    // Avatar click to open stats
+    document.querySelectorAll('.player-avatar, .player-avatar-placeholder').forEach(el => {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const row = el.closest('.player-row');
+        const id = row?.querySelector('.attend-checkbox')?.getAttribute('data-id');
+        const player = state.players.find(p => p.id === id);
+        if (player && window.openPlayerStats) {
+          window.openPlayerStats(player, state);
         }
       });
     });
@@ -1641,7 +1668,10 @@
                 </div>
                 <span class="slot-key-range">+${member.keyMin} – +${member.keyMax}</span>
               </div>
-              ${moveMenu(member.name)}
+              <div class="slot-actions-sub" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.35rem; gap:0.5rem;">
+                <button type="button" class="btn-action-icon stats-player-btn view-member-stats-btn" data-name="${escapeHtml(member.name)}" style="padding:0.18rem 0.6rem; font-size:0.72rem;" title="View Season Stats & Dossier">📊 Stats &amp; History</button>
+                ${moveMenu(member.name)}
+              </div>
             </div>
           </div>
         </div>
@@ -1744,6 +1774,16 @@
 
     document.querySelectorAll('.move-player').forEach(select => {
       select.addEventListener('click', (e) => e.stopPropagation());
+    });
+
+    document.querySelectorAll('.view-member-stats-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = btn.getAttribute('data-name');
+        if (window.openPlayerStats) {
+          window.openPlayerStats(name, state);
+        }
+      });
     });
 
     // Attach Party Card Button Events
