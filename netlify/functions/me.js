@@ -124,7 +124,8 @@ function publicGroups(state, myName) {
           isShitter: !!live.isShitter,
           carryPreference: live.carryPreference || 'none',
           nightStatus: live.nightStatus === 'in-key' ? 'in-key' : 'waiting',
-          record: ((stats) => ({ runs: stats.runs, successes: stats.successes, rate: stats.rate }))(recordOf(live))
+          record: ((stats) => ({ runs: stats.runs, successes: stats.successes, rate: stats.rate }))(recordOf(live)),
+          runLog: Array.isArray(live.runLog) ? live.runLog.slice(0, 40) : []
         };
       }),
       heldKeys: mineHere ? members.map(member => {

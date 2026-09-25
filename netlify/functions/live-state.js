@@ -46,6 +46,20 @@ function mergePlayer(prev, next) {
     newer.attending = true;
     newer.absent = false;
   }
+  const prevLog = Array.isArray(prev.runLog) ? prev.runLog : [];
+  const nextLog = Array.isArray(next.runLog) ? next.runLog : [];
+  if (prevLog.length > 0 || nextLog.length > 0) {
+    const runMap = new Map();
+    [...prevLog, ...nextLog].forEach(r => {
+      if (r) {
+        const id = r.id || `${r.at || ''}-${r.key || ''}`;
+        runMap.set(id, { ...(runMap.get(id) || {}), ...r });
+      }
+    });
+    newer.runLog = Array.from(runMap.values())
+      .sort((a, b) => timeOf(b.at) - timeOf(a.at))
+      .slice(0, 100);
+  }
   return newer;
 }
 

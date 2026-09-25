@@ -49,6 +49,51 @@
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  // Check if officer is authenticated via session key, secret, or unlocked gate
+  function isOfficerAuthenticated() {
+    const key = sessionStorage.getItem('kk_officer_key') || window.SYNC_SECRET || '';
+    if (key) return true;
+    if (window.isOfficerMode) return true;
+    const gate = document.getElementById('officerGate');
+    if (gate && gate.hidden) return true;
+    return false;
+  }
+
+  function canViewPlayerNotes(playerName) {
+    if (isOfficerAuthenticated()) return true;
+    const myName = (window.currentSignup && window.currentSignup.name) || window.currentSignupName || '';
+    if (myName && myName.toLowerCase() === (playerName || '').toLowerCase()) {
+      return true;
+    }
+    return false;
+  }
+
+  // Interactive unlock prompt for notes
+  async function promptOfficerUnlock() {
+    const key = prompt('Enter officer passphrase to unlock private run notes:');
+    if (!key) return;
+    try {
+      const res = await fetch('/api/officer-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: key.trim() })
+      });
+      if (res.ok) {
+        sessionStorage.setItem('kk_officer_key', key.trim());
+        window.SYNC_SECRET = key.trim();
+        const gate = document.getElementById('officerGate');
+        if (gate) gate.hidden = true;
+        if (window.lastOpenedPlayer) {
+          openPlayerStats(window.lastOpenedPlayer, window.lastStatsState);
+        }
+      } else {
+        alert('Invalid officer passphrase.');
+      }
+    } catch (err) {
+      alert('Authentication error: ' + err.message);
+    }
+  }
+
   // Calculate stats across state
   function computePlayerStats(player, state) {
     const pName = (player.name || '').trim().toLowerCase();
@@ -134,12 +179,49 @@
 
   // Open modal
   async function openPlayerStats(playerOrName, state) {
-    let player = typeof playerOrName === 'string'
-      ? (state.players || []).find(p => (p.name || '').toLowerCase() === playerOrName.toLowerCase())
-      : playerOrName;
+    window.lastOpenedPlayer = playerOrName;
+    window.lastStatsState = state;
+
+    const targetName = typeof playerOrName === 'string' ? playerOrName : (playerOrName?.name || '');
+    let player = typeof playerOrName === 'object' && playerOrName !== null ? { ...playerOrName } : null;
+
+    // Check passed state
+    if ((!player || !player.runLog || player.runLog.length === 0) && state && Array.isArray(state.players)) {
+      const foundInState = state.players.find(p => (p.name || '').toLowerCase() === targetName.toLowerCase());
+      if (foundInState) {
+        player = { ...foundInState, ...(player || {}) };
+        if (foundInState.runLog && foundInState.runLog.length > 0) {
+          player.runLog = foundInState.runLog;
+        }
+      }
+    }
+
+    // Check localStorage kk_mplus_players
+    if (!player || !player.runLog || player.runLog.length === 0) {
+      try {
+        const localList = JSON.parse(localStorage.getItem('kk_mplus_players') || '[]');
+        const found = localList.find(p => (p.name || '').toLowerCase() === targetName.toLowerCase());
+        if (found) {
+          player = { ...found, ...(player || {}) };
+          if (found.runLog && found.runLog.length > 0) {
+            player.runLog = found.runLog;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Check currentSignup in Player View
+    if ((!player || !player.runLog || player.runLog.length === 0) && window.currentSignup) {
+      if ((window.currentSignup.name || '').toLowerCase() === targetName.toLowerCase()) {
+        player = { ...window.currentSignup, ...(player || {}) };
+        if (window.currentSignup.runLog && window.currentSignup.runLog.length > 0) {
+          player.runLog = window.currentSignup.runLog;
+        }
+      }
+    }
 
     if (!player) {
-      player = { name: playerOrName, realm: 'Perenolde', region: 'us', roles: [] };
+      player = { name: targetName, realm: 'Perenolde', region: 'us', roles: [] };
     }
 
     const modal = document.getElementById('playerStatsModal');
@@ -204,7 +286,7 @@
     if (buddiesList) {
       if (stats.topBuddies.length > 0) {
         buddiesList.innerHTML = stats.topBuddies.map(b => {
-          const buddyPlayer = (state.players || []).find(p => (p.name || '').toLowerCase() === b.name.toLowerCase());
+          const buddyPlayer = (state?.players || []).find(p => (p.name || '').toLowerCase() === b.name.toLowerCase());
           const bColor = buddyPlayer ? (CLASS_COLORS[buddyPlayer.className] || '#fff') : '#fff';
           return `<span class="buddy-pill" title="${b.count} runs together">
             <span style="color:${bColor}; font-weight:700;">${escapeHtml(b.name)}</span>
@@ -235,43 +317,68 @@
       `;
     }
 
-    // Reset tabs
-    setActiveTab('season');
+    // Determine if notes are accessible
+    const canSeeNotes = canViewPlayerNotes(player.name);
 
-    // Populate Guild Night runs tab
+    // Populate Guild Night runs tab (Active by default)
     const nightRunsList = document.getElementById('statsNightRunsList');
     if (nightRunsList) {
       if (stats.runLog.length > 0) {
         nightRunsList.innerHTML = stats.runLog.map(entry => {
-          const dateStr = entry.at ? new Date(entry.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+          const dateStr = entry.at ? new Date(entry.at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
           const face = entry.satisfaction ? (FACES[entry.satisfaction] || '') : '';
           const timedBadge = entry.success
             ? `<span class="run-badge-timed">✓ Timed</span>`
             : `<span class="run-badge-depleted">✗ Depleted</span>`;
           
           const links = [];
-          if (entry.rioUrl) links.push(`<a href="${escapeHtml(entry.rioUrl)}" target="_blank" rel="noopener">Raider.IO ↗</a>`);
-          if (entry.wclUrl) links.push(`<a href="${escapeHtml(entry.wclUrl)}" target="_blank" rel="noopener">WCL ↗</a>`);
+          if (entry.rioUrl) links.push(`<a href="${escapeHtml(entry.rioUrl)}" target="_blank" rel="noopener" class="stats-run-link">Raider.IO ↗</a>`);
+          if (entry.wclUrl) links.push(`<a href="${escapeHtml(entry.wclUrl)}" target="_blank" rel="noopener" class="stats-run-link">WCL ↗</a>`);
+
+          let noteHtml = '';
+          if (entry.note) {
+            if (canSeeNotes) {
+              noteHtml = `
+                <div class="run-note-callout">
+                  <span class="run-note-title">📝 Private Note:</span>
+                  <span class="run-note-content">${escapeHtml(entry.note)}</span>
+                </div>
+              `;
+            } else {
+              noteHtml = `
+                <div class="run-note-locked">
+                  <span>🔒 <em>Private note on file (officer passphrase required)</em></span>
+                  <button type="button" class="btn-unlock-note" onclick="window.promptOfficerUnlock()">Unlock</button>
+                </div>
+              `;
+            }
+          }
 
           return `
             <div class="run-card-row">
-              <div class="run-main-left">
-                <span class="run-level-tag">${escapeHtml(entry.key || 'Dungeon')}</span>
-                <span class="run-group-tag">${entry.groupName ? escapeHtml(entry.groupName) : 'Guild Run'}</span>
-                ${face ? `<span class="run-face" title="Player rating">${face}</span>` : ''}
+              <div class="run-row-header">
+                <div class="run-main-left">
+                  <span class="run-level-tag">${escapeHtml(entry.key || 'Dungeon')}</span>
+                  <span class="run-group-tag">${entry.groupName ? escapeHtml(entry.groupName) : 'Guild Run'}</span>
+                  ${face ? `<span class="run-face" title="Player rating">${face}</span>` : ''}
+                </div>
+                <div class="run-meta-right">
+                  ${timedBadge}
+                  ${dateStr ? `<span class="run-date">${dateStr}</span>` : ''}
+                  ${links.length ? `<span class="run-links">${links.join(' · ')}</span>` : ''}
+                </div>
               </div>
-              <div class="run-meta-right">
-                ${timedBadge}
-                ${dateStr ? `<span class="run-date">${dateStr}</span>` : ''}
-                ${links.length ? `<span class="run-links">${links.join(' · ')}</span>` : ''}
-              </div>
+              ${noteHtml}
             </div>
           `;
         }).join('');
       } else {
-        nightRunsList.innerHTML = `<div class="stats-no-data">No keys logged in tonight's session yet.</div>`;
+        nightRunsList.innerHTML = `<div class="stats-no-data">No keys logged in tonight's guild session yet.</div>`;
       }
     }
+
+    // Default to Guild Night History tab on the left
+    setActiveTab('night');
 
     // Season Raider.IO runs placeholder
     const seasonRunsList = document.getElementById('statsSeasonRunsList');
@@ -282,7 +389,7 @@
     // Show modal
     modal.classList.add('is-open');
 
-    // Fetch Raider.IO async
+    // Fetch Raider.IO async in background
     try {
       const rioData = await fetchRaiderIoDetails(player);
       
@@ -321,19 +428,21 @@
 
           return `
             <div class="run-card-row">
-              <div class="run-main-left">
-                <span class="run-level-tag">+${run.mythic_level}</span>
-                ${stars}
-                <span class="run-dungeon-name">${escapeHtml(run.dungeon)}</span>
-                ${isBestBadge}
-              </div>
-              <div class="run-meta-right">
-                <span class="run-time">${timeFormatted}</span>
-                <span class="run-score">+${Math.round(run.score || 0)} pts</span>
-                <span class="run-date">${dateStr}</span>
-                <a href="${escapeHtml(run.url)}" target="_blank" rel="noopener" class="stats-run-link" title="Open full breakdown on Raider.IO">
-                  Raider.IO ↗
-                </a>
+              <div class="run-row-header">
+                <div class="run-main-left">
+                  <span class="run-level-tag">+${run.mythic_level}</span>
+                  ${stars}
+                  <span class="run-dungeon-name">${escapeHtml(run.dungeon)}</span>
+                  ${isBestBadge}
+                </div>
+                <div class="run-meta-right">
+                  <span class="run-time">${timeFormatted}</span>
+                  <span class="run-score">+${Math.round(run.score || 0)} pts</span>
+                  <span class="run-date">${dateStr}</span>
+                  <a href="${escapeHtml(run.url)}" target="_blank" rel="noopener" class="stats-run-link" title="Open full breakdown on Raider.IO">
+                    Raider.IO ↗
+                  </a>
+                </div>
               </div>
             </div>
           `;
@@ -401,6 +510,7 @@
   window.openPlayerStats = openPlayerStats;
   window.closePlayerStats = closePlayerStats;
   window.initPlayerStats = initPlayerStats;
+  window.promptOfficerUnlock = promptOfficerUnlock;
 
   // Auto-init on DOMContentLoaded
   if (document.readyState === 'loading') {

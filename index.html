@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/jpeg" href="assets/kith-and-kin-logo.jpg">
-  <link rel="stylesheet" href="styles.css?v=stats-1">
+  <link rel="stylesheet" href="styles.css?v=stats-2">
 </head>
 <body>
   <!-- Ambient Audio Elements synthesized via Web Audio API -->
@@ -577,21 +577,21 @@
         <!-- External Profile Links -->
         <div class="stats-external-links" id="statsModalExternalLinks"></div>
 
-        <!-- Tabs: Season Runs (Raider.IO) vs Guild Night History -->
+        <!-- Tabs: Guild Night History vs Season Runs (Raider.IO) -->
         <div class="stats-tabs">
-          <button type="button" class="stats-tab-btn is-active" data-tab="season">🏆 Season Runs (Raider.IO)</button>
-          <button type="button" class="stats-tab-btn" data-tab="night">📜 Guild Night History</button>
+          <button type="button" class="stats-tab-btn is-active" data-tab="night">📜 Guild Night History</button>
+          <button type="button" class="stats-tab-btn" data-tab="season">🏆 Season Runs (Raider.IO)</button>
         </div>
 
         <!-- Tab Panes -->
-        <div class="stats-tab-content" id="statsTabContentSeason">
+        <div class="stats-tab-content" id="statsTabContentNight">
+          <div id="statsNightRunsList" class="stats-runs-list"></div>
+        </div>
+
+        <div class="stats-tab-content" id="statsTabContentSeason" style="display: none;">
           <div id="statsSeasonRunsList" class="stats-runs-list">
             <div class="stats-loading">Loading live Raider.IO season runs...</div>
           </div>
-        </div>
-
-        <div class="stats-tab-content" id="statsTabContentNight" style="display: none;">
-          <div id="statsNightRunsList" class="stats-runs-list"></div>
         </div>
       </div>
 
@@ -621,7 +621,7 @@
     .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
-  <script src="player-stats.js?v=stats-1"></script>
-  <script src="app.js?v=stats-1"></script>
+  <script src="player-stats.js?v=stats-2"></script>
+  <script src="app.js?v=stats-2"></script>
 </body>
 </html>
