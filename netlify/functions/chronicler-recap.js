@@ -129,7 +129,7 @@ ${groupsList}
 *For the Guild! Until the next keystone calls!* ⚔️`;
 }
 
-// Call Google Gemini API
+// Call Google Gemini API (with candidate fallback cascade and dynamic discovery)
 async function callGemini(apiKey, summary, tone) {
   const prompt = `You are the witty, proud, and charismatic dwarven/vampiric bard of the World of Warcraft guild "Kith & Kin" (Perenolde/Cairne realm). 
 Write an entertaining, colorful, narrative End-of-M+ Night recap based on tonight's structured data.
@@ -154,28 +154,80 @@ REQUIRED FORMAT IN CLEAN MARKDOWN:
 
 Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it looks amazing in Discord!`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.8,
-        maxOutputTokens: 1000
-      }
-    })
-  });
+  // Candidate models to try in order
+  const candidateModels = [
+    { ver: 'v1beta', name: 'gemini-2.0-flash' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
+    { ver: 'v1', name: 'gemini-1.5-flash' },
+    { ver: 'v1beta', name: 'gemini-2.5-flash' },
+    { ver: 'v1beta', name: 'gemini-1.5-pro' }
+  ];
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errText}`);
+  let lastError = null;
+
+  for (const model of candidateModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${model.ver}/models/${model.name}:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.8,
+            maxOutputTokens: 1000
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        lastError = new Error(`Gemini ${model.name} (${response.status}): ${errText}`);
+        continue;
+      }
+
+      const json = await response.json();
+      const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return { text, modelName: model.name };
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  const json = await response.json();
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('No content returned from Gemini API');
-  return text;
+  // Dynamic discovery fallback: query available models on the key
+  try {
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      const available = (listData.models || []).find(m =>
+        m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('flash')
+      ) || (listData.models || []).find(m =>
+        m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+      );
+
+      if (available) {
+        const modelPath = available.name.replace(/^models\//, '');
+        const dynUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPath}:generateContent?key=${apiKey}`;
+        const dynRes = await fetch(dynUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.8, maxOutputTokens: 1000 }
+          })
+        });
+        if (dynRes.ok) {
+          const dynJson = await dynRes.json();
+          const dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (dynText) return { text: dynText, modelName: modelPath };
+        }
+      }
+    }
+  } catch (discoveryErr) {
+    console.warn('[chronicler] Model discovery failed:', discoveryErr.message);
+  }
+
+  throw lastError || new Error('No compatible Gemini model found');
 }
 
 // Call OpenAI fallback if configured
@@ -230,8 +282,9 @@ exports.handler = async (event) => {
 
     if (geminiKey) {
       try {
-        recapMarkdown = await callGemini(geminiKey, summary, tone);
-        generatorUsed = 'gemini-1.5-flash';
+        const geminiResult = await callGemini(geminiKey, summary, tone);
+        recapMarkdown = geminiResult.text;
+        generatorUsed = geminiResult.modelName || 'gemini';
       } catch (err) {
         geminiError = err.message;
         console.warn('[chronicler] Gemini call failed, falling back:', err.message);

@@ -146,8 +146,8 @@
       }
 
       if (generatorBadge) {
-        if (data.generator === 'gemini-1.5-flash') {
-          generatorBadge.textContent = '✨ Powered by Gemini 1.5 Flash';
+        if (data.generator && data.generator.toLowerCase().includes('gemini')) {
+          generatorBadge.textContent = `✨ Powered by ${data.generator.replace(/-/g, ' ').toUpperCase()}`;
           generatorBadge.className = 'chronicler-badge badge-gemini';
         } else if (data.generator === 'openai-mini') {
           generatorBadge.textContent = '✨ Powered by GPT-4o Mini';
