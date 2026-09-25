@@ -4,6 +4,7 @@
  */
 
 const { readLiveState } = require('./live-state');
+const { isOfficerRequest, header } = require('./lib/auth');
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -300,6 +301,10 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: CORS_HEADERS, body: '' };
   }
 
+  if (!isOfficerRequest(event)) {
+    return { statusCode: 401, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Officer passphrase required.' }) };
+  }
+
   try {
     let state = { players: [], formedGroups: [] };
     try {
@@ -312,7 +317,7 @@ exports.handler = async (event) => {
     const tone = body.tone || 'xalatath';
     const summary = summarizeNight(state);
 
-    const incomingGeminiKey = event.headers['x-gemini-key'] || body.geminiKey;
+    const incomingGeminiKey = header(event, 'x-gemini-key');
     const geminiKey = incomingGeminiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 

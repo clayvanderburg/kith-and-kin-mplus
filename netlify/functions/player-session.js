@@ -1,13 +1,12 @@
 const crypto = require('crypto');
+const { safeEqual, sessionSecret } = require('./lib/auth');
 
 const MAX_COOKIE = 3200;
 
-function signingSecret() {
-  return process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
-}
-
 function sign(value) {
-  return crypto.createHmac('sha256', signingSecret()).update(value).digest('base64url');
+  const secret = sessionSecret();
+  if (!secret) throw new Error('SESSION_SECRET (or SYNC_SECRET) is not configured');
+  return crypto.createHmac('sha256', secret).update(value).digest('base64url');
 }
 
 function readCookies(event) {
@@ -67,7 +66,9 @@ function readSession(event) {
   if (dot === -1) return null;
   const payload = raw.slice(0, dot);
   const sig = raw.slice(dot + 1);
-  if (!payload || sig !== sign(payload)) return null;
+  let expected = '';
+  try { expected = sign(payload); } catch (err) { return null; }
+  if (!payload || !safeEqual(sig, expected)) return null;
   try {
     const record = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     if (!record || record.exp < Date.now()) return null;

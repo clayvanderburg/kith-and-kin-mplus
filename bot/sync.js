@@ -8,7 +8,7 @@ const path = require('path');
 
 const LOCAL_CACHE_FILE = path.join(__dirname, 'state-cache.json');
 const API_URL = process.env.API_URL || 'https://knkmplus.netlify.app/api/state';
-const SYNC_SECRET = process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
+const SYNC_SECRET = process.env.SYNC_SECRET || '';
 
 // In-memory fallback
 let inMemoryState = {

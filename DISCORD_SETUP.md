@@ -24,7 +24,7 @@ With this setup, when a guild member runs `/mplus ...` or clicks an RSVP button 
 2. Navigate to **Site configuration** ➔ **Environment variables**.
 3. Add:
    - `DISCORD_PUBLIC_KEY`: Paste your Public Key from Discord Developer Portal.
-   - `SYNC_SECRET`: `kith_and_kin_mythic_key_2026` (or any custom passphrase you prefer).
+   - `SYNC_SECRET`: a long random string (never commit it). Also set `OFFICER_KEY` (the passphrase officers type) and `SESSION_SECRET` (signs Battle.net logins).
 
 ### Step 3: Set Interactions Endpoint URL in Discord
 1. Back in the **Discord Developer Portal** ➔ **General Information**.
@@ -70,7 +70,7 @@ If you ever prefer running a traditional persistent bot process on your computer
    CLIENT_ID=your_client_id
    GUILD_ID=your_guild_id
    API_URL=https://knkmplus.netlify.app/api/state
-   SYNC_SECRET=kith_and_kin_mythic_key_2026
+   SYNC_SECRET=<same long random string as Netlify>
    ```
 2. Start the bot:
    ```bash

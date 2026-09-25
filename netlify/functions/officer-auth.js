@@ -1,4 +1,4 @@
-const SECRET = process.env.OFFICER_KEY || '';
+const { safeEqual } = require('./lib/auth');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -13,7 +13,7 @@ exports.handler = async (event) => {
   } catch (err) {
     key = '';
   }
-  const ok = key && key === SECRET;
+  const ok = safeEqual(String(key).trim(), process.env.OFFICER_KEY);
   return {
     statusCode: ok ? 200 : 401,
     headers: { 'Content-Type': 'application/json' },

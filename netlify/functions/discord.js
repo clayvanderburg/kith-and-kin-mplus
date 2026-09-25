@@ -30,9 +30,47 @@ const rosterSearch = loadModule('roster-search');
 const rollUi = loadModule('roll-ui');
 const liveState = require('./live-state');
 
+function foldName(value) {
+  return String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+}
+
+// A character belongs to whoever claimed it first (Discord or Battle.net). Others cannot edit it.
+function claimError(player, discordUserId) {
+  if (!player) return null;
+  if (player.discordId && player.discordId !== discordUserId) {
+    return `**${player.name}** is already claimed by another Discord member. Ask an officer if that is wrong.`;
+  }
+  if (!player.discordId && player.bnetId) {
+    return `**${player.name}** was signed up through Battle.net. Edit it on the website: ${WEB_URL}/signup.html`;
+  }
+  return null;
+}
+
+function findPlayerByName(state, name) {
+  const folded = foldName(name);
+  return (state.players || []).find(p => foldName(p.name) === folded) || null;
+}
+
+// The character this Discord member most recently claimed.
+function findOwnPlayer(state, discordUserId) {
+  if (!discordUserId) return null;
+  return (state.players || [])
+    .filter(p => p.discordId === discordUserId)
+    .sort((a, b) => (Date.parse(b.touchedAt || '') || 0) - (Date.parse(a.touchedAt || '') || 0))[0] || null;
+}
+
 function bindSignupCharacter(state, discordUser, rawName) {
   if (!rosterSearch) return null;
+  const typed = String(rawName || '').replace(/^__custom__:?/, '').trim();
+  const rosterHit = rosterSearch.findRosterEntry(typed);
+  const existing = findPlayerByName(state, rosterHit?.name || typed);
+  const error = claimError(existing, discordUser?.id);
+  if (error) return { error };
   return rosterSearch.attachCharacter(state, discordUser?.id, rawName);
+}
+
+function ephemeral(content) {
+  return jsonResponse({ type: 4, data: { content, flags: 64 } });
 }
 
 function signupPreferencesMessage(player) {
@@ -468,16 +506,22 @@ exports.handler = async (event, context) => {
         const carryPref = getOpt('carry_pref') || 'none';
         const isShitter = getOpt('shitter') || false;
 
-        let player = (state.players || []).find(p => p.name.toLowerCase() === charName.toLowerCase());
-        const rIo = await lookupRaiderIo(charName);
+        const signupUserId = (interaction.member?.user || interaction.user)?.id;
+        let player = findPlayerByName(state, charName);
+        const signupClaim = claimError(player, signupUserId);
+        if (signupClaim) return ephemeral(`⚠️ ${signupClaim}`);
+        const rosterEntry = rosterSearch ? rosterSearch.findRosterEntry(charName) : null;
+        const rIo = await lookupRaiderIo(charName, player?.realm || rosterEntry?.realm || 'Perenolde');
 
         const newPlayer = {
           id: player?.id || `discord-${Date.now()}`,
           name: rIo?.name || charName,
           className: rIo?.className || player?.className || 'Warrior',
-          realm: rIo?.realm || 'Perenolde',
-          ilvl: rIo?.ilvl || player?.ilvl || 320,
+          realm: rIo?.realm || player?.realm || rosterEntry?.realm || 'Perenolde',
+          ilvl: rIo?.ilvl || player?.ilvl || 0,
           io: rIo?.io || player?.io || 0,
+          discordId: signupUserId,
+          touchedAt: new Date().toISOString(),
           roles,
           keyMin: minKey,
           keyMax: maxKey,
@@ -544,10 +588,7 @@ exports.handler = async (event, context) => {
         }
       });
     }
-    let player = (state.players || []).find(p =>
-      (p.discordId && p.discordId === discordUser.id) ||
-      (defaultName && p.name.toLowerCase() === defaultName.toLowerCase())
-    );
+    let player = findOwnPlayer(state, discordUser?.id);
 
     // Leaderboard interactive buttons
     if (customId === 'btn_leaderboard_refresh') {
@@ -643,6 +684,7 @@ exports.handler = async (event, context) => {
 
       const chosenName = selected.startsWith('__custom__:') ? selected.slice('__custom__:'.length) : selected;
       const targetPlayer = bindSignupCharacter(state, discordUser, chosenName);
+      if (targetPlayer?.error) return ephemeral(`⚠️ ${targetPlayer.error}`);
       if (!targetPlayer) {
         return jsonResponse({
           type: 4,
@@ -892,7 +934,7 @@ exports.handler = async (event, context) => {
 
     return jsonResponse({
       type: 4,
-      data: { content: '⚠️ Please click a role button (Tank, Healer, or DPS) first to sign up your character!', flags: 64 }
+      data: { content: '⚠️ Click **Sign Up / Edit RSVP 📝** first to pick your character.', flags: 64 }
     });
   }
 
@@ -912,6 +954,7 @@ exports.handler = async (event, context) => {
       if (result.autoPick || result.matchCount === 0) {
         const chosen = result.autoPick?.name || result.typedName;
         const targetPlayer = bindSignupCharacter(state, discordUser, chosen);
+        if (targetPlayer?.error) return ephemeral(`⚠️ ${targetPlayer.error}`);
         if (!targetPlayer) {
           return jsonResponse({
             type: 4,
@@ -931,114 +974,10 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // Handle Custom / Alt Character Modal Submit
-    if (customId === 'modal_signup_custom' || customId === 'modal_custom_signup') {
-      const charName = getVal('char_name');
-      const rolesStr = getVal('char_roles') || 'DPS';
-      const keyRangeStr = getVal('key_range') || '10-12';
-      const roles = rolesStr.split(/[,/ ]+/).filter(Boolean);
-
-      let [minK, maxK] = [10, 12];
-      const match = keyRangeStr.match(/(\d+)\s*[-–to ]+\s*(\d+)/i);
-      if (match) {
-        minK = parseInt(match[1], 10);
-        maxK = parseInt(match[2], 10);
-      }
-
-      let rIo = null;
-      try {
-        rIo = await lookupRaiderIo(charName);
-      } catch (e) {}
-
-      let player = (state.players || []).find(p => p.name.toLowerCase() === (charName || '').toLowerCase());
-      const playerRecord = {
-        id: player?.id || `discord-${Date.now()}`,
-        discordId: discordUser.id,
-        name: rIo?.name || charName,
-        className: rIo?.className || player?.className || 'Warrior',
-        realm: rIo?.realm || player?.realm || 'Perenolde',
-        ilvl: rIo?.ilvl || player?.ilvl || 320,
-        io: rIo?.io || player?.io || 0,
-        roles: roles.length ? roles : ['DPS'],
-        keyMin: minK,
-        keyMax: maxK,
-        keyBrackets: maxK > 12 ? ['12+'] : (maxK >= 10 ? ['10-12'] : ['6-8']),
-        ownedKey: rIo?.ownedKey || player?.ownedKey || '',
-        attending: true,
-        carryPreference: player?.carryPreference || 'none',
-        isShitter: !!player?.isShitter,
-        isLeader: !!player?.isLeader,
-        isReserve: !!player?.isReserve
-      };
-
-      if (player) {
-        Object.assign(player, playerRecord);
-      } else {
-        state.players = state.players || [];
-        state.players.push(playerRecord);
-      }
-
-      await saveState(state);
-
-      return jsonResponse({
-        type: 4,
-        data: {
-          content: `🎉 Registered custom character **${playerRecord.name}** (${playerRecord.className}) as **${playerRecord.roles.join('/')}**!\n- **Item Level:** ${playerRecord.ilvl} | **IO:** ${playerRecord.io.toLocaleString()}\n- **Key Range:** +${playerRecord.keyMin} to +${playerRecord.keyMax}${playerRecord.ownedKey ? ` | 🔑 ${playerRecord.ownedKey}` : ''}\nSynced with the [live web app](${WEB_URL})!`,
-          flags: 64
-        }
-      });
-    }
-
-    if (customId.startsWith('modal_signup_')) {
-      const role = customId.replace('modal_signup_', '');
-      const charName = getVal('char_name');
-      const keyRangeStr = getVal('key_range') || '8-14';
-      const manualKey = getVal('owned_key');
-
-      let [minK, maxK] = keyRangeStr.split('-').map(s => parseInt(s.trim()));
-      if (isNaN(minK)) minK = 6;
-      if (isNaN(maxK)) maxK = 12;
-
-      const rIo = await lookupRaiderIo(charName);
-
-      let player = (state.players || []).find(p => p.name.toLowerCase() === (charName || '').toLowerCase());
-      const playerRecord = {
-        id: player?.id || `discord-${Date.now()}`,
-        discordId: discordUser.id,
-        name: rIo?.name || charName,
-        className: rIo?.className || player?.className || 'Warrior',
-        realm: rIo?.realm || 'Perenolde',
-        ilvl: rIo?.ilvl || player?.ilvl || 320,
-        io: rIo?.io || player?.io || 0,
-        roles: [role],
-        keyMin: minK,
-        keyMax: maxK,
-        ownedKey: manualKey || rIo?.ownedKey || player?.ownedKey || 'Murder Row +10',
-        attending: true,
-        carryPreference: player?.carryPreference || 'none',
-        isShitter: !!player?.isShitter
-      };
-
-      if (player) {
-        Object.assign(player, playerRecord);
-      } else {
-        state.players = state.players || [];
-        state.players.push(playerRecord);
-      }
-
-      await saveState(state);
-
-      return jsonResponse({
-        type: 4,
-        data: {
-          content: `🎉 Registered **${playerRecord.name}** (${playerRecord.className}) as **${role}**!\n- **Item Level:** ${playerRecord.ilvl} | **IO:** ${playerRecord.io}\n- **Keystone:** ${playerRecord.ownedKey}\nSynced with the [live web app](${WEB_URL})!`,
-          flags: 64
-        }
-      });
-    }
+    return ephemeral('⚠️ That form has expired. Click **Sign Up / Edit RSVP 📝** again.');
   }
 
-  return { statusCode: 200, body: JSON.stringify({ type: 1 }) };
+  return ephemeral('⚠️ Unknown action. Try the buttons on the latest sign-up card.');
 };
 
 function jsonResponse(obj) {

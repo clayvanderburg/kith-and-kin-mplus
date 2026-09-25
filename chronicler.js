@@ -121,19 +121,27 @@
       localStorage.setItem('kk_gemini_key', keyInput.value.trim());
     }
 
+    let officerKey = '';
+    try { officerKey = sessionStorage.getItem('kk_officer_key') || ''; } catch (e) {}
+    if (!officerKey && typeof window.promptOfficerUnlock === 'function') {
+      await window.promptOfficerUnlock();
+      try { officerKey = sessionStorage.getItem('kk_officer_key') || ''; } catch (e) {}
+    }
+
     try {
       const response = await fetch('/api/chronicler-recap', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(officerKey ? { 'x-sync-secret': officerKey } : {}),
           ...(geminiKey ? { 'x-gemini-key': geminiKey } : {})
         },
-        body: JSON.stringify({
-          tone: currentTone,
-          geminiKey: geminiKey || undefined
-        })
+        body: JSON.stringify({ tone: currentTone })
       });
 
+      if (response.status === 401) {
+        throw new Error('Officer passphrase required to write the chronicle.');
+      }
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}: ${response.statusText}`);
       }

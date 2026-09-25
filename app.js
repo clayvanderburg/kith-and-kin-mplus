@@ -2965,6 +2965,8 @@
     // Initial background sync with Discord bot / cloud state
     setupOfficerGate();
     fetchRemoteState(true);
+    // Officers who unlock from a player dossier get the full roster (with private notes) right away.
+    window.addEventListener('kk-officer-unlocked', () => fetchRemoteState(true));
 
     // Immediate sync on tab switch or window focus
     document.addEventListener('visibilitychange', () => {

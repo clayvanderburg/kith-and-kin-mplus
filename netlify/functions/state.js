@@ -4,14 +4,7 @@
  */
 
 const { readLiveState, writeMergedState, updateDiscordCard } = require('./live-state');
-const SYNC_SECRET = process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
-const OFFICER_KEY = process.env.OFFICER_KEY || '';
-
-function syncSecretOk(incoming) {
-  if (!incoming) return false;
-  if (incoming === SYNC_SECRET) return true;
-  return Boolean(OFFICER_KEY) && incoming === OFFICER_KEY;
-}
+const { isOfficerRequest, publicState } = require('./lib/auth');
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -51,14 +44,14 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 200,
         headers: CORS_HEADERS,
-        body: JSON.stringify(data)
+        body: JSON.stringify(isOfficerRequest(event) ? data : publicState(data))
       };
     } catch (err) {
       console.error('[State Function] Error reading state:', err);
       return {
         statusCode: 500,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'Failed to read state', details: err.message })
+        body: JSON.stringify({ error: 'Failed to read state' })
       };
     }
   }
@@ -67,8 +60,7 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'POST') {
     try {
       // Validate secret if configured
-      const incomingSecret = event.headers['x-sync-secret'] || event.headers['X-Sync-Secret'];
-      if (!syncSecretOk(incomingSecret)) {
+      if (!isOfficerRequest(event)) {
         return {
           statusCode: 401,
           headers: CORS_HEADERS,
@@ -116,7 +108,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 500,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'Failed to save state', details: err.message })
+        body: JSON.stringify({ error: 'Failed to save state' })
       };
     }
   }

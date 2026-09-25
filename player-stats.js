@@ -49,9 +49,13 @@
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
-  // Check if officer is authenticated (Temporarily unlocked for officer preview)
+  // Officers unlock once per browser session (same key the Control Center uses to save).
   function isOfficerAuthenticated() {
-    return true;
+    try {
+      return Boolean(sessionStorage.getItem('kk_officer_key') || window.SYNC_SECRET);
+    } catch (e) {
+      return Boolean(window.SYNC_SECRET);
+    }
   }
 
   function canViewPlayerNotes(playerName) {
@@ -76,6 +80,7 @@
       if (res.ok) {
         sessionStorage.setItem('kk_officer_key', key.trim());
         window.SYNC_SECRET = key.trim();
+        window.dispatchEvent(new Event('kk-officer-unlocked'));
         const gate = document.getElementById('officerGate');
         if (gate) gate.hidden = true;
         if (window.lastOpenedPlayer) {
@@ -331,8 +336,8 @@
           if (entry.wclUrl) links.push(`<a href="${escapeHtml(entry.wclUrl)}" target="_blank" rel="noopener" class="stats-run-link">WCL ↗</a>`);
 
           let noteHtml = '';
-          if (entry.note) {
-            if (canSeeNotes) {
+          if (entry.note || entry.hasNote) {
+            if (canSeeNotes && entry.note) {
               noteHtml = `
                 <div class="run-note-callout">
                   <span class="run-note-title">📝 Private Note:</span>
