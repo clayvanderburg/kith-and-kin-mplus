@@ -63,6 +63,12 @@ function mergeStates(latest, incoming) {
     map.set(key, mergePlayer(map.get(key), player));
   }
 
+  const ownerIds = new Set((next.players || []).map(player => player.bnetId).filter(Boolean));
+  for (const name of next.removedNames || []) {
+    const previous = map.get(playerKey({ name }));
+    if (previous && ownerIds.has(previous.bnetId)) map.delete(playerKey({ name }));
+  }
+
   const nextGroupsTime = timeOf(next.groupsTouchedAt);
   const baseGroupsTime = timeOf(base.groupsTouchedAt);
   const useNextGroups = Boolean(next.groupsTouchedAt) && nextGroupsTime >= baseGroupsTime;

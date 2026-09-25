@@ -339,9 +339,9 @@ function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
       .setLabel('Form Groups 🏰')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setLabel('Web View 🌐')
+      .setLabel('Sign Up on Web 🌐')
       .setStyle(ButtonStyle.Link)
-      .setURL(webUrl)
+      .setURL(`${webUrl.replace(/\/$/, '')}/signup.html`)
   );
 
   // Row 2: Keystone Tools & Refresh

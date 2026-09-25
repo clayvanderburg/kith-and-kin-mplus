@@ -440,7 +440,7 @@
   const API_URL = (window.location.hostname.includes('netlify.app') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? '/api/state'
     : 'https://knkmplus.netlify.app/api/state';
-  const SYNC_SECRET = 'kith_and_kin_mythic_key_2026';
+  let SYNC_SECRET = '';
   let pushDebounceTimer = null;
   let isFetchingRemote = false;
   let localEditedAt = 0;
@@ -543,6 +543,7 @@
   }
 
   function pushRemoteState() {
+    if (!SYNC_SECRET) return;
     localEditedAt = Date.now();
     clearTimeout(pushDebounceTimer);
     updateSyncStatus('syncing', 'Saving...');
@@ -2478,6 +2479,50 @@
   }
 
   // --- Init & Event Listeners ---
+  async function verifyOfficerKey(key) {
+    if (!key) return false;
+    try {
+      const res = await fetch('/api/officer-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      });
+      return res.ok;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  async function setupOfficerGate() {
+    const gate = document.getElementById('officerGate');
+    const input = document.getElementById('officerKeyInput');
+    const message = document.getElementById('officerGateMessage');
+    const unlock = document.getElementById('officerUnlockBtn');
+    if (!gate || !unlock) return;
+
+    const saved = sessionStorage.getItem('kk_officer_key') || '';
+    if (saved && await verifyOfficerKey(saved)) {
+      SYNC_SECRET = saved;
+      gate.hidden = true;
+      return;
+    }
+
+    gate.hidden = false;
+    unlock.addEventListener('click', async () => {
+      const key = input.value.trim();
+      message.textContent = 'Checking...';
+      if (await verifyOfficerKey(key)) {
+        sessionStorage.setItem('kk_officer_key', key);
+        SYNC_SECRET = key;
+        gate.hidden = true;
+        message.textContent = '';
+        fetchRemoteState(false);
+      } else {
+        message.textContent = 'That officer passphrase is not right.';
+      }
+    });
+  }
+
   function init() {
     loadState();
     renderRoster();
@@ -2673,6 +2718,7 @@
     }
 
     // Initial background sync with Discord bot / cloud state
+    setupOfficerGate();
     fetchRemoteState(true);
 
     // Immediate sync on tab switch or window focus

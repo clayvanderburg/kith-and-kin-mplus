@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kith & Kin — Sign up for Mythic+ Night</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .player-shell { max-width: 880px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    .player-card { padding: 1.25rem; margin-bottom: 1rem; }
+    .player-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0 0 0.4rem; }
+    .player-lead { color: var(--text-muted); margin: 0 0 1rem; }
+    .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.6rem; }
+    .char-pick { text-align: left; border: 1px solid var(--border-card); background: rgba(0,0,0,0.25); color: var(--text-main); border-radius: 10px; padding: 0.7rem 0.8rem; cursor: pointer; }
+    .char-pick.is-selected { border-color: var(--border-gold); box-shadow: 0 0 0 1px var(--border-gold-glow); }
+    .char-pick small { display: block; color: var(--text-muted); }
+    .choice-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.4rem 0 0.9rem; }
+    .choice-row label { border: 1px solid var(--border-card); border-radius: 999px; padding: 0.35rem 0.7rem; cursor: pointer; }
+    .choice-row input { margin-right: 0.3rem; }
+    .party-card { border: 1px solid var(--border-card); border-radius: 12px; padding: 0.8rem; margin-bottom: 0.6rem; }
+    .party-card.mine { border-color: var(--border-gold); }
+    .status-line { min-height: 1.2rem; color: var(--text-gold); }
+    .login-panel { text-align: center; padding: 1.5rem 0.5rem 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="site-wrapper">
+    <header class="guild-header">
+      <div class="header-titles">
+        <div class="guild-subtitle">World of Warcraft • Midnight Season 2</div>
+        <h1 class="guild-title">Kith & Kin <span class="highlight">Mythic+ Night</span></h1>
+        <p class="guild-tagline">Sign up with your Battle.net account, pick the character you're bringing, then watch the groups.</p>
+      </div>
+    </header>
+    <main class="player-shell">
+      <section class="card player-card" id="loginCard">
+        <div class="login-panel">
+          <h2>Sign in to claim your spot</h2>
+          <p class="player-lead">Battle.net shows only the characters on your account. You can edit your own signup, see the parties, and roll a key for your party. You cannot change anyone else's signup.</p>
+          <a class="btn btn-primary" href="/api/bnet-login">Sign in with Battle.net</a>
+          <p class="player-lead" id="loginNote"></p>
+        </div>
+      </section>
+
+      <section class="card player-card" id="signupCard" hidden>
+        <h2 id="hello">Your signup</h2>
+        <p class="player-lead" id="tagLine"></p>
+        <h3>Character</h3>
+        <div class="char-grid" id="charGrid"></div>
+        <h3>Roles</h3>
+        <div class="choice-row" id="roleRow">
+          <label><input type="checkbox" value="Tank"> 🛡️ Tank</label>
+          <label><input type="checkbox" value="Healer"> 💚 Healer</label>
+          <label><input type="checkbox" value="DPS" checked> ⚔️ DPS</label>
+        </div>
+        <h3>Key goals</h3>
+        <div class="choice-row" id="bracketRow">
+          <label><input type="checkbox" value="6-8"> 6-8 Hero Crest</label>
+          <label><input type="checkbox" value="10-12" checked> 10-12 Vault</label>
+          <label><input type="checkbox" value="12+"> Higher than 12 IO</label>
+        </div>
+        <h3>Preferences</h3>
+        <div class="choice-row">
+          <label><input type="checkbox" id="optLeader"> 👑 Willing to lead</label>
+          <label><input type="checkbox" id="optReserve"> 🍺 Bench if needed</label>
+          <label><input type="checkbox" id="optCarry"> 🎒 Need a carry</label>
+          <label><input type="checkbox" id="optStronk"> 🏋️ Can carry</label>
+          <label><input type="checkbox" id="optShitter"> 💩 Shitter alt</label>
+          <label><input type="checkbox" id="optOut"> 💤 Can't make it</label>
+        </div>
+        <button type="button" class="btn btn-primary" id="saveBtn">Save my signup</button>
+        <p class="status-line" id="saveStatus"></p>
+      </section>
+
+      <section class="card player-card" id="groupCard" hidden>
+        <h2>Tonight's parties</h2>
+        <p class="player-lead">You can see every party. Keystone roulette only works for the party you are in.</p>
+        <div id="groupList"></div>
+      </section>
+    </main>
+  </div>
+  <script src="signup.js?v=player-1"></script>
+</body>
+</html>

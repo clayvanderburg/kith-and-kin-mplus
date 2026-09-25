@@ -556,6 +556,23 @@
   <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
-  <script src="app.js?v=sync-4"></script>
+  <div id="officerGate" class="officer-gate">
+    <div class="card officer-gate-card">
+      <h2>Officer console</h2>
+      <p>This page can edit every signup, form groups, and reroll keys. Guild members should use the player signup instead.</p>
+      <p><a class="btn btn-primary" href="signup.html">I'm a player — take me to signup</a></p>
+      <label for="officerKeyInput">Officer passphrase</label>
+      <input id="officerKeyInput" class="form-input" type="password" autocomplete="current-password">
+      <button type="button" id="officerUnlockBtn" class="btn btn-accent">Unlock console</button>
+      <p id="officerGateMessage" class="player-lead"></p>
+    </div>
+  </div>
+  <style>
+    .officer-gate { position: fixed; inset: 0; z-index: 80; background: rgba(5, 7, 12, 0.92); display: grid; place-items: center; padding: 1rem; }
+    .officer-gate[hidden] { display: none; }
+    .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
+    .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
+  </style>
+  <script src="app.js?v=sync-5"></script>
 </body>
 </html>
