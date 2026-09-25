@@ -18,7 +18,15 @@ async function useStore(event, run) {
       console.error('[live-state] connectLambda failed:', err.message);
     }
   }
-  return run(getStore(STORE_NAME, { consistency: 'strong' }));
+  // Strong reads need Netlify's uncached edge URL, which Lambda-compat functions don't always get.
+  // Fall back to eventual consistency instead of failing the whole request.
+  try {
+    return await run(getStore(STORE_NAME, { consistency: 'strong' }));
+  } catch (err) {
+    if (!/consisten|uncachedEdgeURL/i.test(err?.message || '')) throw err;
+    console.warn('[live-state] strong consistency unavailable, using eventual:', err.message);
+    return run(getStore(STORE_NAME, { consistency: 'eventual' }));
+  }
 }
 
 function timeOf(value) {
