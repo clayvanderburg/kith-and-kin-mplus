@@ -92,3 +92,10 @@
     Access-Control-Allow-Headers = "Content-Type, x-sync-secret"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
     Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Background jobs (times are UTC)
+[functions."refresh-scores"]
+  schedule = "*/15 * * * *"
+
+[functions."sync-night"]
+  schedule = "*/15 * * * 5,6"

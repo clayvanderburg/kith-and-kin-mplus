@@ -321,6 +321,8 @@ async function saveOwnedKey(event, state, mine, body) {
   }
   mine.ownedKey = String(body.ownedKey || '').trim().slice(0, 80);
   mine.keyManual = true;
+  mine.keySource = 'typed';
+  mine.keyAt = new Date().toISOString();
   mine.touchedAt = new Date().toISOString();
   const saved = await writeMergedState(event, { players: [mine] });
   const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
@@ -455,6 +457,8 @@ async function saveSignup(event, state, session, body, existing) {
     ilvl: rio?.ilvl || existing?.ilvl || 0,
     ownedKey: existing?.keyManual ? (existing.ownedKey || '') : '',
     rioRuns: rio?.recentRuns || existing?.rioRuns || [],
+    // Every character on this Battle.net account, so alts' runs count for the same person.
+    accountChars: (session.characters || []).map(c => ({ name: c.name, realm: c.realm })).slice(0, 80),
     eventId: ''
   };
 

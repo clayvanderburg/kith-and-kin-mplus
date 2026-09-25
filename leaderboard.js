@@ -335,7 +335,7 @@
           <div class="lb-player-cell">
             <div class="lb-avatar" style="border-color: ${classColor}; color: ${classColor};">${classIcon}</div>
             <div class="lb-player-info">
-              <strong style="color: ${classColor};" title="Click to view full points audit">${escapeHtml(p.name)}</strong>
+              <strong style="color: ${classColor};" title="Click to view full points audit">${escapeHtml(p.name)}</strong>${p.alts && p.alts.length ? ` <small class="text-muted" title="Alts counted for this player">+ ${escapeHtml(p.alts.join(', '))}</small>` : ''}
               <small>${escapeHtml(p.realm)} • <span style="color:var(--text-gold);">${p.title}</span></small>
             </div>
           </div>
@@ -420,7 +420,7 @@
     const classColor = engine.CLASS_COLORS[player.className] || '#fff';
     const classIcon = engine.CLASS_ICONS[player.className] || '⚔️';
 
-    DOM.auditTitle.innerHTML = `<span style="color:${classColor};">${classIcon} ${escapeHtml(player.name)}</span> — Points Audit`;
+    DOM.auditTitle.innerHTML = `<span style="color:${classColor};">${classIcon} ${escapeHtml(player.name)}</span>${player.alts && player.alts.length ? ` <small>(+ ${escapeHtml(player.alts.join(', '))})</small>` : ''} — Points Audit`;
     DOM.auditSubtitle.textContent = `${player.realm} • ${player.titleBadge} ${player.title} (${player.totalPoints} Total Participation Points)`;
 
     const runLog = Array.isArray(player.runLog) ? player.runLog : [];

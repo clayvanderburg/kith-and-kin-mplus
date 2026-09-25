@@ -5,10 +5,14 @@
  */
 
 const path = require('path');
+const crypto = require('crypto');
 const { getStore, connectLambda } = require('@netlify/blobs');
 
 const STORE_NAME = 'mplus-state';
 const STATE_KEY = 'current_state';
+// Written by the scheduled jobs. Kept separate so they never race officer/Discord edits.
+const SCORES_KEY = 'scores';          // { [charKey]: { io, ilvl, ioColor, spec, className, at } }
+const NIGHTS_KEY = 'nights';          // { [YYYY-MM-DD]: [charKey, ...] }  who showed up each Friday
 
 async function useStore(event, run) {
   if (event?.blobs) {
@@ -193,9 +197,100 @@ function mergeEventMaps(baseEvents, nextEvents) {
   return events;
 }
 
-async function readLiveState(event) {
+function foldName(value) {
+  return String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+}
+
+function realmSlug(realm) {
+  return String(realm || 'Perenolde').trim().toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function charKey(name, realm) {
+  return `${foldName(name)}|${realmSlug(realm)}`;
+}
+
+function hashId(value) {
+  const salt = process.env.SESSION_SECRET || process.env.SYNC_SECRET || 'kk';
+  return 'p_' + crypto.createHmac('sha256', salt).update(String(value)).digest('hex').slice(0, 12);
+}
+
+/**
+ * Tie characters to one person. Links come from:
+ *  - the same Battle.net account (bnetId, and every character on that account from the login),
+ *  - the same Discord account (discordId).
+ * Every player gets `personId` (a hash, safe to show publicly) and `charKey`.
+ */
+function assignPeople(state) {
+  const players = state.players || [];
+  const parent = new Map();
+  const find = (x) => {
+    while (parent.get(x) !== x) {
+      parent.set(x, parent.get(parent.get(x)));
+      x = parent.get(x);
+    }
+    return x;
+  };
+  const add = (x) => { if (!parent.has(x)) parent.set(x, x); return x; };
+  const union = (a, b) => { const ra = find(add(a)); const rb = find(add(b)); if (ra !== rb) parent.set(rb, ra); };
+
+  for (const player of players) {
+    if (!player?.name) continue;
+    const ck = 'c:' + charKey(player.name, player.realm);
+    add(ck);
+    if (player.bnetId) union('b:' + player.bnetId, ck);
+    if (player.discordId) union('d:' + player.discordId, ck);
+    if (player.bnetId && Array.isArray(player.accountChars)) {
+      for (const alt of player.accountChars) {
+        if (alt?.name) union('b:' + player.bnetId, 'c:' + charKey(alt.name, alt.realm));
+      }
+    }
+  }
+  for (const player of players) {
+    if (!player?.name) continue;
+    player.charKey = charKey(player.name, player.realm);
+    const root = find('c:' + player.charKey);
+    player.personId = hashId(root);
+  }
+  return state;
+}
+
+function applyScores(state, scores) {
+  if (!scores || typeof scores !== 'object') return state;
+  for (const player of state.players || []) {
+    const hit = scores[charKey(player.name, player.realm)];
+    if (!hit) continue;
+    if (hit.io || !player.io) player.io = hit.io || 0;
+    if (hit.ilvl) player.ilvl = hit.ilvl;
+    if (hit.ioColor) player.ioColor = hit.ioColor;
+    if (hit.spec) player.spec = hit.spec;
+    player.scoreAt = hit.at || null;
+  }
+  return state;
+}
+
+async function readBlob(event, key) {
+  try {
+    return await useStore(event, (store) => store.get(key, { type: 'json' }));
+  } catch (err) {
+    console.warn(`[live-state] could not read ${key}:`, err.message);
+    return null;
+  }
+}
+
+async function writeBlob(event, key, value) {
+  return useStore(event, (store) => store.setJSON(key, value));
+}
+
+async function readLiveState(event, { overlays = true } = {}) {
   const data = await useStore(event, (store) => store.get(STATE_KEY, { type: 'json' }));
-  return data && typeof data === 'object' ? reconcileState(data) : null;
+  if (!data || typeof data !== 'object') return null;
+  const state = reconcileState(data);
+  if (overlays) {
+    const [scores, nights] = await Promise.all([readBlob(event, SCORES_KEY), readBlob(event, NIGHTS_KEY)]);
+    applyScores(state, scores);
+    state.nights = nights && typeof nights === 'object' ? nights : {};
+  }
+  return assignPeople(state);
 }
 
 async function writeMergedState(event, incoming) {
@@ -208,8 +303,12 @@ async function writeMergedState(event, incoming) {
     incoming && (incoming.players || incoming.formedGroups || incoming.events || incoming.groupsTouchedAt)
   );
   if (!rosterChange && latest?.lastUpdated) merged.lastUpdated = latest.lastUpdated;
-  await useStore(event, (store) => store.setJSON(STATE_KEY, merged));
-  return merged;
+  // Overlays and computed ids live elsewhere; don't copy them into the main document.
+  const toSave = { ...merged, players: (merged.players || []).map(({ personId, charKey: ck, ...rest }) => rest) };
+  delete toSave.nights;
+  await useStore(event, (store) => store.setJSON(STATE_KEY, toSave));
+  merged.nights = latest?.nights || {};
+  return assignPeople(merged);
 }
 
 function loadEmbeds() {
@@ -273,6 +372,16 @@ async function updateDiscordCard(state) {
 }
 
 module.exports = {
+  STORE_NAME,
+  SCORES_KEY,
+  NIGHTS_KEY,
+  charKey,
+  realmSlug,
+  foldName,
+  assignPeople,
+  applyScores,
+  readBlob,
+  writeBlob,
   mergeStates,
   reconcileState,
   readLiveState,

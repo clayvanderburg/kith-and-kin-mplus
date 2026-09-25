@@ -2324,50 +2324,30 @@
     }
   }
 
+  // Scores for the whole guild refresh automatically every 15 minutes on the server.
+  // This button refreshes tonight's attendees right now and pulls tonight's finished keys.
   async function handleSyncAllRaiderIo() {
-    const attendees = state.players.filter(p => p.attending);
-    if (attendees.length === 0) {
-      showToast('No attending members to sync!');
-      return;
-    }
-
     const btn = document.getElementById('syncRaiderIoBtn');
     const origText = btn.innerHTML;
+    if (!(await ensureOfficerKey())) return;
     btn.disabled = true;
-
-    let successCount = 0;
-    let notFoundCount = 0;
-
-    for (let i = 0; i < attendees.length; i++) {
-      const p = attendees[i];
-      btn.textContent = `⏳ Syncing (${i + 1}/${attendees.length})...`;
-      try {
-        const data = await fetchCharacterRaiderIo(p.name, p.realm || 'Perenolde', p.region || 'us');
-        p.ilvl = data.ilvl || p.ilvl;
-        p.io = data.io || p.io;
-        p.avatar = data.avatar || p.avatar;
-        if (data.realm) p.realm = data.realm;
-        if (data.keyMin && data.keyMax) {
-          p.keyMin = data.keyMin;
-          p.keyMax = data.keyMax;
-        }
-        if (data.className && WOW_CLASSES[data.className]) {
-          p.className = data.className;
-        }
-        successCount++;
-      } catch (e) {
-        notFoundCount++;
-      }
-      await new Promise(r => setTimeout(r, 120));
+    btn.textContent = '⏳ Refreshing...';
+    try {
+      const res = await fetch('/api/refresh-now', { method: 'POST', headers: { 'x-sync-secret': officerKey() } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      const n = data.night || {};
+      showToast(`📈 ${data.scores?.updated || 0} scores refreshed` + (n.logged !== undefined ? ` • ${n.logged} new keys logged from Raider.IO (${n.night})` : ''));
+      playSound('fanfare');
+      await fetchRemoteState(true);
+    } catch (e) {
+      showToast(`Refresh failed: ${e.message}`);
+    } finally {
+      btn.innerHTML = origText;
+      btn.disabled = false;
     }
-
-    savePlayers();
-    renderRoster();
-    btn.innerHTML = origText;
-    btn.disabled = false;
-    playSound('fanfare');
-    showToast(`Raider.IO sync complete! (${successCount} updated${notFoundCount ? ', ' + notFoundCount + ' not found' : ''})`);
   }
+
 
   function handleSavePlayer(e) {
     e.preventDefault();

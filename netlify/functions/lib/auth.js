@@ -33,7 +33,7 @@ function sessionSecret() {
   return process.env.SESSION_SECRET || process.env.SYNC_SECRET || '';
 }
 
-const PRIVATE_PLAYER_FIELDS = ['discordId', 'bnetId', 'battleTag', 'rioRuns'];
+const PRIVATE_PLAYER_FIELDS = ['discordId', 'bnetId', 'battleTag', 'rioRuns', 'accountChars'];
 const PRIVATE_RUN_FIELDS = ['note', 'satisfaction'];
 
 function publicRun(run) {

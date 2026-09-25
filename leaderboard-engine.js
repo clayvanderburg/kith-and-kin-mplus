@@ -554,10 +554,15 @@
       });
       if (pastCount > 0) nightsAttended = Math.max(nightsAttended, pastCount);
     }
-    if (typeof player.nightsAttended === 'number' && player.nightsAttended > nightsAttended) {
-      nightsAttended = player.nightsAttended;
+    if (typeof player.nightsFromLog === 'number') {
+      // Real per-Friday attendance recorded by the night sync (grouped or finished a key).
+      nightsAttended = player.nightsFromLog;
+    } else {
+      if (typeof player.nightsAttended === 'number' && player.nightsAttended > nightsAttended) {
+        nightsAttended = player.nightsAttended;
+      }
+      nightsAttended = Math.max(1, nightsAttended);
     }
-    nightsAttended = Math.max(1, nightsAttended);
     const attendancePoints = nightsAttended * SCORING_RULES.ATTENDANCE_PER_NIGHT;
 
     // 2. Keys Run & Timed Bonus Calculation
@@ -659,6 +664,63 @@
   /**
    * Computes full leaderboard standings from an array of players and state
    */
+  function foldKey(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  function realmSlugOf(realm) {
+    return String(realm || 'Perenolde').trim().toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  /**
+   * One row per person: alts linked by Battle.net/Discord (personId) are merged.
+   * Their keys, roles and attendance all count toward the same person.
+   */
+  function aggregatePeople(players, state) {
+    const nights = state && state.nights && typeof state.nights === 'object' ? state.nights : null;
+    const hasNights = nights && Object.keys(nights).length > 0;
+    const groups = new Map();
+    (players || []).forEach(p => {
+      if (!p || !p.name) return;
+      const ck = p.charKey || `${foldKey(p.name)}|${realmSlugOf(p.realm)}`;
+      const id = p.personId || ck;
+      if (!groups.has(id)) groups.set(id, []);
+      groups.get(id).push({ ...p, charKey: ck });
+    });
+    const people = [];
+    groups.forEach(chars => {
+      const runsOf = c => (Array.isArray(c.runLog) ? c.runLog.length : 0);
+      const main = [...chars].sort((a, b) =>
+        (b.attending ? 1 : 0) - (a.attending ? 1 : 0) || runsOf(b) - runsOf(a) || (b.io || 0) - (a.io || 0))[0];
+      const seen = new Set();
+      const runLog = [];
+      chars.forEach(c => (c.runLog || []).forEach(run => {
+        const key = run.rioRunId ? `rio-${run.rioRunId}` : (run.id || `${run.at}-${run.key}`);
+        if (seen.has(key)) return;
+        seen.add(key);
+        runLog.push({ ...run, character: c.name });
+      }));
+      const roles = [...new Set(chars.flatMap(c => Array.isArray(c.roles) ? c.roles : []))];
+      const merged = {
+        ...main,
+        runLog,
+        roles: roles.length ? roles : main.roles,
+        isLeader: chars.some(c => c.isLeader),
+        carryPreference: chars.some(c => c.carryPreference === 'willing_carry') ? 'willing_carry' : (main.carryPreference || 'none'),
+        attending: chars.some(c => c.attending),
+        alts: chars.filter(c => c !== main).map(c => c.name),
+        io: Math.max(...chars.map(c => c.io || 0))
+      };
+      if (hasNights) {
+        const keys = new Set(chars.map(c => c.charKey));
+        merged.nightsFromLog = Object.values(nights).filter(list => Array.isArray(list) && list.some(k => keys.has(k))).length;
+      }
+      people.push(merged);
+    });
+    // Live board: only people who have actually shown up or logged a key.
+    return people.filter(p => p.runLog.length > 0 || (hasNights ? p.nightsFromLog > 0 : p.attending));
+  }
+
   function computeLeaderboardStandings(players, state, forceLive = false) {
     let list;
     if (forceLive && Array.isArray(players) && players.length > 0) {
@@ -677,7 +739,12 @@
       }
     }
 
-    const computed = list.map(p => calculatePlayerPoints(p, state));
+    if (list !== DEMO_PLAYERS) list = aggregatePeople(list, state);
+    const computed = list.map(p => {
+      const row = calculatePlayerPoints(p, state);
+      row.alts = p.alts || [];
+      return row;
+    });
 
     // Sort by Total Points descending, tie-breaker: keys run, then attendance
     computed.sort((a, b) => {
@@ -765,6 +832,7 @@
     DEMO_PLAYERS,
     calculatePlayerPoints,
     computeLeaderboardStandings,
+    aggregatePeople,
     generateDiscordMarkdown,
     getTitleForPoints
   };
