@@ -355,8 +355,7 @@ async function handleButtonInteraction(interaction) {
 
   if (customId === 'btn_leaderboard_refresh') {
     await interaction.deferUpdate();
-    const state = await fetchRemoteState();
-    const standings = leaderboardEngine.computeLeaderboardStandings(state.players, state);
+    const standings = leaderboardEngine.computeLeaderboardStandings(leaderboardEngine.DEMO_PLAYERS);
     const embed = createLeaderboardEmbed(standings, WEB_URL);
     const buttons = createLeaderboardButtons(WEB_URL);
     return interaction.editReply({ embeds: [embed], components: buttons });

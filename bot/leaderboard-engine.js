@@ -663,18 +663,18 @@
     let list;
     if (forceLive && Array.isArray(players) && players.length > 0) {
       list = players;
-    } else if (Array.isArray(players) && players.length > 0) {
-      // Check if players have any actual logged runs or active attendance
-      const totalRuns = players.reduce((sum, p) => sum + (Array.isArray(p.runLog) ? p.runLog.length : 0), 0);
-      const totalAttending = players.filter(p => p.attending).length;
-      if (totalRuns === 0 && totalAttending <= 2) {
-        // Live state has no real mythic run data yet -> use DEMO_PLAYERS so it matches web showcase!
+    } else if (Array.isArray(players) && players === DEMO_PLAYERS) {
+      list = DEMO_PLAYERS;
+    } else if (forceLive) {
+      list = Array.isArray(players) ? players : [];
+    } else {
+      // Default to DEMO_PLAYERS for showcases and previews unless forceLive is explicitly true or live season has >= 10 logged runs
+      const totalRuns = Array.isArray(players) ? players.reduce((sum, p) => sum + (Array.isArray(p.runLog) ? p.runLog.length : 0), 0) : 0;
+      if (totalRuns < 10) {
         list = DEMO_PLAYERS;
       } else {
         list = players;
       }
-    } else {
-      list = DEMO_PLAYERS;
     }
 
     const computed = list.map(p => calculatePlayerPoints(p, state));
