@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=nav-1">
+  <link rel="stylesheet" href="styles.css?v=nav-3">
 </head>
 <body>
   <!-- Ambient Audio Elements synthesized via Web Audio API -->
@@ -207,93 +207,47 @@
           </div>
         </div>
 
-        <!-- Keystone Roulette & Group Key Roller -->
-        <div class="keystone-roulette-card" id="keystoneRouletteCard">
-          <div class="roulette-header">
+        <div class="keystone-roulette-card is-collapsed" id="keystoneRouletteCard">
+          <button type="button" class="roulette-header" id="rouletteToggle" aria-expanded="false">
             <div class="roulette-title">
               <span class="roulette-icon">🎲</span>
               <div>
-                <h4>Party Keystone Roulette &amp; Assignment</h4>
-                <p>Roll a key specifically for a formed party from their member bags or Midnight pool.</p>
+                <h4>Party Key Roll</h4>
+                <p>Pick a party, leave players out, and roll one of the keys they typed in.</p>
               </div>
             </div>
-          </div>
+            <span class="roulette-chevron" id="rouletteChevron">Show</span>
+          </button>
 
-          <div class="roulette-controls">
-            <!-- Group Selector First (No "all groups") -->
+          <div class="roulette-controls" id="rouletteBody">
             <div class="roulette-group-pick-row">
               <label for="rouletteTargetGroupSelect">Target Party:</label>
               <select id="rouletteTargetGroupSelect" class="form-select">
-                <option value="">-- Select a Formed Party First --</option>
+                <option value="">-- No formed parties yet --</option>
               </select>
             </div>
 
-            <!-- Group's Held Keys -->
             <div class="group-held-keys-wrap" id="groupHeldKeysWrap" style="display: none;">
               <div class="group-keys-header">
-                <span class="keys-title">👜 Keystones Held in Bags by this Party:</span>
+                <span class="keys-title">Click a name to leave that player out. The roll uses a key they typed in.</span>
               </div>
-              <div class="group-keys-list" id="groupKeysList">
-                <!-- Badges of keys in bags for this group -->
-              </div>
+              <div class="group-keys-list" id="groupKeysList"></div>
             </div>
 
-            <!-- Group Dungeon Filter (Click chip to Exclude) -->
-            <div class="group-filter-wrap" id="groupFilterWrap" style="display: none;">
-              <div class="group-filter-header">
-                <span class="filter-title">🚫 Exclude Dungeons for this Party (Click to toggle):</span>
-                <button type="button" id="resetGroupExclusionsBtn" class="btn-link-sm">Clear Exclusions</button>
-              </div>
-              <div class="group-dungeon-chips" id="groupDungeonChips">
-                <!-- 8 dungeon chips toggleable for this group -->
-              </div>
-            </div>
-
-            <!-- Roll Controls Row -->
             <div class="roulette-action-row" id="rouletteActionRow" style="display: none;">
-              <div class="form-group-sm">
-                <label for="rouletteSourceSelect">Roll Source</label>
-                <select id="rouletteSourceSelect" class="form-select-sm">
-                  <option value="held" selected>🔑 From Party's Held Keys</option>
-                  <option value="pool">🎲 Random from Midnight S2 Pool</option>
-                  <option value="manual">🎯 Specific Dungeon (Manual)</option>
-                </select>
-              </div>
-
-              <div class="form-group-sm" id="rouletteManualDungeonWrap" style="display: none;">
-                <label for="rouletteManualDungeonSelect">Dungeon</label>
-                <select id="rouletteManualDungeonSelect" class="form-select-sm">
-                  <option value="Voidscar Arena">Voidscar Arena</option>
-                  <option value="Murder Row">Murder Row</option>
-                  <option value="The Blinding Vale">The Blinding Vale</option>
-                  <option value="Den of Nalorakk">Den of Nalorakk</option>
-                  <option value="Kings' Rest">Kings' Rest</option>
-                  <option value="Altar of Fangs">Altar of Fangs</option>
-                  <option value="Temple of Sethraliss">Temple of Sethraliss</option>
-                  <option value="Ruby Life Pools">Ruby Life Pools</option>
-                </select>
-              </div>
-
-              <div class="form-group-sm">
-                <label for="rouletteLevelInput">Key Level</label>
-                <input type="number" id="rouletteLevelInput" class="form-input-sm" value="12" min="2" max="30" style="width: 70px;">
-              </div>
-
               <button type="button" id="rollKeystoneBtn" class="btn btn-sm btn-accent roulette-btn">
-                🎲 Roll Keystone for Party!
+                🎲 Roll a player's key
               </button>
             </div>
 
-            <!-- Prompt when no group is selected -->
             <div id="rouletteNoGroupPrompt" class="roulette-no-group-prompt">
-              <span>⚠️ Form groups and select a party above to roll keys specifically for them.</span>
+              <span>Form groups first, then open this and pick a party.</span>
             </div>
 
-            <!-- Rolled Result Banner -->
             <div id="rouletteResultBanner" class="roulette-result-banner" style="display: none;">
               <div class="result-badge">
                 <span class="result-sigil">🔑</span>
-                <span class="result-text" id="rouletteResultText">Rolled: Murder Row +12</span>
+                <span class="result-text" id="rouletteResultText"></span>
               </div>
               <div class="result-holders" id="rouletteHoldersText"></div>
             </div>
@@ -578,6 +532,6 @@
     .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
-  <script src="app.js?v=sync-8"></script>
+  <script src="app.js?v=sync-10"></script>
 </body>
 </html>

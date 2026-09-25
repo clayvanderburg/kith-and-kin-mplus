@@ -1290,33 +1290,37 @@
   }
 
   // --- Keystone Roulette & Party Key Actions ---
+  function typedKeyFor(member) {
+    if (!member?.name) return '';
+    const live = state.players.find(player => player.name.toLowerCase() === member.name.toLowerCase()) || member;
+    return live.keyManual && live.ownedKey ? String(live.ownedKey).trim() : '';
+  }
+
   function updateRouletteTargetGroups() {
     const targetGroupSelect = document.getElementById('rouletteTargetGroupSelect');
     const promptEl = document.getElementById('rouletteNoGroupPrompt');
     const heldKeysWrap = document.getElementById('groupHeldKeysWrap');
-    const filterWrap = document.getElementById('groupFilterWrap');
     const actionRow = document.getElementById('rouletteActionRow');
     if (!targetGroupSelect) return;
 
     if (!state.formedGroups || state.formedGroups.length === 0) {
-      targetGroupSelect.innerHTML = `<option value="">-- No Formed Parties Yet --</option>`;
+      targetGroupSelect.innerHTML = `<option value="">-- No formed parties yet --</option>`;
       targetGroupSelect.disabled = true;
       if (promptEl) promptEl.style.display = 'block';
       if (heldKeysWrap) heldKeysWrap.style.display = 'none';
-      if (filterWrap) filterWrap.style.display = 'none';
       if (actionRow) actionRow.style.display = 'none';
       return;
     }
 
     targetGroupSelect.disabled = false;
-    let selectedVal = targetGroupSelect.value;
-    let opts = `<option value="">-- Choose a Formed Party --</option>`;
-    state.formedGroups.forEach((g, idx) => {
-      opts += `<option value="${idx}">Party ${idx + 1}: ${escapeHtml(g.name)}</option>`;
+    const selectedVal = targetGroupSelect.value;
+    let opts = `<option value="">-- Choose a party --</option>`;
+    state.formedGroups.forEach((group, idx) => {
+      opts += `<option value="${idx}">Party ${idx + 1}: ${escapeHtml(group.name)}</option>`;
     });
     targetGroupSelect.innerHTML = opts;
 
-    if (selectedVal !== '' && selectedVal !== null && state.formedGroups[parseInt(selectedVal, 10)]) {
+    if (selectedVal !== '' && state.formedGroups[parseInt(selectedVal, 10)]) {
       targetGroupSelect.value = selectedVal;
       renderSelectedPartyRoulette(parseInt(selectedVal, 10));
     } else {
@@ -1328,182 +1332,93 @@
   function renderSelectedPartyRoulette(grpIdx) {
     const promptEl = document.getElementById('rouletteNoGroupPrompt');
     const heldKeysWrap = document.getElementById('groupHeldKeysWrap');
-    const filterWrap = document.getElementById('groupFilterWrap');
     const actionRow = document.getElementById('rouletteActionRow');
     const keysList = document.getElementById('groupKeysList');
-    const chipsContainer = document.getElementById('groupDungeonChips');
     const rollBtn = document.getElementById('rollKeystoneBtn');
-    const levelInput = document.getElementById('rouletteLevelInput');
 
     if (isNaN(grpIdx) || !state.formedGroups || !state.formedGroups[grpIdx]) {
       if (promptEl) promptEl.style.display = 'block';
       if (heldKeysWrap) heldKeysWrap.style.display = 'none';
-      if (filterWrap) filterWrap.style.display = 'none';
       if (actionRow) actionRow.style.display = 'none';
       return;
     }
 
     const grp = state.formedGroups[grpIdx];
-    grp.excludedDungeons = grp.excludedDungeons || [];
-
+    grp.excludedPlayers = grp.excludedPlayers || [];
     if (promptEl) promptEl.style.display = 'none';
     if (heldKeysWrap) heldKeysWrap.style.display = 'block';
-    if (filterWrap) filterWrap.style.display = 'block';
     if (actionRow) actionRow.style.display = 'flex';
 
-    // 1. Render Group Held Keys
     const partyMembers = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
-    const heldKeys = partyMembers.filter(p => p.keyManual && p.ownedKey && p.ownedKey.trim() !== '');
-
     if (keysList) {
-      if (heldKeys.length > 0) {
-        keysList.innerHTML = heldKeys.map(p => {
-          const dung = p.ownedKey.split('+')[0].trim();
-          const isExcluded = grp.excludedDungeons.includes(dung);
-          return `<div class="party-held-key-badge ${isExcluded ? 'key-excluded' : ''}" title="${escapeHtml(p.name)}'s key">
-            <strong class="holder-name">${escapeHtml(p.name)}:</strong>
-            <span class="holder-key">🔑 ${escapeHtml(p.ownedKey)}</span>
-            ${isExcluded ? '<span class="pill-excluded-tag">(Excluded)</span>' : ''}
-          </div>`;
-        }).join('');
-      } else {
-        keysList.innerHTML = `<span class="no-keys-hint">No party members currently have an active keystone recorded in bags.</span>`;
-      }
-    }
-
-    // Default source selection
-    const sourceSelect = document.getElementById('rouletteSourceSelect');
-    if (sourceSelect) {
-      if (heldKeys.length > 0 && sourceSelect.value === 'pool') {
-        sourceSelect.value = 'held';
-      } else if (heldKeys.length === 0 && sourceSelect.value === 'held') {
-        sourceSelect.value = 'pool';
-      }
-    }
-
-    // 2. Render Party Exclusion Chips
-    if (chipsContainer) {
-      chipsContainer.innerHTML = DUNGEONS_MIDNIGHT_S2.map(dung => {
-        const isExcluded = grp.excludedDungeons.includes(dung);
-        return `<button type="button" class="dungeon-chip ${isExcluded ? 'excluded' : 'active'}" data-dungeon="${escapeHtml(dung)}" data-group="${grpIdx}">
-          <span class="chip-status">${isExcluded ? '✕' : '✓'}</span>
-          <span class="chip-name">${escapeHtml(dung)}</span>
+      keysList.innerHTML = partyMembers.map(member => {
+        const key = typedKeyFor(member);
+        const excluded = grp.excludedPlayers.some(name => name.toLowerCase() === member.name.toLowerCase());
+        return `<button type="button" class="player-exclude-chip ${excluded ? 'is-out' : ''} ${key ? '' : 'no-key'}" data-player="${escapeHtml(member.name)}">
+          ${escapeHtml(member.name)}${key ? ` · ${escapeHtml(key)}` : ' · no key'}
         </button>`;
       }).join('');
-
-      chipsContainer.querySelectorAll('.dungeon-chip').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const chip = e.currentTarget;
-          const dungName = chip.getAttribute('data-dungeon');
-          if (grp.excludedDungeons.includes(dungName)) {
-            grp.excludedDungeons = grp.excludedDungeons.filter(d => d !== dungName);
-          } else {
-            grp.excludedDungeons.push(dungName);
-          }
-          saveGroupsLocal();
-          renderSelectedPartyRoulette(grpIdx);
+      keysList.querySelectorAll('.player-exclude-chip').forEach(button => {
+        button.addEventListener('click', () => {
+          const playerName = button.getAttribute('data-player');
+          const already = grp.excludedPlayers.some(name => name.toLowerCase() === playerName.toLowerCase());
+          grp.excludedPlayers = already
+            ? grp.excludedPlayers.filter(name => name.toLowerCase() !== playerName.toLowerCase())
+            : [...grp.excludedPlayers, playerName];
+          saveGroups();
+          renderGroups();
           playSound('click');
         });
       });
     }
 
-    // 3. Update Level Input and Roll Button text
-    if (levelInput) {
-      let targetLvl = 12;
-      if (grp.targetKeyStr) {
-        const match = grp.targetKeyStr.match(/\+(\d+)/);
-        if (match) targetLvl = parseInt(match[1], 10);
-      }
-      levelInput.value = targetLvl;
-    }
-
-    if (rollBtn) {
-      rollBtn.innerHTML = `🎲 Roll Keystone for Party ${grpIdx + 1}!`;
-    }
+    if (rollBtn) rollBtn.textContent = `🎲 Roll a key for Party ${grpIdx + 1}`;
   }
 
-  function handleRollKeystone() {
-    const targetGroupSelect = document.getElementById('rouletteTargetGroupSelect');
-    const selectedVal = targetGroupSelect?.value;
-    if (selectedVal === '' || selectedVal === null || selectedVal === undefined) {
-      showToast('⚠️ Please select a formed party first!');
-      return;
-    }
-
-    const grpIdx = parseInt(selectedVal, 10);
+  function rollPartyKey(grpIdx) {
     const grp = state.formedGroups?.[grpIdx];
-    if (!grp) {
-      showToast('⚠️ Selected party does not exist!');
-      return;
+    if (!grp) return null;
+    if (grp.isLocked) {
+      showToast('Unlock that party before rolling a key.');
+      return null;
     }
 
-    const source = document.getElementById('rouletteSourceSelect')?.value || 'held';
-    const levelInput = parseInt(document.getElementById('rouletteLevelInput')?.value, 10) || 12;
-    const manualDungeon = document.getElementById('rouletteManualDungeonSelect')?.value || 'Murder Row';
-
-    let chosenDungeon = '';
-    let chosenLevel = levelInput;
-    let holders = [];
-
+    const excluded = new Set((grp.excludedPlayers || []).map(name => name.toLowerCase()));
     const partyMembers = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
-    const partyHeldKeys = partyMembers.filter(p => p.keyManual && p.ownedKey && p.ownedKey.trim() !== '');
-
-    grp.excludedDungeons = grp.excludedDungeons || [];
-
-    if (source === 'manual') {
-      chosenDungeon = manualDungeon;
-      holders = partyHeldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
-    } else if (source === 'held') {
-      const allowedHeld = partyHeldKeys.filter(p => {
-        const dung = p.ownedKey.split('+')[0].trim();
-        return !grp.excludedDungeons.includes(dung);
-      });
-
-      if (allowedHeld.length === 0) {
-        showToast('⚠️ No party members hold non-excluded keys! Rolling from Midnight pool instead.');
-        const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !grp.excludedDungeons.includes(d));
-        const poolToUse = allowedPool.length > 0 ? allowedPool : DUNGEONS_MIDNIGHT_S2;
-        chosenDungeon = poolToUse[Math.floor(Math.random() * poolToUse.length)];
-      } else {
-        const picked = allowedHeld[Math.floor(Math.random() * allowedHeld.length)];
-        chosenDungeon = picked.ownedKey.split('+')[0].trim();
-        const match = picked.ownedKey.match(/\+(\d+)/);
-        if (match) chosenLevel = parseInt(match[1], 10);
-        holders = [picked];
-      }
-    } else {
-      // Midnight S2 pool
-      const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !grp.excludedDungeons.includes(d));
-      const poolToUse = allowedPool.length > 0 ? allowedPool : DUNGEONS_MIDNIGHT_S2;
-      chosenDungeon = poolToUse[Math.floor(Math.random() * poolToUse.length)];
-      holders = partyHeldKeys.filter(p => p.ownedKey.toLowerCase().includes(chosenDungeon.toLowerCase()));
+    const pool = partyMembers.filter(member => typedKeyFor(member) && !excluded.has(member.name.toLowerCase()));
+    if (!pool.length) {
+      showToast('Nobody left in this party has typed a key.');
+      return null;
     }
 
-    const fullKeyStr = `${chosenDungeon} +${chosenLevel}`;
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    const fullKeyStr = typedKeyFor(picked);
     grp.dungeon = fullKeyStr;
     grp.assignedDungeon = fullKeyStr;
-    grp.targetKeyStr = `+${chosenLevel} (Assigned)`;
-
+    grp.keystone = fullKeyStr;
     saveGroups();
     renderGroups();
-    renderSelectedPartyRoulette(grpIdx);
 
-    // Display Result Banner
     const banner = document.getElementById('rouletteResultBanner');
     const resultText = document.getElementById('rouletteResultText');
     const holdersText = document.getElementById('rouletteHoldersText');
     if (banner && resultText) {
       banner.style.display = 'flex';
-      resultText.textContent = `Party ${grpIdx + 1} Assigned: ${fullKeyStr}`;
-      if (holders.length > 0) {
-        holdersText.textContent = `Held in bags by: ${holders.map(h => `${h.name} (${h.ownedKey})`).join(', ')}`;
-      } else {
-        holdersText.textContent = `Push key from pool (No member holds this exact key)`;
-      }
+      resultText.textContent = `${picked.name}'s key: ${fullKeyStr}`;
+      if (holdersText) holdersText.textContent = `Party ${grpIdx + 1} will run this key.`;
     }
-
     playSound('keystone');
-    showToast(`🎲 Assigned ${fullKeyStr} to Party ${grpIdx + 1}!`);
+    showToast(`Rolled ${picked.name}: ${fullKeyStr}`);
+    return { picked, fullKeyStr };
+  }
+
+  function handleRollKeystone() {
+    const selectedVal = document.getElementById('rouletteTargetGroupSelect')?.value;
+    if (selectedVal === '' || selectedVal === null || selectedVal === undefined) {
+      showToast('Pick a party first.');
+      return;
+    }
+    rollPartyKey(parseInt(selectedVal, 10));
   }
 
   async function handleSyncKeystones() {
@@ -1696,12 +1611,10 @@
         <div class="party-sub-meta">
           <span class="party-key-target">🎯 ${grp.targetKeyStr}</span>
           <div class="party-dungeon-row">
-            <span class="party-dungeon-tag" title="Assigned Dungeon">🏰 ${escapeHtml(grp.dungeon || 'Mythic Key')}</span>
-            <button class="btn-mini-roll party-card-reroll-btn" data-group-index="${index}" title="Roll a random key for Party ${index + 1} from allowed pool">🎲 Roll</button>
-            <select class="party-dungeon-select" data-group-index="${index}" title="Manually change dungeon">
-              ${DUNGEONS_MIDNIGHT_S2.map(d => `<option value="${d}" ${(grp.dungeon && grp.dungeon.includes(d)) ? 'selected' : ''}>${d}</option>`).join('')}
-            </select>
+            <span class="party-dungeon-tag" title="Key rolled for this party">🔑 ${escapeHtml(grp.keystone || grp.dungeon || 'No key rolled yet')}</span>
+            <button type="button" class="btn-mini-roll party-card-reroll-btn" data-group-index="${index}" title="Roll one typed key from the players in Party ${index + 1}" ${grp.isLocked ? 'disabled' : ''}>🎲 Roll</button>
           </div>
+          ${(grp.excludedPlayers || []).length ? `<span class="party-left-out">Left out: ${escapeHtml((grp.excludedPlayers || []).join(', '))}</span>` : ''}
         </div>
 
         <div class="party-utility-bar">
@@ -1822,44 +1735,10 @@
       });
     });
 
-    // Individual Party Dungeon Reroll buttons
     document.querySelectorAll('.party-card-reroll-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.getAttribute('data-group-index'), 10);
-        const grp = state.formedGroups[idx];
-        if (!grp) return;
-
-        const allowedPool = DUNGEONS_MIDNIGHT_S2.filter(d => !(state.excludedDungeons || []).includes(d));
-        const poolToUse = allowedPool.length > 0 ? allowedPool : DUNGEONS_MIDNIGHT_S2;
-        const picked = poolToUse[Math.floor(Math.random() * poolToUse.length)];
-
-        const lvlMatch = grp.dungeon ? grp.dungeon.match(/\+(\d+)/) : null;
-        const lvl = lvlMatch ? lvlMatch[1] : 12;
-
-        grp.dungeon = `${picked} +${lvl}`;
-        playSound('keystone');
-        saveGroups();
-        renderGroups();
-        showToast(`🎲 Rerolled Party ${idx + 1} dungeon to ${grp.dungeon}!`);
-      });
-    });
-
-    // Individual Party Dungeon Manual Dropdowns
-    document.querySelectorAll('.party-dungeon-select').forEach(sel => {
-      sel.addEventListener('change', (e) => {
-        const idx = parseInt(sel.getAttribute('data-group-index'), 10);
-        const grp = state.formedGroups[idx];
-        if (!grp) return;
-
-        const picked = e.target.value;
-        const lvlMatch = grp.dungeon ? grp.dungeon.match(/\+(\d+)/) : null;
-        const lvl = lvlMatch ? lvlMatch[1] : 12;
-
-        grp.dungeon = `${picked} +${lvl}`;
-        playSound('click');
-        saveGroups();
-        renderGroups();
-        showToast(`🎯 Changed Party ${idx + 1} dungeon to ${grp.dungeon}!`);
+        rollPartyKey(idx);
       });
     });
 
@@ -2056,7 +1935,7 @@
       const shitterTag = grp.isShitterGroup ? ' [💩 Shitter Alt Squad]' : '';
       text += `\n🛡️ **Group ${idx + 1}: ${grp.name}**${shitterTag}\n`;
       text += `🎯 **Keys:** ${grp.targetKeyStr}\n`;
-      text += `🏰 **Dungeon:** ${grp.dungeon}\n`;
+      text += `🔑 **Key:** ${grp.keystone || grp.dungeon || 'No key rolled yet'}\n`;
       text += `📊 **Team Stats:** Avg IO: **${(grp.avgIo || 0).toLocaleString()}** | Avg iLvl: **${grp.avgIlvl || 620}**\n`;
       const lustStr = grp.hasLust ? `⚡ ${grp.lustProvider}` : `⚠️ Lust: None (Bring drums!)`;
       const brezStr = grp.hasBrez ? `🔄 ${grp.brezProvider}` : `⚠️ BRez: None (Engi brez)`;
@@ -2846,26 +2725,14 @@
       });
     }
 
-    const resetGroupExclusionsBtn = document.getElementById('resetGroupExclusionsBtn');
-    if (resetGroupExclusionsBtn) {
-      resetGroupExclusionsBtn.addEventListener('click', () => {
-        const sel = document.getElementById('rouletteTargetGroupSelect');
-        const idx = parseInt(sel?.value, 10);
-        if (!isNaN(idx) && state.formedGroups?.[idx]) {
-          state.formedGroups[idx].excludedDungeons = [];
-          saveGroupsLocal();
-          renderSelectedPartyRoulette(idx);
-          playSound('click');
-          showToast('Cleared party dungeon exclusions!');
-        }
-      });
-    }
-
-    const rouletteSourceSelect = document.getElementById('rouletteSourceSelect');
-    const rouletteManualDungeonWrap = document.getElementById('rouletteManualDungeonWrap');
-    if (rouletteSourceSelect && rouletteManualDungeonWrap) {
-      rouletteSourceSelect.addEventListener('change', (e) => {
-        rouletteManualDungeonWrap.style.display = e.target.value === 'manual' ? 'block' : 'none';
+    const rouletteToggle = document.getElementById('rouletteToggle');
+    const rouletteCard = document.getElementById('keystoneRouletteCard');
+    const rouletteChevron = document.getElementById('rouletteChevron');
+    if (rouletteToggle && rouletteCard) {
+      rouletteToggle.addEventListener('click', () => {
+        const collapsed = rouletteCard.classList.toggle('is-collapsed');
+        rouletteToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        if (rouletteChevron) rouletteChevron.textContent = collapsed ? 'Show' : 'Hide';
       });
     }
 

@@ -10,26 +10,6 @@ function loadKeystone() {
   }
 }
 
-function loadSolver() {
-  const candidates = [
-    path.join(__dirname, '..', '..', 'bot', 'solver.js'),
-    path.join(process.cwd(), 'bot', 'solver.js')
-  ];
-  for (const candidate of candidates) {
-    try {
-      return require(candidate);
-    } catch (err) {
-      // try the next location
-    }
-  }
-  return null;
-}
-
-const DUNGEONS_MIDNIGHT_S2 = loadSolver()?.DUNGEONS_MIDNIGHT_S2 || [
-  'Voidscar Arena', 'Murder Row', 'The Blinding Vale', 'Den of Nalorakk',
-  "Kings' Rest", 'Altar of Fangs', 'Temple of Sethraliss', 'Ruby Life Pools'
-];
-
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 function fold(value) {
@@ -528,26 +508,34 @@ async function rollOwnGroup(event, state, mine) {
   }
 
   const group = state.formedGroups[index];
-  const excluded = new Set(group.excludedDungeons || []);
+  if (group.isLocked) {
+    return {
+      statusCode: 403,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ error: 'That party is locked. An officer can unlock it in Control Center.' })
+    };
+  }
+  const excluded = new Set((group.excludedPlayers || []).map(name => fold(name)));
   const members = groupMembers(group);
-  const held = members.filter(member => member.ownedKey && !excluded.has(String(member.ownedKey).split('+')[0].trim()));
-  let dungeon = '';
-  let level = 12;
-  if (held.length) {
-    const picked = held[Math.floor(Math.random() * held.length)];
-    dungeon = String(picked.ownedKey).split('+')[0].trim();
-    const match = String(picked.ownedKey).match(/\+(\d+)/);
-    if (match) level = parseInt(match[1], 10);
-  } else {
-    const pool = DUNGEONS_MIDNIGHT_S2.filter(name => !excluded.has(name));
-    const source = pool.length ? pool : DUNGEONS_MIDNIGHT_S2;
-    dungeon = source[Math.floor(Math.random() * source.length)];
+  const pool = members.filter(member => {
+    const live = rosterPlayer(state, member);
+    return live.keyManual && String(live.ownedKey || '').trim() && !excluded.has(fold(member.name));
+  });
+  if (!pool.length) {
+    return {
+      statusCode: 400,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ error: 'Nobody left in this party has typed a key.' })
+    };
   }
 
-  const key = `${dungeon} +${level}`;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  const live = rosterPlayer(state, picked);
+  const key = String(live.ownedKey).trim();
+  const who = live.name || picked.name;
   group.dungeon = key;
   group.assignedDungeon = key;
-  group.targetKeyStr = `+${level} (Assigned)`;
+  group.keystone = key;
   const now = new Date().toISOString();
   state.groupsTouchedAt = now;
 
@@ -562,6 +550,7 @@ async function rollOwnGroup(event, state, mine) {
     body: JSON.stringify({
       ok: true,
       key,
+      who,
       groups: publicGroups(saved, mine.name)
     })
   };

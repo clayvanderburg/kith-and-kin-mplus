@@ -220,7 +220,9 @@
     }
     const flash = document.getElementById('rollFlash');
     document.getElementById('rollFlashKey').textContent = data.key;
-    document.getElementById('rollFlashWho').textContent = 'That key is now on your party card.';
+    document.getElementById('rollFlashWho').textContent = data.who
+      ? `${data.who} typed that key. It is on your party card now.`
+      : 'That key is now on your party card.';
     flash.classList.add('is-on');
     renderGroups(data.groups);
   }
