@@ -324,7 +324,7 @@ async function saveOwnedKey(event, state, mine, body) {
   mine.keySource = 'typed';
   mine.keyAt = new Date().toISOString();
   mine.touchedAt = new Date().toISOString();
-  const saved = await writeMergedState(event, { players: [mine] });
+  const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
   const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
@@ -335,7 +335,7 @@ async function saveNightStatus(event, state, mine, body) {
   }
   mine.nightStatus = body.nightStatus === 'in-key' ? 'in-key' : 'waiting';
   mine.touchedAt = new Date().toISOString();
-  const saved = await writeMergedState(event, { players: [mine] });
+  const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
   const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
@@ -357,7 +357,7 @@ async function editRunLog(event, state, mine, body) {
   if (body.wclUrl !== undefined) entry.wclUrl = cleanUrl(body.wclUrl);
   entry.linkSource = 'manual';
   mine.touchedAt = new Date().toISOString();
-  const saved = await writeMergedState(event, { players: [mine] });
+  const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
   const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
@@ -393,7 +393,7 @@ async function saveRunLog(event, state, mine, body) {
   };
   mine.runLog = [entry, ...(Array.isArray(mine.runLog) ? mine.runLog : [])].slice(0, 100);
   mine.touchedAt = entry.at;
-  const saved = await writeMergedState(event, { players: [mine] });
+  const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
   const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
@@ -496,7 +496,7 @@ async function saveSignup(event, state, session, body, existing) {
     incoming.groupsTouchedAt = now;
   }
 
-  const saved = await writeMergedState(event, incoming);
+  const saved = await writeMergedState(event, incoming, 'Signup page');
   const savedMe = (saved.players || []).find(player => player.bnetId === session.bnetId);
 
   return {
@@ -541,7 +541,7 @@ async function saveGroupExclusions(event, state, mine, body) {
       formedGroups: state.formedGroups,
       benchedPlayers: state.benchedPlayers || [],
       groupsTouchedAt: now
-    });
+    }, 'Signup page');
     return {
       statusCode: 200,
       headers: JSON_HEADERS,
@@ -613,7 +613,7 @@ async function rollOwnGroup(event, state, mine, body = {}) {
     formedGroups: state.formedGroups,
     benchedPlayers: state.benchedPlayers || [],
     groupsTouchedAt: now
-  });
+  }, 'Signup page');
   return {
     statusCode: 200,
     headers: JSON_HEADERS,

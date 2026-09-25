@@ -181,3 +181,14 @@ node bot/deploy-commands.js
 | Officer "Sync Raider.IO" button | `POST /api/refresh-now`: attendees' scores + latest Friday's runs immediately. | `netlify/functions/refresh-now.js` |
 
 Setup on the officer PC: `node tools\install-addon.js` once, then `tools\start-key-uploader.cmd` (minimized window; add a shortcut to shell:startup to auto-start).
+
+---
+
+## 8. Sync Model (read this before touching saves)
+
+- One shared blob (`current_state`). All blob-backed functions run as **Netlify v2** (`*.mjs` wrappers → `lib/handlers/*`) so reads are strongly consistent.
+- **Control Center saves only changes** (`POST /api/state {ops:[...]}`): `upsert` (server stamps `touchedAt`), `delete` (tombstone in `state.deleted`), `groups` (must send `base` = the `groupsTouchedAt` it last saw; stale → **409**, client reloads groups), `meta`.
+- Merge rules: newer `touchedAt` wins, **ties keep the stored copy**; groups replaced only by a strictly newer `groupsTouchedAt`; explicit `absent: true` is respected even for grouped players; run logs always union.
+- Every write records `lastChange {by, at}`; pages poll `GET /api/state?since=<version>` every 4s (answers `{unchanged:true}` cheaply).
+- Discord signup card auto-updates after website saves (needs `DISCORD_TOKEN` on Netlify).
+- Known gap: deleting a whole event lineup isn't persisted server-side (event metadata merges additively).

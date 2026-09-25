@@ -217,7 +217,7 @@ async function syncNight(event, { now = new Date(), force = false, budgetMs = 20
     // runLog entries merge by id, so this never erases a newer edit.
     await live.writeMergedState(event, {
       players: [...changed.values()].map(({ personId: _p, charKey: _c, ...rest }) => rest)
-    });
+    }, 'Raider.IO sync');
   }
   return { night: window.dateKey, checked: targets.length, runsFound: runs.size, logged: added, showedUp: showed.size };
 }

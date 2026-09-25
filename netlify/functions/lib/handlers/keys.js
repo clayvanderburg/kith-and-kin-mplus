@@ -75,7 +75,7 @@ exports.handler = async (event) => {
   if (changed.size) {
     await live.writeMergedState(event, {
       players: [...changed.values()].map(({ personId, charKey, ...rest }) => rest)
-    });
+    }, 'Keys addon');
   }
   return { statusCode: 200, headers: HEADERS, body: JSON.stringify({ ok: true, received: keys.length, matched, updated: changed.size, unknown, stale }) };
 };

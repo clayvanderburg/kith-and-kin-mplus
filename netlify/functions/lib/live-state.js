@@ -47,17 +47,10 @@ function mergePlayer(prev, next) {
   if (!next) return prev;
   const prevTime = timeOf(prev.touchedAt);
   const nextTime = timeOf(next.touchedAt);
-  const newer = nextTime >= prevTime ? { ...prev, ...next } : { ...next, ...prev };
+  // The copy edited most recently wins. On a tie the stored copy wins, so a stale
+  // copy that nobody edited can never overwrite a real change.
+  const newer = nextTime > prevTime ? { ...prev, ...next } : { ...next, ...prev };
   if (prev.discordId && !newer.discordId) newer.discordId = prev.discordId;
-  if (next.discordId && nextTime >= prevTime) newer.discordId = next.discordId;
-  if (prev.attending === true && next.attending !== true && nextTime <= prevTime) {
-    newer.attending = true;
-    newer.absent = false;
-  }
-  if (next.attending === true && nextTime >= prevTime) {
-    newer.attending = true;
-    newer.absent = false;
-  }
   const prevLog = Array.isArray(prev.runLog) ? prev.runLog : [];
   const nextLog = Array.isArray(next.runLog) ? next.runLog : [];
   if (prevLog.length > 0 || nextLog.length > 0) {
@@ -94,7 +87,8 @@ function markGroupedPlayersAttending(players, groups) {
     }
   }
   return (players || []).map(player => {
-    if (!names.has(playerKey(player))) return player;
+    // An officer (or the player) explicitly marked them absent: respect it even if still grouped.
+    if (!names.has(playerKey(player)) || player.absent === true) return player;
     return { ...player, attending: true, absent: false };
   });
 }
@@ -109,7 +103,7 @@ function reconcileState(state) {
   const useEvent = eventScore > topScore || (eventScore === topScore && hasGroups(event.formedGroups) && !hasGroups(state.formedGroups));
 
   if (useEvent) {
-    state.players = markGroupedPlayersAttending(event.players || state.players || [], event.formedGroups || []);
+    state.players = markGroupedPlayersAttending(applyTombstones(event.players || state.players || [], state.deleted), event.formedGroups || []);
     state.formedGroups = event.formedGroups || [];
     state.benchedPlayers = event.benchedPlayers || [];
     if (event.groupsTouchedAt) state.groupsTouchedAt = event.groupsTouchedAt;
@@ -145,7 +139,8 @@ function mergeStates(latest, incoming) {
 
   const nextGroupsTime = timeOf(next.groupsTouchedAt);
   const baseGroupsTime = timeOf(base.groupsTouchedAt);
-  const useNextGroups = Boolean(next.groupsTouchedAt) && nextGroupsTime >= baseGroupsTime;
+  // Groups are replaced only by a newer group edit. Equal stamps mean "unchanged copy".
+  const useNextGroups = Boolean(next.groupsTouchedAt) && nextGroupsTime > baseGroupsTime;
   const formedGroups = useNextGroups
     ? (next.formedGroups || [])
     : (hasGroups(base.formedGroups) ? base.formedGroups : (hasGroups(next.formedGroups) ? next.formedGroups : (base.formedGroups || [])));
@@ -166,10 +161,33 @@ function mergeStates(latest, incoming) {
     currentEventId,
     groupsTouchedAt: useNextGroups ? next.groupsTouchedAt : (base.groupsTouchedAt || null),
     discordCard: next.discordCard || base.discordCard || null,
+    deleted: mergeTombstones(base.deleted, next.deleted),
+    lastChange: next.lastChange || base.lastChange || null,
     lastUpdated: new Date().toISOString()
   };
+  merged.players = applyTombstones(merged.players, merged.deleted);
 
   return reconcileState(merged);
+}
+
+// Deleted players: { [lowercase name]: ISO time }. A player edited after the delete comes back.
+function mergeTombstones(a, b) {
+  const out = { ...(a || {}) };
+  for (const [key, when] of Object.entries(b || {})) {
+    if (timeOf(when) > timeOf(out[key])) out[key] = when;
+  }
+  // Forget tombstones older than 60 days.
+  const cutoff = Date.now() - 60 * 24 * 3600e3;
+  for (const [key, when] of Object.entries(out)) if (timeOf(when) < cutoff) delete out[key];
+  return out;
+}
+
+function applyTombstones(players, deleted) {
+  if (!deleted || !Object.keys(deleted).length) return players || [];
+  return (players || []).filter(p => {
+    const when = deleted[playerKey(p)];
+    return !when || timeOf(p.touchedAt) > timeOf(when);
+  });
 }
 
 function mergeEventMaps(baseEvents, nextEvents) {
@@ -289,23 +307,32 @@ async function readLiveState(event, { overlays = true } = {}) {
     const [scores, nights] = await Promise.all([readBlob(event, SCORES_KEY), readBlob(event, NIGHTS_KEY)]);
     applyScores(state, scores);
     state.nights = nights && typeof nights === 'object' ? nights : {};
+    let latestScore = '';
+    for (const v of Object.values(scores || {})) if (v && v.at > latestScore) latestScore = v.at;
+    // Changes whenever the roster, groups, scores or attendance change. Pages poll with ?since=<version>.
+    state.version = `${state.lastUpdated || ''}|${latestScore}|${Object.keys(state.nights).length}`;
   }
   return assignPeople(state);
 }
 
-async function writeMergedState(event, incoming) {
+async function writeMergedState(event, incoming, source = null) {
   const latest = await readLiveState(event);
   if (!latest && incoming && !incoming.players && !incoming.formedGroups && !incoming.events) {
     return null;
   }
+  if (source && incoming && typeof incoming === 'object') {
+    incoming = { ...incoming, lastChange: { by: source, at: new Date().toISOString() } };
+  }
   const merged = mergeStates(latest, incoming);
   const rosterChange = Boolean(
-    incoming && (incoming.players || incoming.formedGroups || incoming.events || incoming.groupsTouchedAt)
+    incoming && (incoming.players || incoming.formedGroups || incoming.events || incoming.groupsTouchedAt ||
+      incoming.deleted || incoming.excludedDungeons || incoming.currentEventId)
   );
   if (!rosterChange && latest?.lastUpdated) merged.lastUpdated = latest.lastUpdated;
   // Overlays and computed ids live elsewhere; don't copy them into the main document.
   const toSave = { ...merged, players: (merged.players || []).map(({ personId, charKey: ck, ...rest }) => rest) };
   delete toSave.nights;
+  delete toSave.version;
   await useStore(event, (store) => store.setJSON(STATE_KEY, toSave));
   merged.nights = latest?.nights || {};
   return assignPeople(merged);

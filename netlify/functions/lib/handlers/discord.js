@@ -133,7 +133,7 @@ async function loadState() {
 }
 
 async function saveState(data) {
-  const saved = await liveState.writeMergedState(activeLambdaEvent, data);
+  const saved = await liveState.writeMergedState(activeLambdaEvent, data, 'Discord');
   liveState.updateDiscordCard(saved).catch(err => {
     console.error('[Discord] Card refresh failed:', err.message);
   });

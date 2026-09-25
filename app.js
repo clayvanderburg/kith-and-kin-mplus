@@ -326,6 +326,8 @@
     state.players = target.players || [];
     state.formedGroups = target.formedGroups || [];
     state.benchedPlayers = target.benchedPlayers || [];
+    // Switching nights isn't a roster edit: only the event choice and its groups are saved.
+    syncedPlayers = new Map(state.players.map(p => [nameKey(p.name), stablePlayerJson(p)]));
 
     savePlayersLocal();
     saveGroupsLocal();
@@ -360,7 +362,10 @@
       benchedPlayers: []
     };
     state.currentEventId = newId;
-    state.players = [];
+    // A new night keeps the guild roster (shared with Discord); it starts with nobody attending and no groups.
+    state.players.forEach(p => {
+      if (p.attending) { p.attending = false; p.absent = false; }
+    });
     state.formedGroups = [];
     state.benchedPlayers = [];
 
@@ -381,12 +386,12 @@
     const count = Object.keys(state.events).length;
     if (count <= 1) {
       if (confirm(`Clear all attendees and groups for "${current.name}"?`)) {
-        state.players = [];
+        // Un-mark attendance instead of deleting the guild roster (Discord and signups share it).
+        state.players.forEach(p => {
+          if (p.attending) { p.attending = false; p.absent = false; }
+        });
         state.formedGroups = [];
         state.benchedPlayers = [];
-        current.players = [];
-        current.formedGroups = [];
-        current.benchedPlayers = [];
         savePlayersLocal();
         saveGroupsLocal();
         saveEventsLocal();
@@ -410,6 +415,7 @@
     state.players = nextEv.players || [];
     state.formedGroups = nextEv.formedGroups || [];
     state.benchedPlayers = nextEv.benchedPlayers || [];
+    syncedPlayers = new Map(state.players.map(p => [nameKey(p.name), stablePlayerJson(p)]));
 
     savePlayersLocal();
     saveGroupsLocal();
@@ -506,10 +512,129 @@
     }
   }
 
-  async function fetchRemoteState(silent = false) {
+  // ---- Change-only sync ------------------------------------------------------------
+  // The page remembers what the server last had ("synced" copies). A save sends only the
+  // players that differ, real deletes, and group changes tagged with the groups version we
+  // were looking at. Two officers editing different players can't overwrite each other, and a
+  // group change made from a stale screen is refused instead of wiping someone else's groups.
+  let serverVersion = null;
+  let groupsBase = null;
+  let syncedPlayers = new Map();
+  let syncedGroupsJson = null;
+  let syncedMetaJson = null;
+  let lastChangeInfo = null;
+  let viewOnlyDeclined = false;
+  const VOLATILE_FIELDS = new Set(['personId', 'charKey', 'scoreAt', 'ioColor', 'spec', 'touchedAt']);
+
+  function nameKey(name) {
+    return String(name || '').trim().toLowerCase();
+  }
+
+  function stablePlayerJson(player) {
+    const out = {};
+    Object.keys(player || {}).sort().forEach(k => { if (!VOLATILE_FIELDS.has(k)) out[k] = player[k]; });
+    return JSON.stringify(out);
+  }
+
+  function groupsJson() {
+    return JSON.stringify(state.formedGroups || []) + '|' + JSON.stringify(state.benchedPlayers || []);
+  }
+
+  function metaJson() {
+    const events = Object.values(state.events || {}).filter(Boolean).map(e => ({ id: e.id, name: e.name, date: e.date }));
+    return JSON.stringify({ x: state.excludedDungeons || [], c: state.currentEventId || null, e: events });
+  }
+
+  function rememberSynced() {
+    syncedPlayers = new Map((state.players || []).map(p => [nameKey(p.name), stablePlayerJson(p)]));
+    syncedGroupsJson = groupsJson();
+    syncedMetaJson = metaJson();
+  }
+
+  function buildOps() {
+    const ops = [];
+    const current = new Set();
+    for (const p of state.players || []) {
+      if (!p || !p.name) continue;
+      const key = nameKey(p.name);
+      current.add(key);
+      if (syncedPlayers.get(key) !== stablePlayerJson(p)) ops.push({ op: 'upsert', player: p });
+    }
+    for (const key of syncedPlayers.keys()) {
+      if (!current.has(key)) ops.push({ op: 'delete', name: key });
+    }
+    if (syncedGroupsJson !== null && groupsJson() !== syncedGroupsJson) {
+      ops.push({ op: 'groups', formedGroups: state.formedGroups || [], benchedPlayers: state.benchedPlayers || [], base: groupsBase });
+    }
+    if (syncedMetaJson !== null && metaJson() !== syncedMetaJson) {
+      const events = {};
+      Object.values(state.events || {}).filter(Boolean).forEach(e => { events[e.id] = { id: e.id, name: e.name, date: e.date }; });
+      ops.push({ op: 'meta', excludedDungeons: state.excludedDungeons || [], currentEventId: state.currentEventId || null, events });
+    }
+    return ops;
+  }
+
+  function timeAgo(iso) {
+    const secs = Math.max(0, Math.round((Date.now() - (Date.parse(iso || '') || Date.now())) / 1000));
+    if (secs < 60) return `${secs}s ago`;
+    if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+    return `${Math.round(secs / 3600)}h ago`;
+  }
+
+  function renderLastChange() {
+    const badge = document.getElementById('discordSyncStatus');
+    if (!badge) return;
+    let el = document.getElementById('lastChangeText');
+    if (!el) {
+      el = document.createElement('small');
+      el.id = 'lastChangeText';
+      el.className = 'last-change-text';
+      badge.insertAdjacentElement('afterend', el);
+    }
+    el.textContent = lastChangeInfo?.at ? `Last change: ${timeAgo(lastChangeInfo.at)} by ${lastChangeInfo.by || 'someone'}` : '';
+  }
+
+  function applyServerState(data) {
+    if (data.events && typeof data.events === 'object' && Object.keys(data.events).length > 0) {
+      state.events = data.events;
+      if (data.currentEventId && state.events[data.currentEventId]) {
+        state.currentEventId = data.currentEventId;
+      }
+      renderEventDropdown();
+    }
+    if (Array.isArray(data.players)) {
+      state.players = data.players.map(p => ({
+        ...p,
+        carryPreference: p.carryPreference || 'none',
+        isShitter: !!p.isShitter,
+        isLeader: !!p.isLeader,
+        isReserve: !!p.isReserve,
+        keyBrackets: p.keyBrackets || (p.keyMax > 12 ? ['12+'] : (p.keyMax >= 10 ? ['10-12'] : ['6-8']))
+      }));
+    }
+    state.formedGroups = Array.isArray(data.formedGroups) ? data.formedGroups : [];
+    state.benchedPlayers = Array.isArray(data.benchedPlayers) ? data.benchedPlayers : [];
+    if (Array.isArray(data.excludedDungeons)) state.excludedDungeons = data.excludedDungeons;
+    state.groupsTouchedAt = data.groupsTouchedAt || null;
+    state.nights = data.nights || {};
+
+    serverVersion = data.version || null;
+    groupsBase = data.groupsTouchedAt || null;
+    lastChangeInfo = data.lastChange || lastChangeInfo;
+    rememberSynced();
+
+    savePlayersLocal();
+    saveGroupsLocal();
+    saveEventsLocal();
+    renderRoster();
+    renderGroups();
+    renderLastChange();
+  }
+
+  async function fetchRemoteState(silent = false, { force = false } = {}) {
     if (isFetchingRemote || isPushing || pushDebounceTimer) return;
-    if (hasPendingEdits) {
-      // Unsaved officer edits exist. Try to save them instead of overwriting them with the server copy.
+    if (hasPendingEdits && !viewOnlyDeclined) {
+      // Unsaved officer edits: save them first, then pull.
       pushRemoteState();
       return;
     }
@@ -520,69 +645,29 @@
       const headers = { 'Accept': 'application/json' };
       const key = officerKey();
       if (key) headers['x-sync-secret'] = key;
-      const res = await fetch(`${API_URL}?_t=${Date.now()}`, {
-        method: 'GET',
-        headers,
-        cache: 'no-store'
-      });
-
+      const since = !force && serverVersion ? `&since=${encodeURIComponent(serverVersion)}` : '';
+      const res = await fetch(`${API_URL}?_t=${Date.now()}${since}`, { method: 'GET', headers, cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       // An edit started while this request was in flight. Keep it; the next poll pulls again.
-      if (hasPendingEdits || pushDebounceTimer) return;
+      if ((hasPendingEdits && !viewOnlyDeclined) || pushDebounceTimer) return;
 
-      if (data && !data.empty) {
-        if (data.events && typeof data.events === 'object' && Object.keys(data.events).length > 0) {
-          state.events = data.events;
-          if (data.currentEventId && state.events[data.currentEventId]) {
-            state.currentEventId = data.currentEventId;
-          }
-          renderEventDropdown();
-        }
-
-        if (Array.isArray(data.players)) {
-          state.players = data.players.map(p => ({
-            ...p,
-            carryPreference: p.carryPreference || 'none',
-            isShitter: !!p.isShitter,
-            isLeader: !!p.isLeader,
-            isReserve: !!p.isReserve,
-            keyBrackets: p.keyBrackets || (p.keyMax > 12 ? ['12+'] : (p.keyMax >= 10 ? ['10-12'] : ['6-8']))
-          }));
-        }
-
-        if (Array.isArray(data.formedGroups)) {
-          state.formedGroups = data.formedGroups;
-        }
-        if (Array.isArray(data.benchedPlayers)) {
-          state.benchedPlayers = data.benchedPlayers;
-        }
-        if (Array.isArray(data.excludedDungeons)) {
-          state.excludedDungeons = data.excludedDungeons;
-        }
-
-        if (state.currentEventId && state.events?.[state.currentEventId]) {
-          state.events[state.currentEventId].players = state.players;
-          state.events[state.currentEventId].formedGroups = state.formedGroups;
-          state.events[state.currentEventId].benchedPlayers = state.benchedPlayers;
-        }
-
-        savePlayersLocal();
-        saveGroupsLocal();
-        saveEventsLocal();
-        if (data.lastUpdated) localStorage.setItem('kk_local_updated', data.lastUpdated);
-        renderRoster();
-        renderGroups();
+      if (data && data.unchanged) {
         updateSyncStatus('synced', officerKey() ? 'Discord Synced' : 'Synced (view only)');
-        if (!silent) {
-          showToast('✨ Synced roster with Discord bot & cloud!');
-        }
+        renderLastChange();
+      } else if (data && !data.empty) {
+        hasPendingEdits = false;
+        viewOnlyDeclined = false;
+        applyServerState(data);
+        updateSyncStatus('synced', officerKey() ? 'Discord Synced' : 'Synced (view only)');
+        if (!silent) showToast('✨ Synced roster with Discord bot & cloud!');
       } else {
         updateSyncStatus('synced', 'Discord Ready');
+        if (syncedGroupsJson === null) rememberSynced();
       }
     } catch (err) {
       console.warn('[Cloud Sync] Fetch error, continuing with local state:', err);
-      updateSyncStatus('offline', 'Local Storage');
+      updateSyncStatus('offline', 'Offline — retrying');
     } finally {
       isFetchingRemote = false;
     }
@@ -595,44 +680,59 @@
     pushDebounceTimer = setTimeout(async () => {
       pushDebounceTimer = null;
       if (!(await ensureOfficerKey())) {
-        updateSyncStatus('offline', 'Not saved — click Sync to unlock');
+        // View-only: keep the change on this screen until the next sync replaces it.
+        viewOnlyDeclined = true;
+        updateSyncStatus('offline', 'Not saved (view only) — click Sync to unlock');
+        return;
+      }
+      viewOnlyDeclined = false;
+      if (syncedGroupsJson === null) {
+        // Never pulled yet: get the server copy first so we only send real changes.
+        hasPendingEdits = false;
+        await fetchRemoteState(true, { force: true });
+        return;
+      }
+      let ops = buildOps();
+      if (!ops.length) {
+        hasPendingEdits = false;
+        updateSyncStatus('synced', 'Discord Synced');
         return;
       }
       isPushing = true;
       try {
-        if (state.events && state.currentEventId && state.events[state.currentEventId]) {
-          state.events[state.currentEventId].players = state.players;
-          state.events[state.currentEventId].formedGroups = state.formedGroups;
-          state.events[state.currentEventId].benchedPlayers = state.benchedPlayers || [];
-        }
-
-        const payload = {
-          players: state.players,
-          formedGroups: state.formedGroups,
-          benchedPlayers: state.benchedPlayers || [],
-          excludedDungeons: state.excludedDungeons || [],
-          events: state.events || {},
-          currentEventId: state.currentEventId || null,
-          groupsTouchedAt: state.groupsTouchedAt || null,
-          lastUpdated: new Date().toISOString()
-        };
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-sync-secret': officerKey()
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
+        let res = await sendOps(ops);
+        if (res.status === 409) {
+          const info = await res.json().catch(() => ({}));
+          showToast(`⚠️ ${info.message || 'Groups were changed by someone else. Loaded the latest groups.'}`);
+          // Save everything else, drop the stale group change, then load the latest.
+          ops = ops.filter(o => o.op !== 'groups');
+          if (ops.length) res = await sendOps(ops);
           hasPendingEdits = false;
+          isPushing = false;
+          await fetchRemoteState(true, { force: true });
+          return;
+        }
+        if (res.ok) {
+          const info = await res.json().catch(() => ({}));
+          // Everything we sent is now the server copy.
+          for (const o of ops) {
+            if (o.op === 'upsert') syncedPlayers.set(nameKey(o.player.name), stablePlayerJson(o.player));
+            if (o.op === 'delete') syncedPlayers.delete(o.name);
+            if (o.op === 'groups') syncedGroupsJson = JSON.stringify(o.formedGroups) + '|' + JSON.stringify(o.benchedPlayers);
+            if (o.op === 'meta') syncedMetaJson = metaJson();
+          }
+          if (info.groupsTouchedAt !== undefined) groupsBase = info.groupsTouchedAt;
+          if (info.lastChange) lastChangeInfo = info.lastChange;
+          serverVersion = null; // pull the merged result on the next poll
+          hasPendingEdits = buildOps().length > 0; // edits made while saving go out next
           updateSyncStatus('synced', 'Discord Synced');
+          renderLastChange();
+          if (hasPendingEdits) pushRemoteState();
         } else if (res.status === 401) {
           forgetOfficerKey();
           updateSyncStatus('error', 'Passphrase rejected — click Sync');
         } else {
-          updateSyncStatus('error', `Save failed (HTTP ${res.status})`);
+          updateSyncStatus('error', `Save failed (HTTP ${res.status}) — will retry`);
         }
       } catch (err) {
         console.warn('[Cloud Sync] Push error:', err);
@@ -640,7 +740,15 @@
       } finally {
         isPushing = false;
       }
-    }, 1000);
+    }, 700);
+  }
+
+  function sendOps(ops) {
+    return fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sync-secret': officerKey() },
+      body: JSON.stringify({ ops })
+    });
   }
 
   function touchLocalStamp() {
@@ -2959,12 +3067,13 @@
       fetchRemoteState(true);
     });
 
-    // High-frequency polling (every 8s) while tab is active for real-time responsiveness
+    // Poll every 4s while the tab is visible. Cheap: the server answers "unchanged" unless something changed.
     setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchRemoteState(true);
       }
-    }, 8000);
+      renderLastChange();
+    }, 4000);
   }
 
   // Run on DOM ready
