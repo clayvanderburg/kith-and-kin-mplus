@@ -297,45 +297,48 @@ IMPORTANT: Output ONLY the final markdown text. Do not include any meta commenta
     }
 
     const listData = JSON.parse(listText);
-    const available = (listData.models || []).find(m =>
-      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('3.8-flash')
-    ) || (listData.models || []).find(m =>
-      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('flash') && !m.name.includes('2.5')
-    ) || (listData.models || []).find(m =>
+    const candidatesFromList = (listData.models || []).filter(m =>
       m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
     );
 
-    if (available) {
+    let discoveryLastError = null;
+
+    for (const available of candidatesFromList) {
       const modelPath = available.name.replace(/^models\//, '');
-      const dynUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPath}:generateContent?key=${apiKey}`;
-      const dynRes = await fetch(dynUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.8, maxOutputTokens: 1600 }
-        })
-      });
-      if (dynRes.ok) {
-        const dynJson = await dynRes.json();
-        let dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (dynText) {
-          dynText = dynText.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
-          if (isXalatath && !dynText.includes("Xal'atath") && !dynText.includes("Xalatath")) {
-            dynText += "\n\n— **Xal'atath, Harbinger of the Void** 👁️🖤";
+      try {
+        const dynUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPath}:generateContent?key=${apiKey}`;
+        const dynRes = await fetch(dynUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.8, maxOutputTokens: 1600 }
+          })
+        });
+
+        if (dynRes.ok) {
+          const dynJson = await dynRes.json();
+          let dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (dynText) {
+            dynText = dynText.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
+            if (isXalatath && !dynText.includes("Xal'atath") && !dynText.includes("Xalatath")) {
+              dynText += "\n\n— **Xal'atath, Harbinger of the Void** 👁️🖤";
+            }
+            return { text: dynText, modelName: modelPath, allModels: candidatesFromList.map(c => c.name.replace(/^models\//, '')) };
           }
-          return { text: dynText, modelName: modelPath };
+        } else {
+          const dynErrText = await dynRes.text();
+          discoveryLastError = new Error(`Model ${modelPath} failed (${dynRes.status}): ${dynErrText}`);
         }
-      } else {
-        const dynErrText = await dynRes.text();
-        throw new Error(`Model ${modelPath} failed (${dynRes.status}): ${dynErrText}`);
+      } catch (err) {
+        discoveryLastError = err;
       }
-    } else {
-      const names = (listData.models || []).map(m => m.name).slice(0, 10).join(', ');
-      throw new Error(`No models with generateContent found. Available: ${names || 'None'}`);
     }
+
+    const names = candidatesFromList.map(m => m.name.replace(/^models\//, '')).join(', ');
+    throw new Error(`All discovered models exhausted. Models: [${names}]. Last error: ${discoveryLastError ? discoveryLastError.message : 'Unknown'}`);
   } catch (discoveryErr) {
-    throw new Error(`Gemini candidate error: ${lastError ? lastError.message : ''} | Discovery error: ${discoveryErr.message}`);
+    throw new Error(`Gemini error: ${discoveryErr.message}`);
   }
 }
 
