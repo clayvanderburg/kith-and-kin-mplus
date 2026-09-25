@@ -122,8 +122,8 @@ body {
 .guild-header {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 1.25rem 2rem;
+  gap: 2rem;
+  padding: 1.5rem 2.25rem;
   background: var(--bg-card);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-card);
@@ -138,11 +138,11 @@ body {
 .guild-header::before {
   content: '';
   position: absolute;
-  right: -15px;
+  right: -20px;
   top: 50%;
   transform: translateY(-50%);
-  width: 280px;
-  height: 280px;
+  width: 380px;
+  height: 380px;
   background-image: url('assets/kith-and-kin-logo.jpg');
   background-size: contain;
   background-repeat: no-repeat;
@@ -171,10 +171,10 @@ body {
 
 /* Guild Emblem Badge */
 .guild-emblem {
-  width: 74px;
-  height: 74px;
+  width: 148px;
+  height: 148px;
   position: relative;
-  border-radius: 16px;
+  border-radius: 24px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -184,7 +184,7 @@ body {
 }
 
 .guild-emblem:hover {
-  transform: scale(1.06);
+  transform: scale(1.05);
 }
 
 .guild-emblem:active,
@@ -197,9 +197,9 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 14px;
+  border-radius: 20px;
   border: 2px solid rgba(220, 38, 38, 0.65);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 16px rgba(185, 28, 28, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 24px rgba(185, 28, 28, 0.5);
   position: relative;
   z-index: 2;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
@@ -207,13 +207,13 @@ body {
 
 .guild-emblem:hover .emblem-img {
   border-color: #ef4444;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.9), 0 0 28px rgba(239, 68, 68, 0.7);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.95), 0 0 32px rgba(239, 68, 68, 0.75);
 }
 
 .emblem-glow {
   position: absolute;
-  inset: -6px;
-  border-radius: 20px;
+  inset: -10px;
+  border-radius: 30px;
   background: radial-gradient(circle, rgba(220, 38, 38, 0.45) 0%, rgba(185, 28, 28, 0) 70%);
   z-index: 1;
   pointer-events: none;
@@ -222,9 +222,9 @@ body {
 
 .emblem-ring {
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border: 1px dashed rgba(248, 250, 252, 0.3);
-  border-radius: 18px;
+  border-radius: 28px;
   z-index: 1;
   pointer-events: none;
   transition: border-color 0.3s ease;
@@ -1049,6 +1049,12 @@ body {
 }
 
 @media (max-width: 768px) {
+  .guild-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.25rem;
+    padding: 1.5rem 1rem;
+  }
   .settings-box {
     grid-template-columns: 1fr;
   }
