@@ -2364,3 +2364,167 @@ button {
 .bracket-pill-content strong {
   color: var(--text-gold);
 }
+
+/* ==========================================================================
+   Collapsible Player Cards (Guild Sign-ups & Active Dungeon Parties)
+   ========================================================================== */
+
+/* Guild Sign-ups Roster Row Collapsible */
+.player-row.is-collapsed {
+  padding: 0.5rem 0.75rem;
+}
+
+.player-row.is-collapsed .player-details-collapsible {
+  display: none;
+}
+
+.player-header-row.player-toggle-trigger {
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.player-header-row.player-toggle-trigger:hover .player-name {
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+}
+
+.player-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.player-expand-chevron {
+  font-size: 0.78rem;
+  color: var(--text-gold);
+  transition: transform 0.2s ease;
+  display: inline-block;
+  padding: 0.1rem 0.25rem;
+}
+
+.player-row:not(.is-collapsed) .player-expand-chevron {
+  transform: rotate(90deg);
+}
+
+.player-details-collapsible {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.io-badge-compact {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.08rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+}
+
+.key-owned-pill-mini {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fde047;
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  padding: 0.06rem 0.38rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.player-roles-summary {
+  font-size: 0.85rem;
+  letter-spacing: -0.05em;
+  margin: 0 0.15rem;
+  white-space: nowrap;
+}
+
+.player-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* Active Dungeon Party Member Row Collapsible */
+.party-member-row.is-collapsed {
+  padding: 0.4rem 0.65rem;
+}
+
+.party-member-row.is-collapsed .slot-details-collapsible {
+  display: none;
+}
+
+.slot-toggle-trigger {
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slot-toggle-trigger:hover .slot-player-name {
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+}
+
+.slot-top-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.slot-top-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.slot-expand-chevron {
+  font-size: 0.75rem;
+  color: var(--text-gold);
+  transition: transform 0.2s ease;
+  display: inline-block;
+  margin-left: 0.25rem;
+}
+
+.party-member-row:not(.is-collapsed) .slot-expand-chevron {
+  transform: rotate(90deg);
+}
+
+.slot-details-collapsible {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.slot-key-mini {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fde047;
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  padding: 0.04rem 0.32rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.party-card.is-mine-group {
+  border-color: var(--border-gold);
+  box-shadow: 0 0 20px rgba(245, 208, 97, 0.35);
+}
+
+.party-card.is-mine-group .party-num {
+  color: #fde047;
+  font-weight: 800;
+}

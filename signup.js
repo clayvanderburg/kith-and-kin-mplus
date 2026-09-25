@@ -16,6 +16,53 @@
     Rogue: '#FFF468', Shaman: '#0070DD', Warlock: '#8788EE', Warrior: '#C69B6D'
   };
 
+  function getIoColor(score) {
+    if (!score || score <= 0) return '#94a3b8';
+    if (score >= 2800) return '#e28bf0';
+    if (score >= 2500) return '#ff8000';
+    if (score >= 2000) return '#a335ee';
+    if (score >= 1500) return '#0070dd';
+    if (score >= 1000) return '#1eff00';
+    return '#f8fafc';
+  }
+
+  function syncOwnedKeyFromDropdowns() {
+    const dungeonSelect = document.getElementById('ownedDungeonSelect');
+    const levelSelect = document.getElementById('ownedKeyLevelSelect');
+    const owned = document.getElementById('ownedKeyInput');
+    if (!owned || !dungeonSelect || !levelSelect) return;
+    const dungeon = dungeonSelect.value.trim();
+    const level = levelSelect.value.trim();
+    if (dungeon && level) {
+      owned.value = `${dungeon} +${level}`;
+    } else if (level) {
+      owned.value = `+${level}`;
+    } else if (dungeon) {
+      owned.value = dungeon;
+    } else {
+      owned.value = '';
+    }
+  }
+
+  function setDropdownsFromOwnedKey(str) {
+    const dungeonSelect = document.getElementById('ownedDungeonSelect');
+    const levelSelect = document.getElementById('ownedKeyLevelSelect');
+    const owned = document.getElementById('ownedKeyInput');
+    if (!dungeonSelect || !levelSelect) return;
+    if (owned) owned.value = str || '';
+    if (!str) {
+      dungeonSelect.value = '';
+      levelSelect.value = '';
+      return;
+    }
+    const trimmed = String(str).trim();
+    const plusMatch = trimmed.match(/\+(\d+)/);
+    const level = plusMatch ? plusMatch[1] : '';
+    const dungeonPart = trimmed.replace(/\+.*$/, '').trim();
+    dungeonSelect.value = dungeonPart;
+    levelSelect.value = level;
+  }
+
   function checkedValues(container) {
     return [...container.querySelectorAll('input:checked')].map(input => input.value);
   }
@@ -154,10 +201,9 @@
     });
     const keyInput = document.getElementById('runKeyInput');
     if (keyInput && !keyInput.value) keyInput.value = signup.ownedKey || '';
-    const owned = document.getElementById('ownedKeyInput');
-    if (owned) owned.value = signup.ownedKey || '';
+    setDropdownsFromOwnedKey(signup.ownedKey || '');
     const lastRun = document.getElementById('lastRunNote');
-    if (lastRun) lastRun.textContent = 'Leave this blank until you type the keystone in your bags.';
+    if (lastRun) lastRun.textContent = 'Leave this blank until you select the keystone in your bags.';
     renderHistory(signup.runLog);
   }
 
@@ -165,66 +211,211 @@
     const list = document.getElementById('groupList');
     groupCard.hidden = false;
     const ordered = [...(groups || [])].sort((a, b) => Number(b.mine) - Number(a.mine));
+
+    // Handle dedicated Party Key Roll section above active dungeon parties
+    const myGroup = ordered.find(g => g.mine);
+    const rouletteCard = document.getElementById('playerRouletteCard');
+    const chipsList = document.getElementById('playerGroupKeysList');
+    const subtitle = document.getElementById('playerRouletteSubtitle');
+    const rollBtn = document.getElementById('playerRollKeyBtn');
+
+    if (myGroup && rouletteCard && chipsList) {
+      rouletteCard.hidden = false;
+      if (subtitle) {
+        subtitle.textContent = `Roll a keystone for Party ${myGroup.index + 1}: ${myGroup.name}`;
+      }
+      myGroup.excludedPlayers = myGroup.excludedPlayers || [];
+      const excluded = new Set(myGroup.excludedPlayers.map(n => n.toLowerCase()));
+
+      chipsList.innerHTML = myGroup.members.map(member => {
+        const isOut = excluded.has(member.name.toLowerCase());
+        const hasKey = Boolean(member.ownedKey);
+        return `<button type="button" class="player-exclude-chip ${isOut ? 'is-out' : ''} ${hasKey ? '' : 'no-key'}" data-player="${escapeHtml(member.name)}">
+          ${escapeHtml(member.name)}${hasKey ? ` · ${escapeHtml(member.ownedKey)}` : ' · (no key entered)'}
+        </button>`;
+      }).join('');
+
+      chipsList.querySelectorAll('.player-exclude-chip').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const pName = btn.getAttribute('data-player');
+          const isCurrentlyOut = myGroup.excludedPlayers.some(n => n.toLowerCase() === pName.toLowerCase());
+          myGroup.excludedPlayers = isCurrentlyOut
+            ? myGroup.excludedPlayers.filter(n => n.toLowerCase() !== pName.toLowerCase())
+            : [...myGroup.excludedPlayers, pName];
+          renderGroups(groups);
+          try {
+            await postMe({ action: 'exclude-player', excludedPlayers: myGroup.excludedPlayers });
+          } catch (e) {
+            console.error(e);
+          }
+        });
+      });
+
+      if (rollBtn) {
+        rollBtn.onclick = async () => {
+          rollBtn.disabled = true;
+          const status = document.getElementById('playerRollStatus');
+          if (status) status.textContent = 'Rolling a key...';
+          try {
+            const res = await fetch('/api/me', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+              body: JSON.stringify({ action: 'roll', excludedPlayers: myGroup.excludedPlayers || [] })
+            });
+            const data = await res.json();
+            rollBtn.disabled = false;
+            if (!res.ok) {
+              if (status) status.textContent = data.error || 'Could not roll a key.';
+              return;
+            }
+            if (status) status.textContent = '';
+            const banner = document.getElementById('playerRouletteResultBanner');
+            const resultText = document.getElementById('playerRouletteResultText');
+            const holdersText = document.getElementById('playerRouletteHoldersText');
+            if (banner && resultText) {
+              banner.style.display = 'flex';
+              resultText.textContent = data.hasTypedKey
+                ? `${data.who}'s key: ${data.key}`
+                : `${data.who}'s key (check bags - unlogged keystone)`;
+              if (holdersText) {
+                holdersText.textContent = `${myGroup.name} will run this key.`;
+              }
+            }
+            const flash = document.getElementById('rollFlash');
+            if (flash) {
+              document.getElementById('rollFlashKey').textContent = data.key;
+              document.getElementById('rollFlashWho').textContent = data.who
+                ? (data.hasTypedKey ? `${data.who} typed that key.` : `${data.who} was chosen! Ask them what key is in their bags.`)
+                : 'That key is now on your party card.';
+              flash.classList.add('is-on');
+            }
+            renderGroups(data.groups);
+          } catch (err) {
+            rollBtn.disabled = false;
+            if (status) status.textContent = err.message || 'Roll failed.';
+          }
+        };
+      }
+    } else if (rouletteCard) {
+      rouletteCard.hidden = true;
+    }
+
     if (!ordered.length) {
       list.innerHTML = '<p class="player-lead">Parties have not been formed yet. Your signup is saved, and you can still set Waiting or In key.</p>';
       return;
     }
-    list.innerHTML = ordered.map(group => {
-      const rows = group.members.map(member => {
-        const color = CLASS_COLORS[member.className] || '#f5d061';
-        const status = member.nightStatus === 'in-key' ? 'in-key' : 'waiting';
-        return `<div class="member-row">
-          <div class="class-pip" style="--pip:${color}"></div>
-          <div>
-            <div class="member-name">${escapeHtml(member.name)}</div>
-            <div class="member-meta">${escapeHtml(member.className || 'Player')} · ${escapeHtml((member.roles || []).join('/'))}</div>
-            <div class="member-meta">${escapeHtml(prefText(member))}</div>
-            <div class="member-key">${member.ownedKey ? `Key: ${escapeHtml(member.ownedKey)}` : 'No key entered'}</div>
-            <div class="member-record"><span class="status-pill ${status}">${status === 'in-key' ? 'In key' : 'Waiting'}</span>${escapeHtml(recordText(member.record))}</div>
-          </div>
-          <div class="member-score"><b>${member.io || 0}</b><span>IO</span><div>${member.ilvl || '—'} ilvl</div></div>
-        </div>`;
-      }).join('');
-      const roll = group.mine
-        ? `<button type="button" class="btn btn-sm btn-accent" data-roll="${group.index}">Roll a key for this party</button>`
-        : '';
-      return `<article class="party-card ${group.mine ? 'mine' : ''}">
-        <div class="party-head">
-          <strong>${group.mine ? 'Your party · ' : ''}${escapeHtml(group.name)}</strong>
-          <span>${group.dungeon ? escapeHtml(group.dungeon) : 'No key rolled yet'}</span>
-        </div>
-        ${group.leaderName ? `<div class="member-meta">Leader: ${escapeHtml(group.leaderName)}</div>` : ''}
-        ${rows}
-        ${roll}
-      </article>`;
-    }).join('');
-    list.querySelectorAll('[data-roll]').forEach(button => {
-      button.addEventListener('click', () => rollKey(button));
-    });
-  }
 
-  async function rollKey(button) {
-    button.disabled = true;
-    saveStatus.textContent = 'Rolling a key for your party...';
-    const res = await fetch('/api/me', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
-      body: JSON.stringify({ action: 'roll' })
-    });
-    const data = await res.json();
-    button.disabled = false;
-    if (!res.ok) {
-      saveStatus.textContent = data.error || 'Could not roll a key.';
-      return;
+    function renderMemberVibeBadges(p) {
+      if (!p) return '';
+      let h = '';
+      if (p.isLeader) h += `<span class="leader-pill" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="Born Leader: willing to lead group">👑 Leader</span>`;
+      if (p.isReserve) h += `<span class="reserve-pill" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="Voluntary Bench / Reserve">🍺 Reserve</span>`;
+      if (p.carryPreference === 'need_carry') {
+        h += `<span class="carry-pill need" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="I need a carry">🎒 Carry Me</span>`;
+      } else if (p.carryPreference === 'willing_carry') {
+        h += `<span class="carry-pill stronk" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="My back is stronk (willing to carry)">🏋️ Stronk Back</span>`;
+      }
+      if (p.isShitter) h += `<span class="shitter-pill" style="font-size:0.65rem; padding:0.05rem 0.35rem;" title="I'm a shitter">💩 Shitter</span>`;
+      return h;
     }
-    const flash = document.getElementById('rollFlash');
-    document.getElementById('rollFlashKey').textContent = data.key;
-    document.getElementById('rollFlashWho').textContent = data.who
-      ? `${data.who} typed that key. It is on your party card now.`
-      : 'That key is now on your party card.';
-    flash.classList.add('is-on');
-    renderGroups(data.groups);
+
+    function renderMemberSlot(member) {
+      if (!member) return '';
+      const color = CLASS_COLORS[member.className] || '#f5d061';
+      const roleIcon = member.slotRole === 'Tank' ? '🛡️' : (member.slotRole === 'Healer' ? '💚' : '⚔️');
+      const roleCss = member.slotRole === 'Tank' ? 'role-tank' : (member.slotRole === 'Healer' ? 'role-healer' : 'role-dps');
+      const ioColor = getIoColor(member.io);
+      const status = member.nightStatus === 'in-key' ? 'in-key' : 'waiting';
+
+      return `
+        <div class="party-member-row is-collapsed ${roleCss}">
+          <span class="slot-role-tag" title="${escapeHtml(member.slotRole || 'DPS')}">${roleIcon}</span>
+          <div class="slot-player-details">
+            <div class="slot-top-row slot-toggle-trigger" title="Click to expand or collapse details">
+              <div class="slot-top-left">
+                <span class="slot-player-name" style="color: ${color};">${escapeHtml(member.name)}</span>
+                <span class="class-tag" style="color: ${color}; border: 1px solid ${color}44;">${escapeHtml(member.className || 'Player')}</span>
+                ${member.ownedKey ? `<span class="slot-key-mini" title="Key in bags: ${escapeHtml(member.ownedKey)}">🔑 ${escapeHtml(member.ownedKey)}</span>` : ''}
+              </div>
+              <div class="slot-top-right">
+                <span class="status-pill ${status}" style="font-size:0.7rem; margin:0;">${status === 'in-key' ? 'In key' : 'Waiting'}</span>
+                <span class="slot-stat-badge io" style="color: ${ioColor}; border: 1px solid ${ioColor}77;">${(member.io || 0).toLocaleString()} IO</span>
+                <span class="slot-expand-chevron">▸</span>
+              </div>
+            </div>
+            <div class="slot-details-collapsible">
+              <div class="slot-bottom-row">
+                <div class="slot-meta-left">
+                  <span class="slot-stat-badge ilvl">${member.ilvl || '—'} iLvl</span>
+                  ${renderMemberVibeBadges(member)}
+                </div>
+                <span class="slot-key-range">${member.keyBrackets?.length ? member.keyBrackets.join(' · ') : `+${member.keyMin}–+${member.keyMax}`}</span>
+              </div>
+              <div class="member-record" style="margin-top:0.25rem;">
+                <span style="color:var(--text-muted); font-size:0.78rem;">${escapeHtml(recordText(member.record))}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    list.innerHTML = ordered.map(group => {
+      const memberRows = group.members.map(renderMemberSlot).join('');
+      return `
+        <article class="party-card ${group.mine ? 'mine is-mine-group' : ''}">
+          <div class="party-header">
+            <div class="party-badge-title">
+              <span class="party-num">Party ${group.index + 1}${group.mine ? ' · ⭐ Your Party' : ''}</span>
+              <span class="party-name">${escapeHtml(group.name)}</span>
+            </div>
+            <div class="party-card-controls">
+              ${group.isLocked ? '<span style="font-size:0.75rem; color:#fde047;">🔒 Locked</span>' : ''}
+            </div>
+          </div>
+
+          <div class="party-sub-meta">
+            <span class="party-key-target">🎯 ${escapeHtml(group.targetKeyStr || '+10–12')}</span>
+            <div class="party-dungeon-row">
+              <span class="party-dungeon-tag" title="Key rolled for this party">🔑 ${escapeHtml(group.keystone || group.dungeon || 'No key rolled yet')}</span>
+            </div>
+            ${(group.excludedPlayers || []).length ? `<span class="party-left-out">Left out: ${escapeHtml(group.excludedPlayers.join(', '))}</span>` : ''}
+          </div>
+
+          <div class="party-utility-bar">
+            ${group.hasLeader && group.leaderName ? `<span class="party-util-badge ready" title="Designated Group Leader">👑 Leader: ${escapeHtml(group.leaderName)}</span>` : ''}
+            <span class="party-util-badge ${group.hasLust ? 'ready' : 'missing'}" title="${group.hasLust ? 'Bloodlust/Heroism ready: ' + escapeHtml(group.lustProvider) : 'No Bloodlust class in this group!'}">
+              ⚡ ${group.hasLust ? 'Lust: ' + escapeHtml(group.lustProvider) : 'Lust: Missing'}
+            </span>
+            <span class="party-util-badge ${group.hasBrez ? 'ready' : 'missing'}" title="${group.hasBrez ? 'Battle Rez ready: ' + escapeHtml(group.brezProvider) : 'No Battle Rez class in this group!'}">
+              🔄 ${group.hasBrez ? 'BRez: ' + escapeHtml(group.brezProvider) : 'BRez: Missing'}
+            </span>
+            ${group.isShitterGroup ? `<span class="party-util-badge shitter-group" title="Shitter Alt Squad">💩 Shitter Squad</span>` : ''}
+            ${group.hasCarryMatch ? `<span class="party-util-badge carry-assist" title="Carry Match">🎒 Carry Assisted</span>` : ''}
+          </div>
+
+          <div class="party-metrics-bar">
+            <span class="party-avg-io">⭐ Avg IO: <strong>${(group.avgIo || 0).toLocaleString()}</strong></span>
+            <span class="party-avg-ilvl">🛡️ Avg iLvl: <strong>${group.avgIlvl || '—'}</strong></span>
+          </div>
+
+          <div class="party-members">
+            ${memberRows}
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    // Attach click toggle on each member row in the party
+    list.querySelectorAll('.slot-toggle-trigger').forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        const row = trigger.closest('.party-member-row');
+        if (row) {
+          row.classList.toggle('is-collapsed');
+        }
+      });
+    });
   }
 
   async function saveSignup() {
@@ -363,7 +554,11 @@
         document.querySelectorAll('#faceRow .face-btn').forEach(face => face.classList.toggle('is-on', face === button));
       });
     });
+    document.getElementById('ownedDungeonSelect')?.addEventListener('change', syncOwnedKeyFromDropdowns);
+    document.getElementById('ownedKeyLevelSelect')?.addEventListener('change', syncOwnedKeyFromDropdowns);
+
     document.getElementById('saveKeyBtn').addEventListener('click', async () => {
+      syncOwnedKeyFromDropdowns();
       document.getElementById('nightStatus').textContent = 'Saving your key...';
       try {
         await postMe({ action: 'set-key', ownedKey: document.getElementById('ownedKeyInput').value });

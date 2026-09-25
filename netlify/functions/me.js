@@ -85,18 +85,39 @@ function publicGroups(state, myName) {
       index,
       name: group.name || `Party ${index + 1}`,
       leaderName: group.leaderName || '',
+      hasLeader: !!group.hasLeader,
       dungeon: group.dungeon || group.assignedDungeon || '',
+      keystone: group.keystone || group.dungeon || group.assignedDungeon || '',
+      targetKeyStr: group.targetKeyStr || '',
+      isLocked: !!group.isLocked,
+      hasLust: !!group.hasLust,
+      lustProvider: group.lustProvider || '',
+      hasBrez: !!group.hasBrez,
+      brezProvider: group.brezProvider || '',
+      isShitterGroup: !!group.isShitterGroup,
+      shitterCount: group.shitterCount || 0,
+      hasCarryMatch: !!group.hasCarryMatch,
+      willingCarryNames: group.willingCarryNames || [],
+      needCarryNames: group.needCarryNames || [],
+      avgIo: group.avgIo || 0,
+      avgIlvl: group.avgIlvl || 0,
+      excludedPlayers: group.excludedPlayers || [],
       mine: mineHere,
       members: members.map(member => {
         const live = rosterPlayer(state, member);
+        const slotRole = (group.tank && fold(member.name) === fold(group.tank.name))
+          ? 'Tank'
+          : ((group.healer && fold(member.name) === fold(group.healer.name)) ? 'Healer' : 'DPS');
         return {
           name: live.name || member.name,
           className: live.className || member.className || '',
+          slotRole,
           roles: live.roles || member.roles || [],
           io: live.io || 0,
           ilvl: live.ilvl || 0,
           ownedKey: live.keyManual ? (live.ownedKey || '') : '',
-
+          keyMin: live.keyMin || 10,
+          keyMax: live.keyMax || 12,
           keyBrackets: live.keyBrackets || [],
           isLeader: !!live.isLeader,
           isReserve: !!live.isReserve,
@@ -227,9 +248,11 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
     if (body.action === 'roll') {
-      return rollOwnGroup(event, state, mine);
+      return rollOwnGroup(event, state, mine, body);
+    }
+    if (body.action === 'exclude-player') {
+      return saveGroupExclusions(event, state, mine, body);
     }
     if (body.action === 'status') {
       return saveNightStatus(event, state, mine, body);
@@ -488,7 +511,35 @@ function renameInGroups(state, fromName, toName) {
   }
 }
 
-async function rollOwnGroup(event, state, mine) {
+async function saveGroupExclusions(event, state, mine, body) {
+  if (!mine?.attending) {
+    return { statusCode: 403, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sign up before updating group exclusions.' }) };
+  }
+  const group = (state.formedGroups || []).find(g =>
+    groupMembers(g).some(m => fold(m.name) === fold(mine.name))
+  );
+  if (!group) {
+    return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'You are not in a formed party.' }) };
+  }
+  if (Array.isArray(body?.excludedPlayers)) {
+    group.excludedPlayers = body.excludedPlayers;
+    const now = new Date().toISOString();
+    state.groupsTouchedAt = now;
+    const saved = await writeMergedState(event, {
+      formedGroups: state.formedGroups,
+      benchedPlayers: state.benchedPlayers || [],
+      groupsTouchedAt: now
+    });
+    return {
+      statusCode: 200,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ ok: true, groups: publicGroups(saved, mine.name) })
+    };
+  }
+  return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Missing excludedPlayers array.' }) };
+}
+
+async function rollOwnGroup(event, state, mine, body = {}) {
   if (!mine?.attending) {
     return {
       statusCode: 403,
@@ -515,24 +566,25 @@ async function rollOwnGroup(event, state, mine) {
       body: JSON.stringify({ error: 'That party is locked. An officer can unlock it in Control Center.' })
     };
   }
+  if (Array.isArray(body?.excludedPlayers)) {
+    group.excludedPlayers = body.excludedPlayers;
+  }
   const excluded = new Set((group.excludedPlayers || []).map(name => fold(name)));
   const members = groupMembers(group);
-  const pool = members.filter(member => {
-    const live = rosterPlayer(state, member);
-    return live.keyManual && String(live.ownedKey || '').trim() && !excluded.has(fold(member.name));
-  });
+  const pool = members.filter(member => !excluded.has(fold(member.name)));
   if (!pool.length) {
     return {
       statusCode: 400,
       headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Nobody left in this party has typed a key.' })
+      body: JSON.stringify({ error: 'All members of this party are excluded from the roll.' })
     };
   }
 
   const picked = pool[Math.floor(Math.random() * pool.length)];
   const live = rosterPlayer(state, picked);
-  const key = String(live.ownedKey).trim();
   const who = live.name || picked.name;
+  const rawKey = live.keyManual && String(live.ownedKey || '').trim();
+  const key = rawKey || `${who}'s key (check bags)`;
   group.dungeon = key;
   group.assignedDungeon = key;
   group.keystone = key;
@@ -551,6 +603,7 @@ async function rollOwnGroup(event, state, mine) {
       ok: true,
       key,
       who,
+      hasTypedKey: Boolean(rawKey),
       groups: publicGroups(saved, mine.name)
     })
   };

@@ -796,7 +796,7 @@
     sorted.forEach(player => {
       const classInfo = WOW_CLASSES[player.className] || { color: '#ffffff' };
       const row = document.createElement('div');
-      row.className = `player-row ${player.attending ? '' : 'inactive'}`;
+      row.className = `player-row is-collapsed ${player.attending ? '' : 'inactive'}`;
       row.style.borderLeftColor = classInfo.color;
 
       const hasTank = player.roles.includes('Tank');
@@ -813,36 +813,44 @@
           ${player.avatar ? `<img class="player-avatar" src="${player.avatar}" alt="" loading="lazy">` : `<div class="player-avatar-placeholder" title="Character">${hasTank ? '🛡️' : (hasHealer ? '💚' : '⚔️')}</div>`}
         </div>
         <div class="player-main-col">
-          <div class="player-header-row">
+          <div class="player-header-row player-toggle-trigger" data-id="${player.id}" title="Click to expand or collapse details">
             <div class="player-identity">
               <span class="player-name" style="color: ${classInfo.color};">${escapeHtml(player.name)}</span>
               <span class="class-tag" style="color: ${classInfo.color}; border: 1px solid ${classInfo.color}55;">${escapeHtml(player.className)}</span>
+              <span class="player-roles-summary">${hasTank ? '🛡️' : ''}${hasHealer ? '💚' : ''}${hasDps ? '⚔️' : ''}</span>
+              <span class="io-badge-compact" style="color: ${ioColor}; border-color: ${ioColor}77;">${(player.io || 0).toLocaleString()} IO</span>
+              ${player.keyManual && player.ownedKey ? `<span class="key-owned-pill-mini" title="Keystone: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
+            </div>
+            <div class="player-header-right">
+              <span class="player-expand-chevron">▸</span>
+            </div>
+          </div>
+          <div class="player-details-collapsible">
+            <div class="player-badges-row">
+              <span class="ilvl-pill" title="Item Level">${player.ilvl || 320} iLvl</span>
+              <span class="io-badge" style="color: ${ioColor}; border-color: ${ioColor}77;" title="Mythic+ Score">${(player.io || 0).toLocaleString()} IO</span>
+              <div class="role-badge-group">
+                <span class="role-icon-mini ${hasTank ? 'active-tank' : 'inactive'}" data-id="${player.id}" data-role="Tank" title="Tank ${hasTank ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">🛡️</span>
+                <span class="role-icon-mini ${hasHealer ? 'active-healer' : 'inactive'}" data-id="${player.id}" data-role="Healer" title="Healer ${hasHealer ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">💚</span>
+                <span class="role-icon-mini ${hasDps ? 'active-dps' : 'inactive'}" data-id="${player.id}" data-role="DPS" title="DPS ${hasDps ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">⚔️</span>
+              </div>
+              ${classInfo.lust ? `<span class="util-icon-tag lust" title="${player.className} brings Bloodlust / Heroism">⚡ Lust</span>` : ''}
+              ${classInfo.brez ? `<span class="util-icon-tag brez" title="${player.className} brings Battle Resurrection">🔄 BRez</span>` : ''}
+              ${player.isLeader ? `<span class="leader-pill" title="Born Leader: willing to lead group">👑 Leader</span>` : ''}
+              ${player.isReserve ? `<span class="reserve-pill" title="Voluntary Bench / Reserve: willing to rotate out">🍺 Reserve</span>` : ''}
+              ${player.carryPreference === 'need_carry' ? `<span class="carry-pill need" title="I need a carry!">🎒 Needs Carry</span>` : ''}
+              ${player.carryPreference === 'willing_carry' ? `<span class="carry-pill stronk" title="My back is stronk (willing to carry)">🏋️ Back is Stronk</span>` : ''}
+              ${player.isShitter ? `<span class="shitter-pill" title="I'm a shitter (put me in the shitter alt group)">💩 Shitter</span>` : ''}
+            </div>
+            <div class="player-key-row">
+              ${player.keyManual && player.ownedKey ? `<span class="key-owned-pill" title="Keystone they typed in: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
+              <span class="key-range-pill" title="Comfortable key level range">🎯 ${player.keyBrackets && player.keyBrackets.length > 0 ? player.keyBrackets.map(b => b === '6-8' ? '6-8 (Hero)' : (b === '10-12' ? '10-12 (Vault)' : '12+ (Push)')).join(' • ') : `+${player.keyMin} – +${player.keyMax}`}</span>
               ${isAltRealm ? `<span class="realm-pill">${escapeHtml(player.realm)}</span>` : ''}
             </div>
-            <div class="player-actions">
-              <button class="btn-action-icon edit-player-btn" data-id="${player.id}" title="Edit Member">✏️</button>
-              <button class="btn-action-icon delete delete-player-btn" data-id="${player.id}" title="Remove Member">🗑️</button>
+            <div class="player-actions-row">
+              <button class="btn-action-icon edit-player-btn" data-id="${player.id}" title="Edit Member">✏️ Edit</button>
+              <button class="btn-action-icon delete delete-player-btn" data-id="${player.id}" title="Remove Member">🗑️ Remove</button>
             </div>
-          </div>
-          <div class="player-badges-row">
-            <span class="ilvl-pill" title="Item Level">${player.ilvl || 320} iLvl</span>
-            <span class="io-badge" style="color: ${ioColor}; border-color: ${ioColor}77;" title="Mythic+ Score">${(player.io || 0).toLocaleString()} IO</span>
-            <div class="role-badge-group">
-              <span class="role-icon-mini ${hasTank ? 'active-tank' : 'inactive'}" data-id="${player.id}" data-role="Tank" title="Tank ${hasTank ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">🛡️</span>
-              <span class="role-icon-mini ${hasHealer ? 'active-healer' : 'inactive'}" data-id="${player.id}" data-role="Healer" title="Healer ${hasHealer ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">💚</span>
-              <span class="role-icon-mini ${hasDps ? 'active-dps' : 'inactive'}" data-id="${player.id}" data-role="DPS" title="DPS ${hasDps ? '(Active - Click to toggle)' : '(Inactive - Click to toggle)'}">⚔️</span>
-            </div>
-            ${classInfo.lust ? `<span class="util-icon-tag lust" title="${player.className} brings Bloodlust / Heroism">⚡ Lust</span>` : ''}
-            ${classInfo.brez ? `<span class="util-icon-tag brez" title="${player.className} brings Battle Resurrection">🔄 BRez</span>` : ''}
-            ${player.isLeader ? `<span class="leader-pill" title="Born Leader: willing to lead group">👑 Leader</span>` : ''}
-            ${player.isReserve ? `<span class="reserve-pill" title="Voluntary Bench / Reserve: willing to rotate out">🍺 Reserve</span>` : ''}
-            ${player.carryPreference === 'need_carry' ? `<span class="carry-pill need" title="I need a carry!">🎒 Needs Carry</span>` : ''}
-            ${player.carryPreference === 'willing_carry' ? `<span class="carry-pill stronk" title="My back is stronk (willing to carry)">🏋️ Back is Stronk</span>` : ''}
-            ${player.isShitter ? `<span class="shitter-pill" title="I'm a shitter (put me in the shitter alt group)">💩 Shitter</span>` : ''}
-          </div>
-          <div class="player-key-row">
-            ${player.keyManual && player.ownedKey ? `<span class="key-owned-pill" title="Keystone they typed in: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
-            <span class="key-range-pill" title="Comfortable key level range">🎯 ${player.keyBrackets && player.keyBrackets.length > 0 ? player.keyBrackets.map(b => b === '6-8' ? '6-8 (Hero)' : (b === '10-12' ? '10-12 (Vault)' : '12+ (Push)')).join(' • ') : `+${player.keyMin} – +${player.keyMax}`}</span>
           </div>
         </div>
       `;
@@ -853,9 +861,20 @@
   }
 
   function attachRosterRowEvents() {
+    // Row collapse/expand toggle
+    document.querySelectorAll('.player-toggle-trigger').forEach(trigger => {
+      trigger.addEventListener('click', (e) => {
+        const row = trigger.closest('.player-row');
+        if (row) {
+          row.classList.toggle('is-collapsed');
+        }
+      });
+    });
+
     // Attendance checkboxes
     document.querySelectorAll('.attend-checkbox').forEach(cb => {
       cb.addEventListener('change', (e) => {
+        e.stopPropagation();
         const id = e.target.getAttribute('data-id');
         const player = state.players.find(p => p.id === id);
         if (player) {
@@ -872,6 +891,7 @@
     // Quick role toggle clicks
     document.querySelectorAll('.role-icon-mini').forEach(icon => {
       icon.addEventListener('click', (e) => {
+        e.stopPropagation();
         const id = icon.getAttribute('data-id');
         const role = icon.getAttribute('data-role');
         const player = state.players.find(p => p.id === id);
@@ -896,7 +916,8 @@
 
     // Edit button
     document.querySelectorAll('.edit-player-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const id = btn.getAttribute('data-id');
         openPlayerModal(id);
       });
@@ -904,7 +925,8 @@
 
     // Delete button
     document.querySelectorAll('.delete-player-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const id = btn.getAttribute('data-id');
         const player = state.players.find(p => p.id === id);
         if (player && confirm(`Remove ${player.name} from the guild list?`)) {
@@ -1355,7 +1377,7 @@
         const key = typedKeyFor(member);
         const excluded = grp.excludedPlayers.some(name => name.toLowerCase() === member.name.toLowerCase());
         return `<button type="button" class="player-exclude-chip ${excluded ? 'is-out' : ''} ${key ? '' : 'no-key'}" data-player="${escapeHtml(member.name)}">
-          ${escapeHtml(member.name)}${key ? ` · ${escapeHtml(key)}` : ' · no key'}
+          ${escapeHtml(member.name)}${key ? ` · ${escapeHtml(key)}` : ' · (no key entered)'}
         </button>`;
       }).join('');
       keysList.querySelectorAll('.player-exclude-chip').forEach(button => {
@@ -1385,14 +1407,15 @@
 
     const excluded = new Set((grp.excludedPlayers || []).map(name => name.toLowerCase()));
     const partyMembers = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
-    const pool = partyMembers.filter(member => typedKeyFor(member) && !excluded.has(member.name.toLowerCase()));
+    const pool = partyMembers.filter(member => !excluded.has(member.name.toLowerCase()));
     if (!pool.length) {
-      showToast('Nobody left in this party has typed a key.');
+      showToast('All players in this party are currently excluded.');
       return null;
     }
 
     const picked = pool[Math.floor(Math.random() * pool.length)];
-    const fullKeyStr = typedKeyFor(picked);
+    const typedKey = typedKeyFor(picked);
+    const fullKeyStr = typedKey || `${picked.name}'s key (check bags)`;
     grp.dungeon = fullKeyStr;
     grp.assignedDungeon = fullKeyStr;
     grp.keystone = fullKeyStr;
@@ -1404,11 +1427,13 @@
     const holdersText = document.getElementById('rouletteHoldersText');
     if (banner && resultText) {
       banner.style.display = 'flex';
-      resultText.textContent = `${picked.name}'s key: ${fullKeyStr}`;
+      resultText.textContent = typedKey
+        ? `${picked.name}'s key: ${fullKeyStr}`
+        : `${picked.name}'s key (unlogged keystone - ask ${picked.name} to check bags!)`;
       if (holdersText) holdersText.textContent = `Party ${grpIdx + 1} will run this key.`;
     }
     playSound('keystone');
-    showToast(`Rolled ${picked.name}: ${fullKeyStr}`);
+    showToast(typedKey ? `Rolled ${picked.name}: ${fullKeyStr}` : `Selected ${picked.name} for the key!`);
     return { picked, fullKeyStr };
   }
 
@@ -1585,15 +1610,50 @@
       return h;
     }
 
+    function renderMemberSlot(roleSlot, member) {
+      if (!member) return '';
+      const memberClass = WOW_CLASSES[member.className] || { color: '#fff' };
+      const roleIcon = roleSlot === 'Tank' ? '🛡️' : (roleSlot === 'Healer' ? '💚' : '⚔️');
+      const roleCss = roleSlot === 'Tank' ? 'role-tank' : (roleSlot === 'Healer' ? 'role-healer' : 'role-dps');
+      const ioColor = getIoColor(member.io);
+      const key = typedKeyFor(member);
+
+      return `
+        <div class="party-member-row is-collapsed ${roleCss}">
+          <span class="slot-role-tag" title="${roleSlot}">${roleIcon}</span>
+          <div class="slot-player-details">
+            <div class="slot-top-row slot-toggle-trigger" title="Click to expand or collapse details">
+              <div class="slot-top-left">
+                <span class="slot-player-name" style="color: ${memberClass.color};">${escapeHtml(member.name)}</span>
+                <span class="class-tag" style="color: ${memberClass.color}; border: 1px solid ${memberClass.color}44;">${escapeHtml(member.className)}</span>
+                ${key ? `<span class="slot-key-mini" title="Key: ${escapeHtml(key)}">🔑 ${escapeHtml(key)}</span>` : ''}
+              </div>
+              <div class="slot-top-right">
+                <span class="slot-stat-badge io" style="color: ${ioColor}; border: 1px solid ${ioColor}77;">${(member.io || 0).toLocaleString()} IO</span>
+                <span class="slot-expand-chevron">▸</span>
+              </div>
+            </div>
+            <div class="slot-details-collapsible">
+              <div class="slot-bottom-row">
+                <div class="slot-meta-left">
+                  <span class="slot-stat-badge ilvl">${member.ilvl || 320} iLvl</span>
+                  ${renderMemberVibeBadges(member)}
+                </div>
+                <span class="slot-key-range">+${member.keyMin} – +${member.keyMax}</span>
+              </div>
+              ${moveMenu(member.name)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     // Render Each 5-man Party Card
     state.formedGroups.forEach((grp, index) => {
       if (!grp.tank || !grp.healer) return;
       const card = document.createElement('div');
       card.className = `party-card ${grp.isLocked ? 'is-locked' : ''}`;
       card.style.animationDelay = `${index * 0.08}s`;
-
-      const tankClass = WOW_CLASSES[grp.tank.className] || { color: '#fff' };
-      const healerClass = WOW_CLASSES[grp.healer.className] || { color: '#fff' };
 
       card.innerHTML = `
         <div class="party-header">
@@ -1635,70 +1695,9 @@
         </div>
 
         <div class="party-members">
-          <!-- Tank -->
-          <div class="party-member-row role-tank">
-            <span class="slot-role-tag" title="Tank">🛡️</span>
-            <div class="slot-player-details">
-              <div class="slot-top-row">
-                <span class="slot-player-name" style="color: ${tankClass.color};">${escapeHtml(grp.tank.name)}</span>
-                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.tank.io)}; border: 1px solid ${getIoColor(grp.tank.io)}77;">${(grp.tank.io || 0).toLocaleString()} IO</span>
-              </div>
-              <div class="slot-bottom-row">
-                <div class="slot-meta-left">
-                  <span class="class-tag" style="color: ${tankClass.color}; border: 1px solid ${tankClass.color}44;">${escapeHtml(grp.tank.className)}</span>
-                  <span class="slot-stat-badge ilvl">${grp.tank.ilvl || 320} iLvl</span>
-                  ${renderMemberVibeBadges(grp.tank)}
-                </div>
-                <span class="slot-key-range">+${grp.tank.keyMin} – +${grp.tank.keyMax}</span>
-              </div>
-              ${moveMenu(grp.tank.name)}
-            </div>
-          </div>
-
-          <!-- Healer -->
-          <div class="party-member-row role-healer">
-            <span class="slot-role-tag" title="Healer">💚</span>
-            <div class="slot-player-details">
-              <div class="slot-top-row">
-                <span class="slot-player-name" style="color: ${healerClass.color};">${escapeHtml(grp.healer.name)}</span>
-                <span class="slot-stat-badge io" style="color: ${getIoColor(grp.healer.io)}; border: 1px solid ${getIoColor(grp.healer.io)}77;">${(grp.healer.io || 0).toLocaleString()} IO</span>
-              </div>
-              <div class="slot-bottom-row">
-                <div class="slot-meta-left">
-                  <span class="class-tag" style="color: ${healerClass.color}; border: 1px solid ${healerClass.color}44;">${escapeHtml(grp.healer.className)}</span>
-                  <span class="slot-stat-badge ilvl">${grp.healer.ilvl || 320} iLvl</span>
-                  ${renderMemberVibeBadges(grp.healer)}
-                </div>
-                <span class="slot-key-range">+${grp.healer.keyMin} – +${grp.healer.keyMax}</span>
-              </div>
-              ${moveMenu(grp.healer.name)}
-            </div>
-          </div>
-
-          <!-- DPS Slots -->
-          ${grp.dps.map(dps => {
-            const dpsClass = WOW_CLASSES[dps.className] || { color: '#fff' };
-            return `
-              <div class="party-member-row role-dps">
-                <span class="slot-role-tag" title="DPS">⚔️</span>
-                <div class="slot-player-details">
-                  <div class="slot-top-row">
-                    <span class="slot-player-name" style="color: ${dpsClass.color};">${escapeHtml(dps.name)}</span>
-                    <span class="slot-stat-badge io" style="color: ${getIoColor(dps.io)}; border: 1px solid ${getIoColor(dps.io)}77;">${(dps.io || 0).toLocaleString()} IO</span>
-                  </div>
-                  <div class="slot-bottom-row">
-                    <div class="slot-meta-left">
-                      <span class="class-tag" style="color: ${dpsClass.color}; border: 1px solid ${dpsClass.color}44;">${escapeHtml(dps.className)}</span>
-                      <span class="slot-stat-badge ilvl">${dps.ilvl || 320} iLvl</span>
-                      ${renderMemberVibeBadges(dps)}
-                    </div>
-                    <span class="slot-key-range">+${dps.keyMin} – +${dps.keyMax}</span>
-                  </div>
-                  ${moveMenu(dps.name)}
-                </div>
-              </div>
-            `;
-          }).join('')}
+          ${renderMemberSlot('Tank', grp.tank)}
+          ${renderMemberSlot('Healer', grp.healer)}
+          ${(grp.dps || []).map(dps => renderMemberSlot('DPS', dps)).join('')}
         </div>
 
         <div class="party-footer">
@@ -1709,6 +1708,20 @@
       `;
 
       grid.appendChild(card);
+    });
+
+    // Attach Party Card Member Toggle Events
+    document.querySelectorAll('.slot-toggle-trigger').forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        const row = trigger.closest('.party-member-row');
+        if (row) {
+          row.classList.toggle('is-collapsed');
+        }
+      });
+    });
+
+    document.querySelectorAll('.move-player').forEach(select => {
+      select.addEventListener('click', (e) => e.stopPropagation());
     });
 
     // Attach Party Card Button Events

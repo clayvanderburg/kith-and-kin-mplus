@@ -129,10 +129,56 @@
           <button type="button" class="status-btn" data-status="waiting">⏳ Waiting</button>
           <button type="button" class="status-btn" data-status="in-key">🗝️ In key</button>
         </div>
-        <label>Key in your bags
-          <input id="ownedKeyInput" class="form-input" maxlength="80" placeholder="+17 or Murder Row +17">
-        </label>
-        <p class="player-lead" id="lastRunNote">Leave this blank until you type the keystone in your bags. Nothing is filled in from Raider.IO.</p>
+        <div class="form-group" style="margin-top: 0.9rem;">
+          <label style="display:block; margin-bottom:0.35rem; font-weight:600;">Key in your bags</label>
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 0.5rem;">
+            <select id="ownedDungeonSelect" class="form-select">
+              <option value="">-- Dungeon --</option>
+              <option value="Voidscar Arena">Voidscar Arena</option>
+              <option value="Murder Row">Murder Row</option>
+              <option value="The Blinding Vale">The Blinding Vale</option>
+              <option value="Den of Nalorakk">Den of Nalorakk</option>
+              <option value="Kings' Rest">Kings' Rest</option>
+              <option value="Altar of Fangs">Altar of Fangs</option>
+              <option value="Temple of Sethraliss">Temple of Sethraliss</option>
+              <option value="Ruby Life Pools">Ruby Life Pools</option>
+            </select>
+            <select id="ownedKeyLevelSelect" class="form-select">
+              <option value="">-- Level --</option>
+              <option value="2">+2</option>
+              <option value="3">+3</option>
+              <option value="4">+4</option>
+              <option value="5">+5</option>
+              <option value="6">+6</option>
+              <option value="7">+7</option>
+              <option value="8">+8</option>
+              <option value="9">+9</option>
+              <option value="10">+10</option>
+              <option value="11">+11</option>
+              <option value="12">+12</option>
+              <option value="13">+13</option>
+              <option value="14">+14</option>
+              <option value="15">+15</option>
+              <option value="16">+16</option>
+              <option value="17">+17</option>
+              <option value="18">+18</option>
+              <option value="19">+19</option>
+              <option value="20">+20</option>
+              <option value="21">+21</option>
+              <option value="22">+22</option>
+              <option value="23">+23</option>
+              <option value="24">+24</option>
+              <option value="25">+25</option>
+              <option value="26">+26</option>
+              <option value="27">+27</option>
+              <option value="28">+28</option>
+              <option value="29">+29</option>
+              <option value="30">+30</option>
+            </select>
+          </div>
+          <input type="hidden" id="ownedKeyInput" />
+        </div>
+        <p class="player-lead" id="lastRunNote" style="margin-top:0.4rem;">Leave this blank until you select the keystone in your bags. Nothing is filled in from Raider.IO.</p>
         <button type="button" class="btn btn-sm" id="saveKeyBtn">Save my key</button>
         <div class="desk-grid" style="margin-top: 0.9rem;">
           <label>Key you ran
@@ -164,10 +210,45 @@
         <div id="historyList"></div>
       </section>
 
+      <!-- Dedicated Party Key Roll Section (Above Active Dungeon Parties) -->
+      <section class="card player-card keystone-roulette-card" id="playerRouletteCard" hidden>
+        <div class="roulette-title">
+          <span class="roulette-icon">🎲</span>
+          <div>
+            <h2 style="margin:0; font-size:1.15rem; font-family:Cinzel,serif; color:var(--text-gold);">Party Key Roll</h2>
+            <p class="player-lead" style="margin:0.2rem 0 0;" id="playerRouletteSubtitle">Roll a keystone for your party.</p>
+          </div>
+        </div>
+
+        <div class="roulette-controls" id="playerRouletteControls">
+          <div id="playerGroupChipsWrap" style="margin: 0.8rem 0;">
+            <div class="keys-title" style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.45rem;">
+              Click a player to leave them out of the roll. Anyone who hasn't input a key is still eligible:
+            </div>
+            <div class="group-keys-list" id="playerGroupKeysList"></div>
+          </div>
+
+          <div class="roulette-action-row" style="display:flex; gap:0.65rem; align-items:center;">
+            <button type="button" id="playerRollKeyBtn" class="btn btn-sm btn-accent roulette-btn">
+              🎲 Roll a player's key
+            </button>
+            <span id="playerRollStatus" class="status-line" style="min-height:auto; font-size:0.85rem;"></span>
+          </div>
+
+          <div id="playerRouletteResultBanner" class="roulette-result-banner" style="display:none; margin-top:0.8rem;">
+            <div class="result-badge">
+              <span class="result-sigil">🔑</span>
+              <span class="result-text" id="playerRouletteResultText"></span>
+            </div>
+            <div class="result-holders" id="playerRouletteHoldersText"></div>
+          </div>
+        </div>
+      </section>
+
       <section class="card player-card" id="groupCard" hidden>
         <h2>Tonight's parties</h2>
         <p class="player-lead">IO, preferences, keys, and whether people are waiting or already in a dungeon. Your record is the keys you log.</p>
-        <div id="groupList"></div>
+        <div id="groupList" class="groups-grid"></div>
       </section>
     </main>
   </div>
@@ -179,6 +260,6 @@
       <button type="button" class="btn btn-primary" id="rollFlashClose">Got it</button>
     </div>
   </div>
-  <script src="signup.js?v=player-8"></script>
+  <script src="signup.js?v=player-9"></script>
 </body>
 </html>
