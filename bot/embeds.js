@@ -335,10 +335,6 @@ function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
       .setLabel('Can’t Make It 💤')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('btn_form_groups')
-      .setLabel('Form Groups 🏰')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
       .setLabel('Sign Up on Web 🌐')
       .setStyle(ButtonStyle.Link)
       .setURL(`${webUrl.replace(/\/$/, '')}/signup.html`)

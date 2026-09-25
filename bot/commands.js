@@ -76,7 +76,7 @@ const commands = [
     .addSubcommand(sub =>
       sub
         .setName('form')
-        .setDescription('Run the Mythic+ optimizer to generate balanced 5-man groups')
+        .setDescription('Captains and High Council: build the 5-man groups')
         .addStringOption(opt =>
           opt
             .setName('strategy')
@@ -96,7 +96,7 @@ const commands = [
     .addSubcommand(sub =>
       sub
         .setName('clear')
-        .setDescription('Clear tonight’s formed parties')
+        .setDescription('Captains and High Council: clear the formed parties')
     )
     .addSubcommand(sub =>
       sub
@@ -106,28 +106,7 @@ const commands = [
     .addSubcommand(sub =>
       sub
         .setName('roll-key')
-        .setDescription('🎲 Roll a random keystone from the allowed pool or held keys')
-        .addStringOption(opt =>
-          opt
-            .setName('source')
-            .setDescription('Source for rolling keystone')
-            .addChoices(
-              { name: '🎲 Random from Allowed Dungeon Pool', value: 'pool' },
-              { name: '🔑 Random from Held Keys in Roster', value: 'held' }
-            )
-        )
-        .addIntegerOption(opt =>
-          opt
-            .setName('level')
-            .setDescription('Specific keystone level (e.g. 12)')
-            .setMinValue(2)
-            .setMaxValue(30)
-        )
-        .addStringOption(opt =>
-          opt
-            .setName('exclude')
-            .setDescription('Specific dungeon to exclude (e.g. Murder Row)')
-        )
+        .setDescription('Pick a group, leave keys out, and roll one of the keys they are holding')
     )
     .addSubcommand(sub =>
       sub
@@ -145,7 +124,11 @@ async function registerCommands(token, clientId, guildId) {
   const rest = new REST({ version: '10' }).setToken(token);
 
   console.log('[Commands] Registering slash commands...');
-  const commandsData = commands.map(cmd => cmd.toJSON());
+  const commandsData = commands.map(cmd => ({
+    ...cmd.toJSON(),
+    integration_types: [0],
+    contexts: [0]
+  }));
 
   if (guildId) {
     try {

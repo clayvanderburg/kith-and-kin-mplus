@@ -10,6 +10,7 @@ const { createRosterEmbed, createGroupEmbeds, createSignupButtons, createSignupF
 const { searchGuildRoster, attachCharacter } = require('./roster-search');
 const { solveGroups, rollKeystone, DUNGEONS_MIDNIGHT_S2, WOW_CLASSES } = require('./solver');
 const { fetchRemoteState, pushRemoteState, lookupRaiderIo } = require('./sync');
+const { isLeader, rollPanel } = require('./roll-ui');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -218,6 +219,9 @@ async function handleSlashCommand(interaction) {
   }
 
   if (subcommand === 'form') {
+    if (!isLeader(interaction.member)) {
+      return interaction.reply({ content: 'Only Captains and High Council can form groups.', ephemeral: true });
+    }
     await interaction.deferReply();
     const strategy = interaction.options.getString('strategy') || 'balanced';
     const avoidDupes = interaction.options.getBoolean('avoid_dupes') !== false;
@@ -260,6 +264,9 @@ async function handleSlashCommand(interaction) {
   }
 
   if (subcommand === 'clear') {
+    if (!isLeader(interaction.member)) {
+      return interaction.reply({ content: 'Only Captains and High Council can clear groups.', ephemeral: true });
+    }
     await interaction.deferReply({ ephemeral: true });
     const state = await fetchRemoteState();
     state.formedGroups = [];
@@ -272,36 +279,12 @@ async function handleSlashCommand(interaction) {
   }
 
   if (subcommand === 'roll-key') {
-    await interaction.deferReply();
-    const source = interaction.options.getString('source') || 'pool';
-    const level = interaction.options.getInteger('level');
-    const exclude = interaction.options.getString('exclude');
-
     const state = await fetchRemoteState();
-    const excluded = [...(state.excludedDungeons || [])];
-    if (exclude && !excluded.some(e => e.toLowerCase() === exclude.toLowerCase())) {
-      excluded.push(exclude);
-    }
-
-    const attendees = (state.players || []).filter(p => p.attending);
-    const heldKeys = attendees.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
-
-    const roll = rollKeystone({
-      dungeonPool: DUNGEONS_MIDNIGHT_S2,
-      excludedDungeons: excluded,
-      heldKeys,
-      onlyHeld: source === 'held',
-      targetLevel: level || null
-    });
-
-    let holderText = (roll.holders && roll.holders.length > 0)
-      ? `\n👜 **Held by:** ${roll.holders.join(', ')}`
-      : `\n*(No attending member currently holds this exact key — push or reroll!)*`;
-
-    const excludedText = excluded.length > 0 ? `\n🚫 **Excluded:** ${excluded.join(', ')}` : '';
-
-    return interaction.editReply({
-      content: `🎲 **Rolled Keystone:** \`${roll.keyString}\`${holderText}${excludedText}\nLive status synced to [web dashboard](${WEB_URL}).`
+    const panel = rollPanel(state, interaction);
+    return interaction.reply({
+      content: panel.content,
+      components: (panel.components || []).map(row => ActionRowBuilder.from(row)),
+      ephemeral: true
     });
   }
 

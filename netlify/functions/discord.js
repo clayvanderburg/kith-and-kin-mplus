@@ -27,6 +27,7 @@ function loadModule(name) {
 const solver = loadModule('solver');
 const embeds = loadModule('embeds');
 const rosterSearch = loadModule('roster-search');
+const rollUi = loadModule('roll-ui');
 const liveState = require('./live-state');
 
 function bindSignupCharacter(state, discordUser, rawName) {
@@ -349,6 +350,12 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'clear') {
+        if (!rollUi?.isLeader(interaction.member)) {
+          return jsonResponse({
+            type: 4,
+            data: { content: 'Only Captains and High Council can clear groups.', flags: 64 }
+          });
+        }
         state.formedGroups = [];
         state.benchedPlayers = [];
         state.groupsTouchedAt = new Date().toISOString();
@@ -362,58 +369,8 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'roll-key') {
-        const subOpts = options[0]?.options || [];
-        const getOpt = (n) => subOpts.find(o => o.name === n)?.value;
-        const source = getOpt('source') || 'pool';
-        const level = getOpt('level');
-        const exclude = getOpt('exclude');
-
-        const excluded = [...(state.excludedDungeons || [])];
-        if (exclude && !excluded.some(e => e.toLowerCase() === exclude.toLowerCase())) {
-          excluded.push(exclude);
-        }
-
-        const attendees = (state.players || []).filter(p => p.attending);
-        const heldKeys = attendees.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
-
-        if (source === 'held' && heldKeys.length === 0) {
-          return jsonResponse({
-            type: 4,
-            data: {
-              content: '⚠️ No attending members have an active keystone recorded yet! Use `/mplus roll-key source:pool` or click **🔑 Sync Keys** on the dashboard.',
-              flags: 64
-            }
-          });
-        }
-
-        const rollResult = solver ? solver.rollKeystone({
-          dungeonPool: solver.DUNGEONS_MIDNIGHT_S2,
-          excludedDungeons: excluded,
-          heldKeys,
-          onlyHeld: source === 'held',
-          targetLevel: level ? parseInt(level, 10) : null
-        }) : {
-          dungeon: 'Murder Row',
-          level: level || 12,
-          keyString: `Murder Row +${level || 12}`,
-          holders: []
-        };
-
-        let holderText = '';
-        if (rollResult.holders && rollResult.holders.length > 0) {
-          holderText = `\n👜 **Held in bags by:** ${rollResult.holders.join(', ')}`;
-        } else {
-          holderText = `\n*(No attending member currently holds this exact key — push or reroll!)*`;
-        }
-
-        const excludedText = excluded.length > 0 ? `\n🚫 **Excluded:** ${excluded.join(', ')}` : '';
-
-        return jsonResponse({
-          type: 4,
-          data: {
-            content: `🎲 **Rolled Keystone:** \`${rollResult.keyString}\`${holderText}${excludedText}\nLive status synced to [web dashboard](${WEB_URL}).`
-          }
-        });
+        const panel = rollUi ? rollUi.rollPanel(state, interaction) : { content: 'Key rolling is unavailable right now.', components: [], flags: 64 };
+        return jsonResponse({ type: 4, data: panel });
       }
 
       if (subcommand === 'sync-keys') {
@@ -464,6 +421,12 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'form') {
+        if (!rollUi?.isLeader(interaction.member)) {
+          return jsonResponse({
+            type: 4,
+            data: { content: 'Only Captains and High Council can form groups. Use `/mplus form` if you have one of those roles.', flags: 64 }
+          });
+        }
         const attending = (state.players || []).filter(p => p.attending);
         if (attending.length < 5) {
           return jsonResponse({
@@ -547,6 +510,37 @@ exports.handler = async (event, context) => {
     const discordUser = interaction.member?.user || interaction.user;
     const defaultName = discordUser?.global_name || discordUser?.username || 'Player';
     rememberDiscordCard(interaction, state);
+
+    if (customId === 'roll_pick_group' || customId.startsWith('roll_exclude:') || customId.startsWith('roll_go:')) {
+      if (!rollUi) {
+        return jsonResponse({ type: 4, data: { content: 'Key rolling is unavailable right now.', flags: 64 } });
+      }
+      if (customId === 'roll_pick_group') {
+        const groupIndex = parseInt(interaction.data.values?.[0], 10);
+        const panel = rollUi.rollPanel(state, interaction, groupIndex);
+        return jsonResponse({ type: 7, data: panel });
+      }
+      if (customId.startsWith('roll_exclude:')) {
+        const groupIndex = parseInt(customId.split(':')[1], 10);
+        rollUi.applyExclusions(state, interaction, groupIndex, interaction.data.values || []);
+        await saveState(state);
+        const panel = rollUi.rollPanel(state, interaction, groupIndex);
+        return jsonResponse({ type: 7, data: panel });
+      }
+      const groupIndex = parseInt(customId.split(':')[1], 10);
+      const result = rollUi.rollGroupKey(state, interaction, groupIndex);
+      if (result.error) {
+        return jsonResponse({ type: 4, data: { content: result.error, flags: 64 } });
+      }
+      await saveState(state);
+      return jsonResponse({
+        type: 7,
+        data: {
+          content: `🎲 **Group ${groupIndex + 1} rolled ${result.key}**, held by **${result.holder}**.`,
+          components: []
+        }
+      });
+    }
     let player = (state.players || []).find(p =>
       (p.discordId && p.discordId === discordUser.id) ||
       (defaultName && p.name.toLowerCase() === defaultName.toLowerCase())
@@ -762,6 +756,12 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'btn_form_groups') {
+      if (!rollUi?.isLeader(interaction.member)) {
+        return jsonResponse({
+          type: 4,
+          data: { content: 'Only Captains and High Council can form groups. Use `/mplus form`.', flags: 64 }
+        });
+      }
       const attending = (state.players || []).filter(p => p.attending);
       if (attending.length < 5) {
         return jsonResponse({
@@ -805,27 +805,8 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'btn_roll_key') {
-      const attendees = (state.players || []).filter(p => p.attending);
-      const heldKeys = attendees.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
-      const excluded = state.excludedDungeons || [];
-      const roll = solver ? solver.rollKeystone({
-        dungeonPool: solver.DUNGEONS_MIDNIGHT_S2,
-        excludedDungeons: excluded,
-        heldKeys,
-        onlyHeld: false,
-        targetLevel: null
-      }) : { keyString: 'Murder Row +12', holders: [] };
-
-      let holderText = (roll.holders && roll.holders.length > 0)
-        ? `\n👜 **Held by:** ${roll.holders.join(', ')}`
-        : `\n*(No attending member currently holds this exact key — push or reroll!)*`;
-
-      return jsonResponse({
-        type: 4,
-        data: {
-          content: `🎲 **Rolled Keystone:** \`${roll.keyString}\`${holderText}\nSynced with [web dashboard](${WEB_URL}).`
-        }
-      });
+      const panel = rollUi ? rollUi.rollPanel(state, interaction) : { content: 'Key rolling is unavailable right now.', components: [], flags: 64 };
+      return jsonResponse({ type: 4, data: panel });
     }
 
     if (customId === 'btn_sync_keys') {
