@@ -41,22 +41,35 @@ function visibleGroups(state, interaction) {
   return indexed.filter(({ group }) => groupMembers(group).some(member => fold(member.name) === fold(self.name)));
 }
 
-function keyChoices(group) {
+function liveMember(state, member) {
+  return (state.players || []).find(player => fold(player.name) === fold(member?.name)) || member;
+}
+
+function enteredKey(player) {
+  if (!player?.keyManual) return '';
+  return String(player.ownedKey || '').trim();
+}
+
+function keyChoices(state, group) {
   return groupMembers(group).flatMap((member, index) => {
-    if (!member.ownedKey) return [];
+    const live = liveMember(state, member);
+    const key = enteredKey(live);
+    if (!key) return [];
     return [{
       value: String(index),
-      label: `${member.ownedKey} — ${member.name}`.slice(0, 100),
-      ownedKey: member.ownedKey,
-      name: member.name
+      label: `${live.name || member.name} — ${key}`.slice(0, 100),
+      ownedKey: key,
+      name: live.name || member.name
     }];
   }).slice(0, 24);
 }
 
-function memberLines(group) {
+function memberLines(state, group) {
   return groupMembers(group).map(member => {
+    const live = liveMember(state, member);
     const role = member === group.tank ? '🛡️' : member === group.healer ? '💚' : '⚔️';
-    return `${role} **${member.name}** — ${member.ownedKey || 'no key in bags'}`;
+    const key = enteredKey(live);
+    return `${role} **${live.name || member.name}** — ${key || 'no key entered'}`;
   });
 }
 
@@ -93,14 +106,14 @@ function rollPanel(state, interaction, groupIndex = null) {
 
   if (groupIndex === null || !state.formedGroups?.[groupIndex]) {
     return {
-      content: `Pick a group. You'll see who is in it and the keys they are holding, then you can leave some out and roll.\nYou can also do this on the [signup page](${web}).`,
+      content: `Pick a group. You'll see each player and the key they typed in. Leave people out, then roll one of the remaining keys.\nYou can also do this on the [signup page](${web}).`,
       components: [groupRow],
       flags: 64
     };
   }
 
   const group = state.formedGroups[groupIndex];
-  const keys = keyChoices(group);
+  const keys = keyChoices(state, group);
   const draft = state.rollDrafts?.[userIdOf(interaction)] || {};
   const excluded = new Set((draft.groupIndex === groupIndex ? draft.excluded : []) || []);
   const rows = [groupRow];
@@ -111,15 +124,15 @@ function rollPanel(state, interaction, groupIndex = null) {
       components: [{
         type: 3,
         custom_id: `roll_exclude:${groupIndex}`,
-        placeholder: 'Keys to leave out of the roll',
+        placeholder: 'Players whose key to leave out',
         min_values: 1,
         max_values: Math.min(25, keys.length + 1),
         options: [
-          { label: 'Leave every key in', value: 'keep', description: 'Roll from every key this group is holding', default: excluded.size === 0 },
+          { label: 'Use every entered key', value: 'keep', description: 'Roll from every player who typed a key', default: excluded.size === 0 },
           ...keys.map(key => ({
             label: key.label,
             value: key.value,
-            description: 'Leave this key out',
+            description: 'Leave this player out',
             default: excluded.has(key.value)
           }))
         ]
@@ -139,11 +152,11 @@ function rollPanel(state, interaction, groupIndex = null) {
 
   const pool = keys.filter(key => !excluded.has(key.value));
   const poolText = pool.length
-    ? pool.map(key => `• ${key.ownedKey} (${key.name})`).join('\n')
-    : 'No held keys left in the roll.';
+    ? pool.map(key => `• **${key.name}** — ${key.ownedKey}`).join('\n')
+    : 'Nobody left in the roll has typed a key.';
 
   return {
-    content: `**Group ${groupIndex + 1}: ${group.name || 'Party'}**\n${memberLines(group).join('\n')}\n\n**Rolling from:**\n${poolText}\n\nChoose any keys to leave out, then hit Roll. Or open this party on the [signup page](${web}).`,
+    content: `**Group ${groupIndex + 1}: ${group.name || 'Party'}**\n${memberLines(state, group).join('\n')}\n\n**Rolling from:**\n${poolText}\n\nLeave out any player whose key you do not want, then hit Roll.`,
     components: rows,
     flags: 64
   };
@@ -164,11 +177,11 @@ function rollGroupKey(state, interaction, groupIndex) {
   if (!visible.some(item => item.index === groupIndex)) {
     return { error: 'You can only roll a key for your own group.' };
   }
-  const keys = keyChoices(group);
+  const keys = keyChoices(state, group);
   const draft = state.rollDrafts?.[userIdOf(interaction)];
   const excluded = new Set(draft && draft.groupIndex === groupIndex ? draft.excluded : []);
   const pool = keys.filter(key => !excluded.has(key.value));
-  if (!pool.length) return { error: 'Leave at least one key in the roll.' };
+  if (!pool.length) return { error: 'Leave at least one player who has typed a key.' };
   const picked = pool[Math.floor(Math.random() * pool.length)];
   group.dungeon = picked.ownedKey;
   group.assignedDungeon = picked.ownedKey;

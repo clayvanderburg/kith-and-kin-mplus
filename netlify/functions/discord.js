@@ -200,8 +200,7 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
       io: Math.round(seasonData?.scores?.all || 0),
       avatar: data.thumbnail_url || null,
-      ownedKey: carried?.ownedKey || '',
-      lastRun: carried?.lastRun || '',
+      ownedKey: '',
       keyMin: 10,
       keyMax: 12
     };
@@ -383,11 +382,7 @@ exports.handler = async (event, context) => {
         const syncPromises = syncBatch.map(async p => {
           try {
             const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-            if (data?.ownedKey && !p.keyManual) {
-              p.ownedKey = data.ownedKey;
-              if (data.lastRun) p.lastRun = data.lastRun;
-              updatedCount++;
-            }
+            if (data?.io) updatedCount++;
             if (data?.ilvl) p.ilvl = data.ilvl;
             if (data?.io) p.io = data.io;
           } catch (e) {}
@@ -812,10 +807,7 @@ exports.handler = async (event, context) => {
         Promise.all(syncBatch.map(async p => {
           try {
             const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-            if (data?.ownedKey) {
-              p.ownedKey = data.ownedKey;
-              count++;
-            }
+            if (data?.io) count++;
           } catch (e) {}
         })),
         new Promise(r => setTimeout(r, 2200))

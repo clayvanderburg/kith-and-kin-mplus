@@ -693,10 +693,6 @@
     let keyMin = 2;
     let keyMax = 8;
     if (run) {
-      const upgrades = Number(run.num_keystone_upgrades || 0);
-      const timed = run.par_time_ms ? Number(run.clear_time_ms) <= Number(run.par_time_ms) : upgrades > 0;
-      const nextLevel = timed ? run.mythic_level + Math.max(upgrades, 1) : Math.max(2, run.mythic_level - 1);
-      ownedKey = `+${nextLevel}`;
       keyMin = 10;
       keyMax = 12;
     }
@@ -845,7 +841,7 @@
             ${player.isShitter ? `<span class="shitter-pill" title="I'm a shitter (put me in the shitter alt group)">💩 Shitter</span>` : ''}
           </div>
           <div class="player-key-row">
-            ${player.ownedKey ? `<span class="key-owned-pill" title="Active Keystone: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
+            ${player.keyManual && player.ownedKey ? `<span class="key-owned-pill" title="Keystone they typed in: ${escapeHtml(player.ownedKey)}">🔑 ${escapeHtml(player.ownedKey)}</span>` : ''}
             <span class="key-range-pill" title="Comfortable key level range">🎯 ${player.keyBrackets && player.keyBrackets.length > 0 ? player.keyBrackets.map(b => b === '6-8' ? '6-8 (Hero)' : (b === '10-12' ? '10-12 (Vault)' : '12+ (Push)')).join(' • ') : `+${player.keyMin} – +${player.keyMax}`}</span>
           </div>
         </div>
@@ -1357,7 +1353,7 @@
 
     // 1. Render Group Held Keys
     const partyMembers = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
-    const heldKeys = partyMembers.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+    const heldKeys = partyMembers.filter(p => p.keyManual && p.ownedKey && p.ownedKey.trim() !== '');
 
     if (keysList) {
       if (heldKeys.length > 0) {
@@ -1450,7 +1446,7 @@
     let holders = [];
 
     const partyMembers = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
-    const partyHeldKeys = partyMembers.filter(p => p.ownedKey && p.ownedKey.trim() !== '');
+    const partyHeldKeys = partyMembers.filter(p => p.keyManual && p.ownedKey && p.ownedKey.trim() !== '');
 
     grp.excludedDungeons = grp.excludedDungeons || [];
 
@@ -1541,11 +1537,7 @@
           const data = await res.json();
           const recent = data.mythic_plus_recent_runs?.[0] || data.mythic_plus_best_runs?.[0];
           if (recent) {
-            const upgrades = Number(recent.num_keystone_upgrades || 0);
-            const timed = recent.par_time_ms ? Number(recent.clear_time_ms) <= Number(recent.par_time_ms) : upgrades > 0;
-            const nextLevel = timed ? recent.mythic_level + Math.max(upgrades, 1) : Math.max(2, recent.mythic_level - 1);
-            if (!p.keyManual) p.ownedKey = `+${nextLevel}`;
-            p.lastRun = `${recent.dungeon} +${recent.mythic_level}`;
+            // Keystones stay blank until someone types them.
             updated++;
           }
           if (data.gear?.item_level_equipped) {
@@ -2297,7 +2289,6 @@
         p.io = data.io || p.io;
         p.avatar = data.avatar || p.avatar;
         if (data.realm) p.realm = data.realm;
-        if (data.ownedKey) p.ownedKey = data.ownedKey;
         if (data.keyMin && data.keyMax) {
           p.keyMin = data.keyMin;
           p.keyMax = data.keyMax;
@@ -2375,6 +2366,7 @@
         p.keyMax = keyMax;
         p.keyBrackets = brackets;
         p.ownedKey = ownedKey;
+        p.keyManual = Boolean(ownedKey);
         p.carryPreference = carryPreference;
         p.isShitter = isShitter;
         p.isLeader = isLeader;
@@ -2397,6 +2389,7 @@
         keyMax,
         keyBrackets: brackets,
         ownedKey,
+        keyManual: Boolean(ownedKey),
         carryPreference,
         isShitter,
         isLeader,

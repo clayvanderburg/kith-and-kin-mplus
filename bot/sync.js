@@ -116,8 +116,7 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
       io: Math.round(seasonData?.scores?.all || 0),
       avatar: data.thumbnail_url || null,
-      ownedKey: carried?.ownedKey || '',
-      lastRun: carried?.lastRun || '',
+      ownedKey: '',
       keyMin: 10,
       keyMax: 12
     };

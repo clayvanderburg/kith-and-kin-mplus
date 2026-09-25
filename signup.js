@@ -157,11 +157,7 @@
     const owned = document.getElementById('ownedKeyInput');
     if (owned) owned.value = signup.ownedKey || '';
     const lastRun = document.getElementById('lastRunNote');
-    if (lastRun) {
-      lastRun.textContent = signup.lastRun
-        ? `Last finished run was ${signup.lastRun}. The keystone level is what you should be holding now. Type the real dungeon if this is off.`
-        : 'Type the keystone in your bags if the level looks wrong.';
-    }
+    if (lastRun) lastRun.textContent = 'Leave this blank until you type the keystone in your bags.';
     renderHistory(signup.runLog);
   }
 
@@ -183,7 +179,7 @@
             <div class="member-name">${escapeHtml(member.name)}</div>
             <div class="member-meta">${escapeHtml(member.className || 'Player')} · ${escapeHtml((member.roles || []).join('/'))}</div>
             <div class="member-meta">${escapeHtml(prefText(member))}</div>
-            <div class="member-key">${member.ownedKey ? `Keystone ${escapeHtml(member.ownedKey)}` : 'No key listed'}${member.lastRun ? ` · last run ${escapeHtml(member.lastRun)}` : ''}</div>
+            <div class="member-key">${member.ownedKey ? `Key: ${escapeHtml(member.ownedKey)}` : 'No key entered'}</div>
             <div class="member-record"><span class="status-pill ${status}">${status === 'in-key' ? 'In key' : 'Waiting'}</span>${escapeHtml(recordText(member.record))}</div>
           </div>
           <div class="member-score"><b>${member.io || 0}</b><span>IO</span><div>${member.ilvl || '—'} ilvl</div></div>

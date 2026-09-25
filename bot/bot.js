@@ -300,11 +300,7 @@ async function handleSlashCommand(interaction) {
     for (const p of attendees) {
       try {
         const rIo = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-        if (rIo?.ownedKey && !p.keyManual) {
-          p.ownedKey = rIo.ownedKey;
-          if (rIo.lastRun) p.lastRun = rIo.lastRun;
-          updated++;
-        }
+        if (rIo?.io) updated++;
         if (rIo?.ilvl) p.ilvl = rIo.ilvl;
         if (rIo?.io) p.io = rIo.io;
       } catch (e) {}
@@ -525,10 +521,7 @@ async function handleButtonInteraction(interaction) {
     for (const p of attendees) {
       try {
         const rIo = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-        if (rIo?.ownedKey) {
-          p.ownedKey = rIo.ownedKey;
-          count++;
-        }
+        if (rIo?.io) count++;
       } catch (e) {}
     }
     await pushRemoteState(state);

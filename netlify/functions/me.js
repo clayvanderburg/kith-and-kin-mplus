@@ -56,8 +56,8 @@ function publicPlayer(player) {
     keyBrackets: player.keyBrackets || [],
     keyMin: player.keyMin,
     keyMax: player.keyMax,
-    ownedKey: player.ownedKey || '',
-    lastRun: player.lastRun || '',
+    ownedKey: player.keyManual ? (player.ownedKey || '') : '',
+
     io: player.io || 0,
     ilvl: player.ilvl || 0,
     attending: player.attending !== false,
@@ -115,8 +115,8 @@ function publicGroups(state, myName) {
           roles: live.roles || member.roles || [],
           io: live.io || 0,
           ilvl: live.ilvl || 0,
-          ownedKey: live.ownedKey || '',
-          lastRun: live.lastRun || '',
+          ownedKey: live.keyManual ? (live.ownedKey || '') : '',
+
           keyBrackets: live.keyBrackets || [],
           isLeader: !!live.isLeader,
           isReserve: !!live.isReserve,
@@ -126,10 +126,10 @@ function publicGroups(state, myName) {
           record: ((stats) => ({ runs: stats.runs, successes: stats.successes, rate: stats.rate }))(recordOf(live))
         };
       }),
-      heldKeys: mineHere ? members.filter(member => member.ownedKey).map(member => ({
-        name: member.name,
-        ownedKey: member.ownedKey
-      })) : []
+      heldKeys: mineHere ? members.map(member => {
+        const live = rosterPlayer(state, member);
+        return live.keyManual && live.ownedKey ? { name: live.name, ownedKey: live.ownedKey } : null;
+      }).filter(Boolean) : []
     };
   });
 }
@@ -151,8 +151,7 @@ async function lookupRaider(character) {
     return {
       io: Math.round(season?.scores?.all || 0),
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
-      ownedKey: carried?.ownedKey || '',
-      lastRun: carried?.lastRun || '',
+      ownedKey: '',
       recentRuns: (data.mythic_plus_recent_runs || []).slice(0, 12).map(run => ({
         dungeon: run.dungeon || '',
         level: run.mythic_level || 0,
@@ -226,21 +225,6 @@ exports.handler = async (event) => {
     console.error('[me] roster read failed:', err.message);
   }
   let mine = (state.players || []).find(player => player.bnetId && player.bnetId === session.bnetId);
-  if (event.httpMethod === 'GET' && mine && !mine.keyManual) {
-    try {
-      const rio = await lookupRaider(mine);
-      if (rio?.ownedKey && rio.ownedKey !== mine.ownedKey) {
-        mine.ownedKey = rio.ownedKey;
-        mine.lastRun = rio.lastRun || mine.lastRun || '';
-        mine.rioRuns = rio.recentRuns || mine.rioRuns || [];
-        mine.touchedAt = new Date().toISOString();
-        const saved = await writeMergedState(event, { players: [mine] });
-        mine = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
-      }
-    } catch (err) {
-      console.error('[me] keystone refresh failed:', err.message);
-    }
-  }
 
   if (event.httpMethod === 'GET') {
     return {
@@ -458,8 +442,7 @@ async function saveSignup(event, state, session, body, existing) {
     touchedAt: now,
     io: rio?.io || existing?.io || 0,
     ilvl: rio?.ilvl || existing?.ilvl || 0,
-    ownedKey: existing?.keyManual ? (existing.ownedKey || '') : (rio?.ownedKey || existing?.ownedKey || ''),
-    lastRun: rio?.lastRun || existing?.lastRun || '',
+    ownedKey: existing?.keyManual ? (existing.ownedKey || '') : '',
     rioRuns: rio?.recentRuns || existing?.rioRuns || [],
     eventId: ''
   };
