@@ -607,13 +607,15 @@ body {
 }
 
 .class-tag {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.08rem 0.38rem;
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.4);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .player-badges-row {
@@ -1350,9 +1352,12 @@ body {
 
 .slot-player-name {
   font-weight: 800;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   letter-spacing: 0.01em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
 }
 
 .slot-bottom-row {
@@ -2602,8 +2607,11 @@ button {
 .slot-top-left {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .slot-top-right {
@@ -2611,6 +2619,7 @@ button {
   align-items: center;
   gap: 0.35rem;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .slot-expand-chevron {

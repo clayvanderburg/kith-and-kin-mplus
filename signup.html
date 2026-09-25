@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=nav-1">
+  <link rel="stylesheet" href="styles.css?v=player-11">
   <style>
     .player-shell { max-width: 880px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
     .player-card { padding: 1.25rem; margin-bottom: 1rem; }
@@ -20,19 +20,9 @@
     .choice-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.4rem 0 0.9rem; }
     .choice-row label { border: 1px solid var(--border-card); border-radius: 999px; padding: 0.35rem 0.7rem; cursor: pointer; }
     .choice-row input { margin-right: 0.3rem; }
-    .party-card { border: 1px solid var(--border-card); border-radius: 16px; padding: 0.9rem; margin-bottom: 0.8rem; background: rgba(0,0,0,0.18); }
-    .party-card.mine { border-color: var(--border-gold); box-shadow: 0 0 0 1px rgba(245, 208, 97, 0.25); }
-    .party-head { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; margin-bottom: 0.7rem; }
-    .party-head strong { font-family: Cinzel, serif; color: var(--text-gold); }
-    .member-row { display: grid; grid-template-columns: 6px 1fr auto; gap: 0.7rem; align-items: center; padding: 0.65rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
-    .class-pip { width: 6px; height: 100%; min-height: 42px; border-radius: 99px; background: var(--pip, #f5d061); }
-    .member-name { font-weight: 700; }
-    .member-meta, .member-key, .member-record { color: var(--text-muted); font-size: 0.82rem; }
-    .member-score { text-align: right; font-variant-numeric: tabular-nums; }
-    .member-score b { display: block; color: var(--text-gold); }
-    .status-pill, .pref-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.12rem 0.45rem; margin-right: 0.25rem; border: 1px solid var(--border-card); font-size: 0.75rem; }
-    .status-pill.in-key { color: #86efac; border-color: rgba(134, 239, 172, 0.45); }
-    .status-pill.waiting { color: #fde68a; border-color: rgba(253, 230, 138, 0.35); }
+    .status-pill, .pref-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.1rem 0.45rem; border: 1px solid var(--border-card); font-size: 0.72rem; white-space: nowrap; }
+    .status-pill.in-key { color: #86efac; border-color: rgba(134, 239, 172, 0.45); background: rgba(134, 239, 172, 0.12); }
+    .status-pill.waiting { color: #fde68a; border-color: rgba(253, 230, 138, 0.35); background: rgba(253, 230, 138, 0.12); }
     .signup-summary { display: flex; justify-content: space-between; gap: 0.8rem; align-items: center; }
     .signup-summary p { margin: 0.2rem 0 0; color: var(--text-muted); }
     #signupCard.is-collapsed #signupForm { display: none; }
@@ -260,6 +250,6 @@
       <button type="button" class="btn btn-primary" id="rollFlashClose">Got it</button>
     </div>
   </div>
-  <script src="signup.js?v=player-10"></script>
+  <script src="signup.js?v=player-11"></script>
 </body>
 </html>
