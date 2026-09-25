@@ -5,20 +5,18 @@
  */
 
 const path = require('path');
-const { getStore, connectLambda } = require('@netlify/blobs');
+const { getStore } = require('@netlify/blobs');
 
 const STORE_NAME = 'mplus-state';
 const STATE_KEY = 'current_state';
 
-function openStore(event) {
-  if (event && event.blobs) {
-    try {
-      connectLambda(event);
-    } catch (err) {
-      console.error('[live-state] connectLambda failed:', err.message);
-    }
+async function useStore(run) {
+  try {
+    return await run(getStore(STORE_NAME, { consistency: 'strong' }));
+  } catch (err) {
+    if (err?.name !== 'BlobsConsistencyError') throw err;
+    return run(getStore(STORE_NAME));
   }
-  return getStore(STORE_NAME, { consistency: 'strong' });
 }
 
 function timeOf(value) {
@@ -101,17 +99,15 @@ function mergeStates(latest, incoming) {
   return merged;
 }
 
-async function readLiveState(event) {
-  const store = openStore(event);
-  const data = await store.get(STATE_KEY, { type: 'json' });
+async function readLiveState() {
+  const data = await useStore((store) => store.get(STATE_KEY, { type: 'json' }));
   return data && typeof data === 'object' ? data : null;
 }
 
 async function writeMergedState(event, incoming) {
-  const latest = await readLiveState(event);
+  const latest = await readLiveState();
   const merged = mergeStates(latest, incoming);
-  const store = openStore(event);
-  await store.setJSON(STATE_KEY, merged);
+  await useStore((store) => store.setJSON(STATE_KEY, merged));
   return merged;
 }
 

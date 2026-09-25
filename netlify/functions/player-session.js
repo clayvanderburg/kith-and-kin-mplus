@@ -1,5 +1,14 @@
 const crypto = require('crypto');
-const { getStore, connectLambda } = require('@netlify/blobs');
+const { getStore } = require('@netlify/blobs');
+
+async function useStore(name, run) {
+  try {
+    return await run(getStore(name, { consistency: 'strong' }));
+  } catch (err) {
+    if (err?.name !== 'BlobsConsistencyError') throw err;
+    return run(getStore(name));
+  }
+}
 
 function signingSecret() {
   return process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
@@ -29,24 +38,13 @@ function stateCookie(state) {
   return `bnet_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`;
 }
 
-function openSessions(event) {
-  if (event?.blobs) {
-    try {
-      connectLambda(event);
-    } catch (err) {
-      console.error('[session] connectLambda failed:', err.message);
-    }
-  }
-  return getStore('mplus-sessions', { consistency: 'strong' });
-}
-
 async function createSession(event, data) {
   const id = crypto.randomBytes(24).toString('base64url');
   const record = {
     ...data,
     exp: Date.now() + 30 * 24 * 60 * 60 * 1000
   };
-  await openSessions(event).setJSON(id, record);
+  await useStore('mplus-sessions', (store) => store.setJSON(id, record));
   return { id, cookie: sessionCookie(id, 30 * 24 * 60 * 60) };
 }
 
@@ -57,7 +55,7 @@ async function readSession(event) {
   const id = raw.slice(0, dot);
   const sig = raw.slice(dot + 1);
   if (!id || sig !== sign(id)) return null;
-  const record = await openSessions(event).get(id, { type: 'json' });
+  const record = await useStore('mplus-sessions', (store) => store.get(id, { type: 'json' }));
   if (!record || record.exp < Date.now()) return null;
   return record;
 }
