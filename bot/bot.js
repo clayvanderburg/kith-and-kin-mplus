@@ -300,14 +300,9 @@ async function handleSlashCommand(interaction) {
     for (const p of attendees) {
       try {
         const rIo = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-        if (rIo?.ownedKey) {
+        if (rIo?.ownedKey && !p.keyManual) {
           p.ownedKey = rIo.ownedKey;
-          const lvlMatch = rIo.ownedKey.match(/\+(\d+)/);
-          if (lvlMatch) {
-            const lvl = parseInt(lvlMatch[1], 10);
-            p.keyMin = Math.max(2, lvl - 3);
-            p.keyMax = lvl + 2;
-          }
+          if (rIo.lastRun) p.lastRun = rIo.lastRun;
           updated++;
         }
         if (rIo?.ilvl) p.ilvl = rIo.ilvl;

@@ -191,15 +191,7 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
       : data.mythic_plus_scores_by_season;
 
     const recent = data.mythic_plus_recent_runs?.[0] || data.mythic_plus_best_runs?.[0];
-    let ownedKey = '';
-    let keyMin = 4;
-    let keyMax = 12;
-
-    if (recent) {
-      ownedKey = `${recent.dungeon} +${recent.mythic_level}`;
-      keyMin = Math.max(2, recent.mythic_level - 3);
-      keyMax = recent.mythic_level + 2;
-    }
+    const carried = loadModule('keystone')?.keystoneAfterRun(recent);
 
     return {
       name: data.name,
@@ -208,9 +200,10 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
       io: Math.round(seasonData?.scores?.all || 0),
       avatar: data.thumbnail_url || null,
-      ownedKey,
-      keyMin,
-      keyMax
+      ownedKey: carried?.ownedKey || '',
+      lastRun: carried?.lastRun || '',
+      keyMin: 10,
+      keyMax: 12
     };
   } catch (err) {
     return null;
@@ -390,14 +383,9 @@ exports.handler = async (event, context) => {
         const syncPromises = syncBatch.map(async p => {
           try {
             const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-            if (data?.ownedKey) {
+            if (data?.ownedKey && !p.keyManual) {
               p.ownedKey = data.ownedKey;
-              const lvlMatch = data.ownedKey.match(/\+(\d+)/);
-              if (lvlMatch) {
-                const lvl = parseInt(lvlMatch[1], 10);
-                p.keyMin = Math.max(2, lvl - 3);
-                p.keyMax = lvl + 2;
-              }
+              if (data.lastRun) p.lastRun = data.lastRun;
               updatedCount++;
             }
             if (data?.ilvl) p.ilvl = data.ilvl;

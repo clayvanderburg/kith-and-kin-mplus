@@ -2,6 +2,14 @@ const path = require('path');
 const { readSession, bnetConfigured } = require('./player-session');
 const { readLiveState, writeMergedState } = require('./live-state');
 
+function loadKeystone() {
+  try {
+    return require('../../bot/keystone');
+  } catch (err) {
+    return require(path.join(process.cwd(), 'bot', 'keystone'));
+  }
+}
+
 function loadSolver() {
   const candidates = [
     path.join(__dirname, '..', '..', 'bot', 'solver.js'),
@@ -49,6 +57,7 @@ function publicPlayer(player) {
     keyMin: player.keyMin,
     keyMax: player.keyMax,
     ownedKey: player.ownedKey || '',
+    lastRun: player.lastRun || '',
     io: player.io || 0,
     ilvl: player.ilvl || 0,
     attending: player.attending !== false,
@@ -107,13 +116,14 @@ function publicGroups(state, myName) {
           io: live.io || 0,
           ilvl: live.ilvl || 0,
           ownedKey: live.ownedKey || '',
+          lastRun: live.lastRun || '',
           keyBrackets: live.keyBrackets || [],
           isLeader: !!live.isLeader,
           isReserve: !!live.isReserve,
           isShitter: !!live.isShitter,
           carryPreference: live.carryPreference || 'none',
           nightStatus: live.nightStatus === 'in-key' ? 'in-key' : 'waiting',
-          record: recordOf(live)
+          record: ((stats) => ({ runs: stats.runs, successes: stats.successes, rate: stats.rate }))(recordOf(live))
         };
       }),
       heldKeys: mineHere ? members.filter(member => member.ownedKey).map(member => ({
@@ -137,10 +147,19 @@ async function lookupRaider(character) {
       ? data.mythic_plus_scores_by_season[0]
       : data.mythic_plus_scores_by_season;
     const recent = data.mythic_plus_recent_runs?.[0];
+    const carried = loadKeystone().keystoneAfterRun(recent);
     return {
       io: Math.round(season?.scores?.all || 0),
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
-      ownedKey: recent ? `${recent.dungeon} +${recent.mythic_level}` : ''
+      ownedKey: carried?.ownedKey || '',
+      lastRun: carried?.lastRun || '',
+      recentRuns: (data.mythic_plus_recent_runs || []).slice(0, 12).map(run => ({
+        dungeon: run.dungeon || '',
+        level: run.mythic_level || 0,
+        success: run.par_time_ms ? run.clear_time_ms <= run.par_time_ms : (run.num_keystone_upgrades || 0) > 0,
+        rioUrl: run.url || '',
+        at: run.completed_at || ''
+      }))
     };
   } catch (err) {
     return null;
@@ -206,7 +225,22 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error('[me] roster read failed:', err.message);
   }
-  const mine = (state.players || []).find(player => player.bnetId && player.bnetId === session.bnetId);
+  let mine = (state.players || []).find(player => player.bnetId && player.bnetId === session.bnetId);
+  if (event.httpMethod === 'GET' && mine && !mine.keyManual) {
+    try {
+      const rio = await lookupRaider(mine);
+      if (rio?.ownedKey && rio.ownedKey !== mine.ownedKey) {
+        mine.ownedKey = rio.ownedKey;
+        mine.lastRun = rio.lastRun || mine.lastRun || '';
+        mine.rioRuns = rio.recentRuns || mine.rioRuns || [];
+        mine.touchedAt = new Date().toISOString();
+        const saved = await writeMergedState(event, { players: [mine] });
+        mine = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+      }
+    } catch (err) {
+      console.error('[me] keystone refresh failed:', err.message);
+    }
+  }
 
   if (event.httpMethod === 'GET') {
     return {
@@ -236,8 +270,14 @@ exports.handler = async (event) => {
     if (body.action === 'status') {
       return saveNightStatus(event, state, mine, body);
     }
+    if (body.action === 'set-key') {
+      return saveOwnedKey(event, state, mine, body);
+    }
     if (body.action === 'log-run') {
       return saveRunLog(event, state, mine, body);
+    }
+    if (body.action === 'edit-run') {
+      return editRunLog(event, state, mine, body);
     }
     return await saveSignup(event, state, session, body, mine);
   } catch (err) {
@@ -250,6 +290,28 @@ exports.handler = async (event) => {
   }
 };
 
+function slugifyRealm(realm) {
+  return String(realm || '').toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function cleanUrl(value) {
+  const text = String(value || '').trim().slice(0, 300);
+  if (!text) return '';
+  if (!/^https:\/\/(www\.)?(raider\.io|warcraftlogs\.com)\//i.test(text)) return '';
+  return text;
+}
+
+function matchRioRun(player, key) {
+  const runs = Array.isArray(player?.rioRuns) ? player.rioRuns : [];
+  const folded = fold(key);
+  const level = (String(key).match(/\+(\d+)/) || [])[1];
+  return runs.find(run => {
+    const dungeon = fold(run.dungeon);
+    const levelOk = !level || String(run.level) === level;
+    return dungeon && folded.includes(dungeon) && levelOk && run.rioUrl;
+  }) || null;
+}
+
 function playerResponse(saved, savedMe) {
   return {
     ok: true,
@@ -258,11 +320,45 @@ function playerResponse(saved, savedMe) {
   };
 }
 
+async function saveOwnedKey(event, state, mine, body) {
+  if (!mine) {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Save your signup before setting your key.' }) };
+  }
+  mine.ownedKey = String(body.ownedKey || '').trim().slice(0, 80);
+  mine.keyManual = true;
+  mine.touchedAt = new Date().toISOString();
+  const saved = await writeMergedState(event, { players: [mine] });
+  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
+}
+
 async function saveNightStatus(event, state, mine, body) {
   if (!mine) {
     return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Save your signup before setting a status.' }) };
   }
   mine.nightStatus = body.nightStatus === 'in-key' ? 'in-key' : 'waiting';
+  mine.touchedAt = new Date().toISOString();
+  const saved = await writeMergedState(event, { players: [mine] });
+  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
+}
+
+async function editRunLog(event, state, mine, body) {
+  if (!mine) {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Save your signup before editing a key.' }) };
+  }
+  const log = Array.isArray(mine.runLog) ? mine.runLog : [];
+  const entry = log.find(item => item.id === body.id);
+  if (!entry) {
+    return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'That logged key was not found.' }) };
+  }
+  if (body.key) entry.key = String(body.key).trim().slice(0, 80);
+  if (typeof body.success === 'boolean') entry.success = body.success;
+  if (body.note !== undefined) entry.note = String(body.note || '').trim().slice(0, 280);
+  if (body.satisfaction) entry.satisfaction = Math.max(1, Math.min(5, parseInt(body.satisfaction, 10) || entry.satisfaction || 3));
+  if (body.rioUrl !== undefined) entry.rioUrl = cleanUrl(body.rioUrl);
+  if (body.wclUrl !== undefined) entry.wclUrl = cleanUrl(body.wclUrl);
+  entry.linkSource = 'manual';
   mine.touchedAt = new Date().toISOString();
   const saved = await writeMergedState(event, { players: [mine] });
   const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
@@ -281,6 +377,9 @@ async function saveRunLog(event, state, mine, body) {
   const myGroup = (state.formedGroups || []).find(group =>
     groupMembers(group).some(member => fold(member.name) === fold(mine.name))
   );
+  const match = matchRioRun(mine, key);
+  const slug = slugifyRealm(mine.realmSlug || mine.realm);
+  const region = mine.region || 'us';
   const entry = {
     id: `run-${Date.now()}`,
     at: new Date().toISOString(),
@@ -290,6 +389,9 @@ async function saveRunLog(event, state, mine, body) {
     success: body.success === true,
     note: String(body.note || '').trim().slice(0, 280),
     satisfaction,
+    rioUrl: cleanUrl(body.rioUrl) || match?.rioUrl || `https://raider.io/characters/${region}/${slug}/${encodeURIComponent(mine.name)}`,
+    wclUrl: cleanUrl(body.wclUrl) || `https://www.warcraftlogs.com/character/${region}/${slug}/${encodeURIComponent(mine.name)}`,
+    linkSource: match?.rioUrl && !body.rioUrl ? 'raider-io' : 'manual',
     members: myGroup ? groupMembers(myGroup).map(member => member.name).filter(Boolean) : []
   };
   mine.runLog = [entry, ...(Array.isArray(mine.runLog) ? mine.runLog : [])].slice(0, 100);
@@ -340,6 +442,7 @@ async function saveSignup(event, state, session, body, existing) {
     battleTag: session.battleTag,
     name: character.name,
     realm: character.realm,
+    realmSlug: character.realmSlug || existing?.realmSlug || '',
     region: character.region || 'us',
     className: character.className,
     roles,
@@ -355,7 +458,9 @@ async function saveSignup(event, state, session, body, existing) {
     touchedAt: now,
     io: rio?.io || existing?.io || 0,
     ilvl: rio?.ilvl || existing?.ilvl || 0,
-    ownedKey: rio?.ownedKey || existing?.ownedKey || '',
+    ownedKey: existing?.keyManual ? (existing.ownedKey || '') : (rio?.ownedKey || existing?.ownedKey || ''),
+    lastRun: rio?.lastRun || existing?.lastRun || '',
+    rioRuns: rio?.recentRuns || existing?.rioRuns || [],
     eventId: ''
   };
 

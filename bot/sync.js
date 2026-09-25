@@ -107,15 +107,7 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
       : data.mythic_plus_scores_by_season;
 
     const recent = data.mythic_plus_recent_runs?.[0] || data.mythic_plus_best_runs?.[0];
-    let ownedKey = '';
-    let keyMin = 4;
-    let keyMax = 12;
-
-    if (recent) {
-      ownedKey = `${recent.dungeon} +${recent.mythic_level}`;
-      keyMin = Math.max(2, recent.mythic_level - 3);
-      keyMax = recent.mythic_level + 2;
-    }
+    const carried = require('./keystone').keystoneAfterRun(recent);
 
     return {
       name: data.name,
@@ -124,9 +116,10 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
       ilvl: Math.round(data.gear?.item_level_equipped || 0),
       io: Math.round(seasonData?.scores?.all || 0),
       avatar: data.thumbnail_url || null,
-      ownedKey,
-      keyMin,
-      keyMax
+      ownedKey: carried?.ownedKey || '',
+      lastRun: carried?.lastRun || '',
+      keyMin: 10,
+      keyMax: 12
     };
   } catch (err) {
     console.warn('[Sync] Raider.IO lookup error:', err.message);

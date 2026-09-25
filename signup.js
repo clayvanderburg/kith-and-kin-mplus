@@ -95,12 +95,39 @@
     }
     list.innerHTML = log.map(entry => {
       const when = new Date(entry.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-      return `<article class="history-item">
+      const links = [
+        entry.rioUrl ? `<a href="${escapeHtml(entry.rioUrl)}" target="_blank" rel="noopener">Raider.IO</a>` : '',
+        entry.wclUrl ? `<a href="${escapeHtml(entry.wclUrl)}" target="_blank" rel="noopener">Warcraft Logs</a>` : ''
+      ].filter(Boolean).join(' · ');
+      return `<article class="history-item" data-run="${escapeHtml(entry.id)}">
         <strong>${FACES[entry.satisfaction] || ''} ${escapeHtml(entry.key)}</strong>
-        <small> ${entry.success ? 'Timed' : 'Depleted'} · ${escapeHtml(when)}${entry.groupName ? ` · ${escapeHtml(entry.groupName)}` : ''}</small>
+        <small> ${entry.success ? 'Timed' : 'Depleted'} · ${escapeHtml(when)}${entry.groupName ? ` · ${escapeHtml(entry.groupName)}` : ''}${entry.linkSource === 'raider-io' ? ' · matched from Raider.IO' : ''}</small>
+        ${links ? `<div>${links}</div>` : ''}
         ${entry.note ? `<div>${escapeHtml(entry.note)}</div>` : ''}
+        <div class="desk-grid">
+          <input class="form-input run-rio" value="${escapeHtml(entry.rioUrl || '')}" placeholder="https://raider.io/...">
+          <input class="form-input run-wcl" value="${escapeHtml(entry.wclUrl || '')}" placeholder="https://www.warcraftlogs.com/...">
+        </div>
+        <button type="button" class="btn btn-sm save-links">Save links</button>
       </article>`;
     }).join('');
+    list.querySelectorAll('.save-links').forEach(button => {
+      button.addEventListener('click', async () => {
+        const item = button.closest('[data-run]');
+        document.getElementById('nightStatus').textContent = 'Saving links...';
+        try {
+          await postMe({
+            action: 'edit-run',
+            id: item.dataset.run,
+            rioUrl: item.querySelector('.run-rio').value,
+            wclUrl: item.querySelector('.run-wcl').value
+          });
+          document.getElementById('nightStatus').textContent = 'Links saved.';
+        } catch (err) {
+          document.getElementById('nightStatus').textContent = err.message;
+        }
+      });
+    });
   }
 
   function showSignedUp(signup) {
@@ -127,6 +154,14 @@
     });
     const keyInput = document.getElementById('runKeyInput');
     if (keyInput && !keyInput.value) keyInput.value = signup.ownedKey || '';
+    const owned = document.getElementById('ownedKeyInput');
+    if (owned) owned.value = signup.ownedKey || '';
+    const lastRun = document.getElementById('lastRunNote');
+    if (lastRun) {
+      lastRun.textContent = signup.lastRun
+        ? `Last finished run was ${signup.lastRun}. The keystone level is what you should be holding now. Type the real dungeon if this is off.`
+        : 'Type the keystone in your bags if the level looks wrong.';
+    }
     renderHistory(signup.runLog);
   }
 
@@ -148,7 +183,7 @@
             <div class="member-name">${escapeHtml(member.name)}</div>
             <div class="member-meta">${escapeHtml(member.className || 'Player')} · ${escapeHtml((member.roles || []).join('/'))}</div>
             <div class="member-meta">${escapeHtml(prefText(member))}</div>
-            <div class="member-key">${member.ownedKey ? `Key in bags: ${escapeHtml(member.ownedKey)}` : 'No key listed'}</div>
+            <div class="member-key">${member.ownedKey ? `Keystone ${escapeHtml(member.ownedKey)}` : 'No key listed'}${member.lastRun ? ` · last run ${escapeHtml(member.lastRun)}` : ''}</div>
             <div class="member-record"><span class="status-pill ${status}">${status === 'in-key' ? 'In key' : 'Waiting'}</span>${escapeHtml(recordText(member.record))}</div>
           </div>
           <div class="member-score"><b>${member.io || 0}</b><span>IO</span><div>${member.ilvl || '—'} ilvl</div></div>
@@ -187,7 +222,10 @@
       saveStatus.textContent = data.error || 'Could not roll a key.';
       return;
     }
-    saveStatus.textContent = `Your party rolled ${data.key}.`;
+    const flash = document.getElementById('rollFlash');
+    document.getElementById('rollFlashKey').textContent = data.key;
+    document.getElementById('rollFlashWho').textContent = 'That key is now on your party card.';
+    flash.classList.add('is-on');
     renderGroups(data.groups);
   }
 
@@ -302,6 +340,9 @@
     renderCharacters();
     showSignedUp(data.signup);
     renderGroups(data.groups);
+    document.getElementById('rollFlashClose').addEventListener('click', () => {
+      document.getElementById('rollFlash').classList.remove('is-on');
+    });
     document.getElementById('saveBtn').addEventListener('click', saveSignup);
     document.getElementById('editSignupBtn').addEventListener('click', () => {
       document.getElementById('signupCard').classList.remove('is-collapsed');
@@ -323,6 +364,15 @@
         satisfaction = Number(button.dataset.face);
         document.querySelectorAll('#faceRow .face-btn').forEach(face => face.classList.toggle('is-on', face === button));
       });
+    });
+    document.getElementById('saveKeyBtn').addEventListener('click', async () => {
+      document.getElementById('nightStatus').textContent = 'Saving your key...';
+      try {
+        await postMe({ action: 'set-key', ownedKey: document.getElementById('ownedKeyInput').value });
+        document.getElementById('nightStatus').textContent = 'Key saved.';
+      } catch (err) {
+        document.getElementById('nightStatus').textContent = err.message;
+      }
     });
     document.getElementById('logRunBtn').addEventListener('click', async () => {
       const line = document.getElementById('nightStatus');

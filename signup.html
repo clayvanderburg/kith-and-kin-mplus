@@ -129,6 +129,11 @@
           <button type="button" class="status-btn" data-status="waiting">⏳ Waiting</button>
           <button type="button" class="status-btn" data-status="in-key">🗝️ In key</button>
         </div>
+        <label>Key in your bags
+          <input id="ownedKeyInput" class="form-input" maxlength="80" placeholder="+17 or Murder Row +17">
+        </label>
+        <p class="player-lead" id="lastRunNote">Raider.IO only knows the key you finished. The level shown is the key you should have now. Type the dungeon if you want it exact.</p>
+        <button type="button" class="btn btn-sm" id="saveKeyBtn">Save my key</button>
         <div class="desk-grid" style="margin-top: 0.9rem;">
           <label>Key you ran
             <input id="runKeyInput" class="form-input" maxlength="80" placeholder="Murder Row +16">
@@ -174,6 +179,6 @@
       <button type="button" class="btn btn-primary" id="rollFlashClose">Got it</button>
     </div>
   </div>
-  <script src="signup.js?v=player-5"></script>
+  <script src="signup.js?v=player-6"></script>
 </body>
 </html>

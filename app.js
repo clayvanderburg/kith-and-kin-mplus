@@ -693,9 +693,12 @@
     let keyMin = 2;
     let keyMax = 8;
     if (run) {
-      ownedKey = `${run.dungeon} +${run.mythic_level}`;
-      keyMin = Math.max(2, run.mythic_level - 3);
-      keyMax = run.mythic_level + 2;
+      const upgrades = Number(run.num_keystone_upgrades || 0);
+      const timed = run.par_time_ms ? Number(run.clear_time_ms) <= Number(run.par_time_ms) : upgrades > 0;
+      const nextLevel = timed ? run.mythic_level + Math.max(upgrades, 1) : Math.max(2, run.mythic_level - 1);
+      ownedKey = `+${nextLevel}`;
+      keyMin = 10;
+      keyMax = 12;
     }
 
     return {
@@ -1538,9 +1541,11 @@
           const data = await res.json();
           const recent = data.mythic_plus_recent_runs?.[0] || data.mythic_plus_best_runs?.[0];
           if (recent) {
-            p.ownedKey = `${recent.dungeon} +${recent.mythic_level}`;
-            p.keyMin = Math.max(2, recent.mythic_level - 3);
-            p.keyMax = recent.mythic_level + 2;
+            const upgrades = Number(recent.num_keystone_upgrades || 0);
+            const timed = recent.par_time_ms ? Number(recent.clear_time_ms) <= Number(recent.par_time_ms) : upgrades > 0;
+            const nextLevel = timed ? recent.mythic_level + Math.max(upgrades, 1) : Math.max(2, recent.mythic_level - 1);
+            if (!p.keyManual) p.ownedKey = `+${nextLevel}`;
+            p.lastRun = `${recent.dungeon} +${recent.mythic_level}`;
             updated++;
           }
           if (data.gear?.item_level_equipped) {
@@ -1620,6 +1625,7 @@
     if (state.formedGroups.length === 0) {
       actions.style.display = 'none';
       benchContainer.style.display = 'none';
+      renderOfficerNotes();
       grid.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon">🛡️⚔️💚</div>
@@ -1631,6 +1637,26 @@
     }
 
     actions.style.display = 'flex';
+
+    function isPlaced(name) {
+      const key = String(name || '').toLowerCase();
+      const inGroup = state.formedGroups.some(group => [group.tank, group.healer, ...(group.dps || [])].some(member => member && member.name.toLowerCase() === key));
+      const onBench = (state.benchedPlayers || []).some(member => member.name.toLowerCase() === key);
+      return inGroup || onBench;
+    }
+
+    function moveMenu(name) {
+      const options = ['<option value="">Move...</option>', '<option value="bench">Send to bench</option>'];
+      state.formedGroups.forEach((group, gi) => {
+        options.push(`<option value="g${gi}:tank">Party ${gi + 1} tank</option>`);
+        options.push(`<option value="g${gi}:healer">Party ${gi + 1} healer</option>`);
+        (group.dps || []).forEach((member, di) => options.push(`<option value="g${gi}:dps:${di}">Party ${gi + 1} DPS ${di + 1}</option>`));
+      });
+      state.players.filter(player => player.attending && !isPlaced(player.name)).forEach(player => {
+        options.push(`<option value="swapin:${encodeURIComponent(player.name)}">Replace with ${escapeHtml(player.name)}</option>`);
+      });
+      return `<select class="form-select move-player" data-player="${escapeHtml(name)}" title="Move ${escapeHtml(name)}" style="margin-top:0.35rem; max-width: 220px;">${options.join('')}</select>`;
+    }
 
     function renderMemberVibeBadges(p) {
       if (!p) return '';
@@ -1654,6 +1680,7 @@
 
     // Render Each 5-man Party Card
     state.formedGroups.forEach((grp, index) => {
+      if (!grp.tank || !grp.healer) return;
       const card = document.createElement('div');
       card.className = `party-card ${grp.isLocked ? 'is-locked' : ''}`;
       card.style.animationDelay = `${index * 0.08}s`;
@@ -1719,6 +1746,7 @@
                 </div>
                 <span class="slot-key-range">+${grp.tank.keyMin} – +${grp.tank.keyMax}</span>
               </div>
+              ${moveMenu(grp.tank.name)}
             </div>
           </div>
 
@@ -1738,6 +1766,7 @@
                 </div>
                 <span class="slot-key-range">+${grp.healer.keyMin} – +${grp.healer.keyMax}</span>
               </div>
+              ${moveMenu(grp.healer.name)}
             </div>
           </div>
 
@@ -1760,6 +1789,7 @@
                     </div>
                     <span class="slot-key-range">+${dps.keyMin} – +${dps.keyMax}</span>
                   </div>
+                  ${moveMenu(dps.name)}
                 </div>
               </div>
             `;
@@ -1865,6 +1895,7 @@
           <span class="slot-stat-badge ilvl">${p.ilvl || 620} iLvl</span>
           <span class="slot-stat-badge io" style="color: ${getIoColor(p.io)};">${(p.io || 0).toLocaleString()} IO</span>
           <span class="key-range-pill">+${p.keyMin}-+${p.keyMax}</span>
+          ${moveMenu(p.name)}
         `;
         benchList.appendChild(pill);
       });
@@ -1877,6 +1908,139 @@
       benchAdvice.textContent = adviceText;
     } else {
       benchContainer.style.display = 'none';
+    }
+
+    document.querySelectorAll('.move-player').forEach(sel => {
+      sel.addEventListener('change', () => {
+        if (!sel.value) return;
+        moveFormedPlayer(sel.getAttribute('data-player'), sel.value);
+      });
+    });
+    renderOfficerNotes();
+  }
+
+  function renderOfficerNotes() {
+    const box = document.getElementById('officerNotes');
+    if (!box) return;
+    const entries = [];
+    (state.players || []).forEach(player => {
+      (player.runLog || []).forEach(entry => {
+        entries.push({ player, entry });
+      });
+    });
+    entries.sort((a, b) => Date.parse(b.entry.at || 0) - Date.parse(a.entry.at || 0));
+    if (!entries.length) {
+      box.style.display = 'none';
+      return;
+    }
+    box.style.display = 'block';
+    const faces = ['', '😠', '🙁', '😐', '🙂', '😄'];
+    box.innerHTML = `<h3 style="font-family: Cinzel, serif; color: var(--text-gold);">Private run notes</h3>
+      <p style="color: var(--text-muted);">Notes and group ratings are visible here and to the player who wrote them. Other players do not see them.</p>
+      ${entries.slice(0, 40).map(({ player, entry }) => `<article style="padding:0.45rem 0; border-top:1px solid rgba(255,255,255,0.08);">
+        <strong>${escapeHtml(player.name)}</strong> ${faces[entry.satisfaction] || ''} ${escapeHtml(entry.key || '')}
+        <span style="color: var(--text-muted);"> · ${entry.success ? 'Timed' : 'Depleted'}${entry.groupName ? ` · ${escapeHtml(entry.groupName)}` : ''}</span>
+        ${entry.note ? `<div>${escapeHtml(entry.note)}</div>` : ''}
+        ${entry.rioUrl ? `<a href="${escapeHtml(entry.rioUrl)}" target="_blank" rel="noopener">Raider.IO</a>` : ''}
+        ${entry.wclUrl ? ` · <a href="${escapeHtml(entry.wclUrl)}" target="_blank" rel="noopener">Warcraft Logs</a>` : ''}
+      </article>`).join('')}`;
+  }
+
+  function moveFormedPlayer(name, dest) {
+    const person = findRosterPerson(name);
+    if (!person || !dest) return;
+    const origin = findRosterSlot(name);
+    if (dest.startsWith('swapin:')) {
+      const incomingName = decodeURIComponent(dest.slice('swapin:'.length));
+      const incoming = state.players.find(player => player.name === incomingName);
+      if (!incoming || !origin || origin.kind !== 'slot') return;
+      clearRosterPerson(name);
+      putRosterPerson(origin, incoming);
+      state.benchedPlayers = state.benchedPlayers || [];
+      state.benchedPlayers.push(person);
+    } else if (dest === 'bench') {
+      if (origin?.kind === 'slot' && (origin.slot === 'tank' || origin.slot === 'healer') && !(state.benchedPlayers || []).length) {
+        showToast('Move a bench player into that slot first so the party still has a tank and healer.');
+        renderGroups();
+        return;
+      }
+      clearRosterPerson(name);
+      state.benchedPlayers = state.benchedPlayers || [];
+      state.benchedPlayers.push(person);
+      if (origin?.kind === 'slot' && (origin.slot === 'tank' || origin.slot === 'healer')) {
+        const replacement = state.benchedPlayers.find(player => player.name !== person.name);
+        if (replacement) {
+          state.benchedPlayers = state.benchedPlayers.filter(player => player.name !== replacement.name);
+          putRosterPerson(origin, replacement);
+        }
+      }
+    } else {
+      const match = dest.match(/^g(\d+):(tank|healer|dps)(?::(\d+))?$/);
+      if (!match || !origin) return;
+      const gi = Number(match[1]);
+      const slot = match[2];
+      const di = match[3] === undefined ? null : Number(match[3]);
+      const group = state.formedGroups[gi];
+      const occupant = slot === 'tank' ? group.tank : slot === 'healer' ? group.healer : group.dps[di];
+      if (occupant && occupant.name.toLowerCase() === name.toLowerCase()) return;
+      clearRosterPerson(name);
+      if (occupant) clearRosterPerson(occupant.name);
+      putRosterPerson({ kind: 'slot', gi, slot, di }, person);
+      if (occupant) {
+        if (origin.kind === 'slot') putRosterPerson(origin, occupant);
+        else {
+          state.benchedPlayers = state.benchedPlayers || [];
+          state.benchedPlayers.push(occupant);
+        }
+      }
+    }
+    state.groupsTouchedAt = new Date().toISOString();
+    saveGroups();
+    renderGroups();
+    showToast(`Moved ${person.name}.`);
+  }
+
+  function findRosterPerson(name) {
+    const key = String(name || '').toLowerCase();
+    for (const group of state.formedGroups) {
+      const found = [group.tank, group.healer, ...(group.dps || [])].find(member => member && member.name.toLowerCase() === key);
+      if (found) return found;
+    }
+    return (state.benchedPlayers || []).find(member => member.name.toLowerCase() === key)
+      || state.players.find(member => member.name.toLowerCase() === key);
+  }
+
+  function findRosterSlot(name) {
+    const key = String(name || '').toLowerCase();
+    for (let gi = 0; gi < state.formedGroups.length; gi++) {
+      const group = state.formedGroups[gi];
+      if (group.tank?.name?.toLowerCase() === key) return { kind: 'slot', gi, slot: 'tank', di: null };
+      if (group.healer?.name?.toLowerCase() === key) return { kind: 'slot', gi, slot: 'healer', di: null };
+      const di = (group.dps || []).findIndex(member => member?.name?.toLowerCase() === key);
+      if (di >= 0) return { kind: 'slot', gi, slot: 'dps', di };
+    }
+    if ((state.benchedPlayers || []).some(member => member.name.toLowerCase() === key)) return { kind: 'bench' };
+    return null;
+  }
+
+  function clearRosterPerson(name) {
+    const key = String(name || '').toLowerCase();
+    state.formedGroups.forEach(group => {
+      if (group.tank?.name?.toLowerCase() === key) group.tank = null;
+      if (group.healer?.name?.toLowerCase() === key) group.healer = null;
+      group.dps = (group.dps || []).filter(member => member?.name?.toLowerCase() !== key);
+    });
+    state.benchedPlayers = (state.benchedPlayers || []).filter(member => member.name.toLowerCase() !== key);
+  }
+
+  function putRosterPerson(slot, person) {
+    const group = state.formedGroups[slot.gi];
+    if (!group || !person) return;
+    if (slot.slot === 'dps') {
+      if (slot.di === null || slot.di === undefined || !group.dps[slot.di]) group.dps.push(person);
+      else group.dps[slot.di] = person;
+    } else {
+      group[slot.slot] = person;
     }
   }
 
