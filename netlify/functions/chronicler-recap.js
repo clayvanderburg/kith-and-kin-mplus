@@ -241,105 +241,33 @@ Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it
 IMPORTANT: Output ONLY the final markdown text. Do not include any meta commentary, thinking notes, self-critique, or word count checklists.`;
   }
 
-  // Candidate models to try in order
-  const candidateModels = [
-    { ver: 'v1beta', name: 'gemini-3.8-flash' },
-    { ver: 'v1beta', name: 'gemini-2.0-flash' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
-    { ver: 'v1', name: 'gemini-1.5-flash' },
-    { ver: 'v1beta', name: 'gemini-2.5-flash' },
-    { ver: 'v1beta', name: 'gemini-1.5-pro' }
-  ];
-
-  let lastError = null;
-
-  for (const model of candidateModels) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/${model.ver}/models/${model.name}:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.8,
-            maxOutputTokens: 1600
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        lastError = new Error(`Gemini ${model.name} (${response.status}): ${errText}`);
-        continue;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 1600
       }
+    })
+  });
 
-      const json = await response.json();
-      let text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        text = text.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
-        if (isXalatath && !text.includes("Xal'atath") && !text.includes("Xalatath")) {
-          text += "\n\n— **Xal'atath, Harbinger of the Void** 👁️🖤";
-        }
-        return { text, modelName: model.name };
-      }
-    } catch (err) {
-      lastError = err;
-    }
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini API error (${response.status}): ${errText}`);
   }
 
-  // Dynamic discovery fallback: query available models on the key
-  try {
-    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    const listText = await listRes.text();
-    if (!listRes.ok) {
-      throw new Error(`ListModels failed (${listRes.status}): ${listText}`);
-    }
+  const json = await response.json();
+  let text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('No text returned by Gemini API');
 
-    const listData = JSON.parse(listText);
-    const candidatesFromList = (listData.models || []).filter(m =>
-      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
-    );
-
-    let discoveryLastError = null;
-
-    for (const available of candidatesFromList) {
-      const modelPath = available.name.replace(/^models\//, '');
-      try {
-        const dynUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPath}:generateContent?key=${apiKey}`;
-        const dynRes = await fetch(dynUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.8, maxOutputTokens: 1600 }
-          })
-        });
-
-        if (dynRes.ok) {
-          const dynJson = await dynRes.json();
-          let dynText = dynJson.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (dynText) {
-            dynText = dynText.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
-            if (isXalatath && !dynText.includes("Xal'atath") && !dynText.includes("Xalatath")) {
-              dynText += "\n\n— **Xal'atath, Harbinger of the Void** 👁️🖤";
-            }
-            return { text: dynText, modelName: modelPath, allModels: candidatesFromList.map(c => c.name.replace(/^models\//, '')) };
-          }
-        } else {
-          const dynErrText = await dynRes.text();
-          discoveryLastError = new Error(`Model ${modelPath} failed (${dynRes.status}): ${dynErrText}`);
-        }
-      } catch (err) {
-        discoveryLastError = err;
-      }
-    }
-
-    const names = candidatesFromList.map(m => m.name.replace(/^models\//, '')).join(', ');
-    throw new Error(`All discovered models exhausted. Models: [${names}]. Last error: ${discoveryLastError ? discoveryLastError.message : 'Unknown'}`);
-  } catch (discoveryErr) {
-    throw new Error(`Gemini error: ${discoveryErr.message}`);
+  text = text.replace(/(\n|^)\*?\*?(?:Word count check|Tone check|Self-check|Checklist)[\s\S]*$/i, '').trim();
+  if (isXalatath && !text.includes("Xal'atath") && !text.includes("Xalatath")) {
+    text += "\n\n— **Xal'atath, Harbinger of the Void** 👁️🖤";
   }
+  return { text, modelName: 'gemini-3.8-flash' };
 }
 
 // Call OpenAI fallback if configured
