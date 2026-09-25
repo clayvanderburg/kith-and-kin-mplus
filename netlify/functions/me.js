@@ -131,7 +131,12 @@ exports.handler = async (event) => {
     };
   }
 
-  const state = await readLiveState(event) || { players: [], formedGroups: [] };
+  let state = { players: [], formedGroups: [] };
+  try {
+    state = await readLiveState(event) || state;
+  } catch (err) {
+    console.error('[me] roster read failed:', err.message);
+  }
   const mine = (state.players || []).find(player => player.bnetId && player.bnetId === session.bnetId);
 
   if (event.httpMethod === 'GET') {

@@ -96,7 +96,7 @@
     const res = await fetch('/api/me', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
       body: JSON.stringify({ action: 'roll' })
     });
     const data = await res.json();
@@ -121,7 +121,7 @@
     const res = await fetch('/api/me', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
       body: JSON.stringify({
         name: selected.name,
         realm: selected.realm,
@@ -145,12 +145,34 @@
     renderGroups(data.groups);
   }
 
+  function rememberSessionFromHash() {
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const token = hash.get('s');
+    if (!token) return;
+    sessionStorage.setItem('kk_session', token);
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  function sessionHeaders() {
+    const token = sessionStorage.getItem('kk_session') || '';
+    return token ? { 'x-kk-session': token } : {};
+  }
+
   async function boot() {
-    const res = await fetch('/api/me', { credentials: 'include' });
+    rememberSessionFromHash();
+    const loginBtn = document.getElementById('bnetLoginBtn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', () => {
+        loginBtn.textContent = 'Opening Battle.net...';
+      });
+    }
+    const res = await fetch('/api/me', { credentials: 'include', headers: sessionHeaders() });
     const data = await res.json();
     if (!data.authenticated) {
       loginCard.hidden = false;
-      if (data.bnetConfigured === false) {
+      if (sessionStorage.getItem('kk_session')) {
+        document.getElementById('loginNote').textContent = 'Battle.net sent you back, but the signup page could not keep that login. Click the button again.';
+      } else if (data.bnetConfigured === false) {
         document.getElementById('loginNote').textContent = 'Battle.net login still needs a one-time app setup by an officer before this button can finish signing people in.';
       }
       return;

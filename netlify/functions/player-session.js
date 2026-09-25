@@ -46,13 +46,23 @@ function packSession(data) {
 }
 
 function createSession(event, data) {
+  const token = packSession(data);
   return {
-    cookie: sessionCookie(packSession(data), 30 * 24 * 60 * 60)
+    token,
+    cookie: sessionCookie(token, 30 * 24 * 60 * 60)
   };
 }
 
+function headerSession(event) {
+  const headers = event.headers || {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (String(key).toLowerCase() === 'x-kk-session') return value || '';
+  }
+  return '';
+}
+
 function readSession(event) {
-  const raw = readCookies(event).kk_session || '';
+  const raw = headerSession(event) || readCookies(event).kk_session || '';
   const dot = raw.lastIndexOf('.');
   if (dot === -1) return null;
   const payload = raw.slice(0, dot);

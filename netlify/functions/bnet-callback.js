@@ -91,8 +91,11 @@ exports.handler = async (event) => {
   return {
     statusCode: 302,
     headers: {
-      Location: '/signup.html',
-      'Set-Cookie': session.cookie
+      Location: `/signup.html#s=${encodeURIComponent(session.token)}`,
+      'Cache-Control': 'no-store'
+    },
+    multiValueHeaders: {
+      'Set-Cookie': [session.cookie]
     },
     body: ''
   };
