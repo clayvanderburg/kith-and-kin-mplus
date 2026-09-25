@@ -366,9 +366,12 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'leaderboard') {
+        const subOpts = options?.[0]?.options || [];
+        const viewMode = subOpts.find(o => o.name === 'view')?.value || 'auto';
         const engine = loadModule('leaderboard-engine');
+        const forceLive = viewMode === 'live';
         const standings = engine
-          ? engine.computeLeaderboardStandings(state.players, state)
+          ? engine.computeLeaderboardStandings(state.players, state, forceLive)
           : [];
         const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
         const components = embeds ? embeds.createLeaderboardButtons(WEB_URL).map(r => r.toJSON ? r.toJSON() : r) : [];

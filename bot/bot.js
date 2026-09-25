@@ -131,8 +131,10 @@ async function handleSlashCommand(interaction) {
 
   if (subcommand === 'leaderboard') {
     await interaction.deferReply();
+    const viewMode = interaction.options.getString('view') || 'auto';
     const state = await fetchRemoteState();
-    const standings = leaderboardEngine.computeLeaderboardStandings(state.players, state);
+    const forceLive = viewMode === 'live';
+    const standings = leaderboardEngine.computeLeaderboardStandings(state.players, state, forceLive);
     const embed = createLeaderboardEmbed(standings, WEB_URL);
     const buttons = createLeaderboardButtons(WEB_URL);
     return interaction.editReply({ embeds: [embed], components: buttons });

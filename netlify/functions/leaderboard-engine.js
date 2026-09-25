@@ -659,8 +659,24 @@
   /**
    * Computes full leaderboard standings from an array of players and state
    */
-  function computeLeaderboardStandings(players, state) {
-    const list = Array.isArray(players) && players.length > 0 ? players : DEMO_PLAYERS;
+  function computeLeaderboardStandings(players, state, forceLive = false) {
+    let list;
+    if (forceLive && Array.isArray(players) && players.length > 0) {
+      list = players;
+    } else if (Array.isArray(players) && players.length > 0) {
+      // Check if players have any actual logged runs or active attendance
+      const totalRuns = players.reduce((sum, p) => sum + (Array.isArray(p.runLog) ? p.runLog.length : 0), 0);
+      const totalAttending = players.filter(p => p.attending).length;
+      if (totalRuns === 0 && totalAttending <= 2) {
+        // Live state has no real mythic run data yet -> use DEMO_PLAYERS so it matches web showcase!
+        list = DEMO_PLAYERS;
+      } else {
+        list = players;
+      }
+    } else {
+      list = DEMO_PLAYERS;
+    }
+
     const computed = list.map(p => calculatePlayerPoints(p, state));
 
     // Sort by Total Points descending, tie-breaker: keys run, then attendance

@@ -122,6 +122,15 @@ const commands = [
       sub
         .setName('leaderboard')
         .setDescription('🏆 View the Kith and Kin Mythic+ Participation Leaderboard & Top Champions')
+        .addStringOption(opt =>
+          opt
+            .setName('view')
+            .setDescription('Choose leaderboard view')
+            .addChoices(
+              { name: '🎭 Demo Showcase (Full Fake Stats)', value: 'demo' },
+              { name: '⚡ Live Guild Data', value: 'live' }
+            )
+        )
     )
 ];
 
