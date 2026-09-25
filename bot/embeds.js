@@ -500,10 +500,88 @@ function createSignupFormComponents({ player = null } = {}) {
   return [rowRoles, rowRange, rowVibes, rowActions];
 }
 
+function createLeaderboardEmbed(standings, webUrl = 'https://knkmplus.netlify.app') {
+  const top = Array.isArray(standings) ? standings.slice(0, 10) : [];
+  const p1 = top[0];
+  const p2 = top[1];
+  const p3 = top[2];
+
+  const embed = new EmbedBuilder()
+    .setTitle('🏆 KITH & KIN — PARTICIPATION LEADERBOARD')
+    .setColor(0xF5D061)
+    .setDescription('*Honoring guild attendance, role versatility, leadership, and carry shepherds over raw parses.*');
+
+  if (p1 || p2 || p3) {
+    let podiumText = '';
+    if (p1) {
+      podiumText += `🥇 **#1 ${p1.name}** (${p1.className}) — **${p1.totalPoints} pts** • *${p1.title}*\n` +
+                    `   └ 📅 ${p1.nightsAttended} Nights | 🗝️ ${p1.runsCount} Keys (${p1.timedCount} Timed) | 🎭 ${p1.roles.join('/')}${p1.isLeader ? ' | 👑 Leader' : ''}${p1.isStonk ? ' | 🏋️ Stonk' : ''}${p1.carryShepherdCount ? ` | 🎒 ${p1.carryShepherdCount} Carries` : ''}\n\n`;
+    }
+    if (p2) {
+      podiumText += `🥈 **#2 ${p2.name}** (${p2.className}) — **${p2.totalPoints} pts** • *${p2.title}*\n` +
+                    `   └ 📅 ${p2.nightsAttended} Nights | 🗝️ ${p2.runsCount} Keys (${p2.timedCount} Timed) | 🎭 ${p2.roles.join('/')}${p2.isLeader ? ' | 👑 Leader' : ''}${p2.isStonk ? ' | 🏋️ Stonk' : ''}${p2.carryShepherdCount ? ` | 🎒 ${p2.carryShepherdCount} Carries` : ''}\n\n`;
+    }
+    if (p3) {
+      podiumText += `🥉 **#3 ${p3.name}** (${p3.className}) — **${p3.totalPoints} pts** • *${p3.title}*\n` +
+                    `   └ 📅 ${p3.nightsAttended} Nights | 🗝️ ${p3.runsCount} Keys (${p3.timedCount} Timed) | 🎭 ${p3.roles.join('/')}${p3.isLeader ? ' | 👑 Leader' : ''}${p3.isStonk ? ' | 🏋️ Stonk' : ''}${p3.carryShepherdCount ? ` | 🎒 ${p3.carryShepherdCount} Carries` : ''}\n`;
+    }
+    embed.addFields({ name: '👑 THE PODIUM OF CHAMPIONS', value: podiumText.trim() });
+  }
+
+  if (top.length > 3) {
+    let tableText = '```\nRK  NAME            PTS   NIGHTS  KEYS  ROLES         VIBES\n-------------------------------------------------------------\n';
+    for (let i = 3; i < top.length; i++) {
+      const item = top[i];
+      const rk = `#${item.rank}`.padEnd(4, ' ');
+      const name = (item.name || '').slice(0, 14).padEnd(15, ' ');
+      const pts = `${item.totalPoints}`.padStart(4, ' ') + ' ';
+      const nights = `${item.nightsAttended}n`.padStart(5, ' ') + '  ';
+      const keys = `${item.runsCount}k`.padStart(4, ' ') + '  ';
+      const roles = (item.roles || []).join('/').slice(0, 12).padEnd(13, ' ');
+      let vibes = '';
+      if (item.isLeader) vibes += '👑';
+      if (item.isStonk) vibes += '🏋️';
+      if (item.carryShepherdCount > 0) vibes += `🎒${item.carryShepherdCount}`;
+      if (item.isNeedCarry) vibes += '🌱';
+      tableText += `${rk}${name}${pts}${nights}${keys}${roles}${vibes}\n`;
+    }
+    tableText += '```';
+    embed.addFields({ name: '⚔️ STANDINGS (4 - 10)', value: tableText });
+  }
+
+  embed.addFields({
+    name: '📜 SCORING CODE OF THE REALM',
+    value: '• **Attendance:** +15 pts / night\n' +
+           '• **Keys Completed:** +10 pts (+5 timed, +2 per level > +10)\n' +
+           '• **Role Flexibility:** +5 pts (Dual Flex) / +10 pts (Triple Flex)\n' +
+           '• **Born Leader (👑):** +8 pts / night willing to lead\n' +
+           '• **Stonk Back (🏋️):** +8 pts / night willing to carry\n' +
+           '• **Carry Shepherd (🎒):** +15 pts per key run with guildies in need'
+  });
+
+  embed.setFooter({ text: 'Kith & Kin • Midnight Season 2 | Live Web App Synced' });
+  return embed;
+}
+
+function createLeaderboardButtons(webUrl = 'https://knkmplus.netlify.app') {
+  return [
+    {
+      type: 1,
+      components: [
+        { type: 2, style: ButtonStyle.Link || 5, url: `${webUrl}/leaderboard.html`, label: '🌐 View Web Leaderboard' },
+        { type: 2, style: ButtonStyle.Secondary || 2, custom_id: 'btn_leaderboard_rules', label: 'ℹ️ Scoring Rules' },
+        { type: 2, style: ButtonStyle.Primary || 1, custom_id: 'btn_leaderboard_refresh', label: '🔄 Refresh' }
+      ]
+    }
+  ];
+}
+
 module.exports = {
   createRosterEmbed,
   createGroupEmbeds,
   createSignupButtons,
   createSignupFormComponents,
-  createCharacterMatchComponents
+  createCharacterMatchComponents,
+  createLeaderboardEmbed,
+  createLeaderboardButtons
 };

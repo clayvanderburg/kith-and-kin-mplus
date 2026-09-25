@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kith and Kin — The Hall of Champions | Participation Leaderboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/jpeg" href="assets/kith-and-kin-logo.jpg">
+  <link rel="stylesheet" href="styles.css?v=lb-1">
+</head>
+<body>
+  <div class="site-wrapper">
+    <!-- Header Navigation -->
+    <nav class="site-nav" aria-label="Site">
+      <a href="signup.html">Player View</a>
+      <a href="index.html">Control Center</a>
+      <a href="leaderboard.html" class="is-current">Leaderboard 🏆</a>
+    </nav>
+
+    <!-- Main Header -->
+    <header class="guild-header">
+      <div class="guild-crest">
+        <div class="guild-emblem" id="keystoneSigil" title="Kith & Kin — The Hall of Champions">
+          <img src="assets/kith-and-kin-logo.jpg" alt="Kith & Kin" class="emblem-img">
+          <div class="emblem-glow"></div>
+          <div class="emblem-ring"></div>
+        </div>
+      </div>
+      <div class="header-titles">
+        <div class="guild-subtitle">World of Warcraft • Midnight Season 2</div>
+        <h1 class="guild-title"><span class="brand-kith">Hall</span> <span class="brand-amp">of</span> <span class="brand-kin">Champions</span> <span class="highlight">Participation Board</span></h1>
+        <p class="guild-tagline">Honoring guild attendance, role versatility, leadership, and carry shepherds over raw parses.</p>
+      </div>
+      <div class="header-actions">
+        <div id="dataSourceBadge" class="discord-sync-badge" title="Data Mode">
+          <span class="sync-dot"></span>
+          <span class="sync-text" id="dataSourceText">Demo Showcase</span>
+        </div>
+        <button id="soundToggleBtn" class="btn-icon" title="Toggle Sound FX">
+          <span class="icon">🔊</span>
+          <span class="btn-text">Audio: ON</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Leaderboard Main Shell -->
+    <main class="leaderboard-shell">
+      <!-- Toolbar & Actions -->
+      <section class="leaderboard-toolbar">
+        <div class="leaderboard-toolbar-left">
+          <button type="button" class="mode-toggle-btn is-demo" id="toggleSourceBtn" title="Switch between Demo Showcase (Fake Stats) and Live Guild Data">
+            <span id="sourceIcon">🎭</span>
+            <span id="sourceLabel">Showing: Demo Showcase (Fake Stats)</span>
+          </button>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="rosterCountLabel">18 Members Ranked</span>
+        </div>
+        <div class="leaderboard-toolbar-right">
+          <button type="button" class="btn btn-sm btn-accent" id="openDiscordModalBtn" title="View interactive Discord app version of the leaderboard">
+            📱 Discord App View
+          </button>
+          <button type="button" class="btn btn-sm btn-gold" id="copyDiscordBtn" title="Copy Discord-ready markdown leaderboard to clipboard">
+            📋 Copy Discord Post
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" id="refreshBtn" title="Recalculate standings">
+            🔄 Refresh
+          </button>
+        </div>
+      </section>
+
+      <!-- Section 1: The Code of the Vanguard (Scoring Rules) -->
+      <section class="card rules-card">
+        <div class="rules-header" id="rulesToggleHeader" title="Click to collapse or expand scoring rules">
+          <h2><span>📜</span> The Code of the Vanguard — How Points Are Earned</h2>
+          <span id="rulesChevron" style="color: var(--text-gold); font-size: 1.1rem;">▼</span>
+        </div>
+        <div class="rules-grid" id="rulesGrid">
+          <div class="rule-item">
+            <div class="rule-icon">📅</div>
+            <div class="rule-info">
+              <strong>Attendance</strong>
+              <span class="rule-badge">+15 pts / night</span>
+              <p>Rewarding presence and reliability on Friday Mythic+ nights.</p>
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🗝️</div>
+            <div class="rule-info">
+              <strong>Keystones Conquered</strong>
+              <span class="rule-badge">+10 pts / run</span>
+              <p>Base points per logged run. <strong>+5 pts</strong> for timed keys; <strong>+2 pts</strong> per level above +10.</p>
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🎭</div>
+            <div class="rule-info">
+              <strong>Role Flexibility</strong>
+              <span class="rule-badge">+5 / +10 pts</span>
+              <p><strong>+5 pts</strong> per night for Dual-Role flex (Tank/DPS, etc.); <strong>+10 pts</strong> for Triple Flex (Tank, Healer &amp; DPS!).</p>
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">👑</div>
+            <div class="rule-info">
+              <strong>Born Leader</strong>
+              <span class="rule-badge">+8 pts / night</span>
+              <p>Stepping up to navigate, direct mechanics, and guide a 5-man party.</p>
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🏋️</div>
+            <div class="rule-info">
+              <strong>Stronk Back</strong>
+              <span class="rule-badge">+8 pts / night</span>
+              <p>Signing up with "My back is stronk" — volunteering for heavy keystone lifting.</p>
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🎒</div>
+            <div class="rule-info">
+              <strong>Carry Shepherd</strong>
+              <span class="rule-badge">+15 pts / run</span>
+              <p>Completing a dungeon run grouped with a guild member in need of a carry!</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: The Golden Dais (Top 3 Podium) -->
+      <section class="podium-container" id="podiumSection">
+        <h2 class="podium-title">👑 The Golden Dais — Top Champions 👑</h2>
+        <div class="podium-grid" id="podiumGrid">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- Section 3: Full Standings Panel -->
+      <section class="standings-panel">
+        <div class="standings-filter-row">
+          <div class="filter-search-wrap">
+            <span class="filter-search-icon">🔍</span>
+            <input type="text" id="searchInput" class="filter-search-input" placeholder="Search champion or realm...">
+          </div>
+          <div class="filter-pills-wrap" id="filterPills">
+            <button type="button" class="filter-pill is-active" data-filter="all">All Members</button>
+            <button type="button" class="filter-pill" data-filter="tank">🛡️ Tanks</button>
+            <button type="button" class="filter-pill" data-filter="healer">💚 Healers</button>
+            <button type="button" class="filter-pill" data-filter="dps">⚔️ DPS</button>
+            <button type="button" class="filter-pill" data-filter="flex">🎭 Flex Chads</button>
+            <button type="button" class="filter-pill" data-filter="leader">👑 Born Leaders</button>
+            <button type="button" class="filter-pill" data-filter="stonk">🏋️ Stonk Backs</button>
+            <button type="button" class="filter-pill" data-filter="shepherd">🎒 Carry Shepherds</button>
+          </div>
+          <div>
+            <select id="sortSelect" class="form-select" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); color:#fff; border-radius:8px;">
+              <option value="points-desc">Sort: Total Points (High to Low)</option>
+              <option value="keys-desc">Sort: Keys Run (Most)</option>
+              <option value="carries-desc">Sort: Carry Rescues (Most)</option>
+              <option value="nights-desc">Sort: Nights Attended (Most)</option>
+              <option value="name-asc">Sort: Name (A-Z)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Standings Table -->
+        <div class="table-responsive">
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Rank</th>
+                <th>Champion</th>
+                <th>Role(s)</th>
+                <th>Badges</th>
+                <th>Participation Breakdown</th>
+                <th style="text-align: right;">Total Score</th>
+                <th style="width: 90px; text-align: center;">Audit</th>
+              </tr>
+            </thead>
+            <tbody id="standingsBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Discord App Preview Modal -->
+    <div class="modal-backdrop" id="discordModal" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="discord-modal-dialog">
+        <div class="discord-top-bar">
+          <div class="discord-channel-info">
+            <span class="discord-channel-hash">#</span>
+            <span>mythic-plus</span>
+            <span class="discord-channel-topic">Friday Mythic+ Night announcements &amp; standings</span>
+          </div>
+          <button type="button" class="btn-icon" id="closeDiscordModalBtn" title="Close Discord preview" style="padding:0.2rem 0.5rem; font-size:1.2rem; border:none; background:transparent; color:#949ba4; cursor:pointer;">✖</button>
+        </div>
+        <div class="discord-message-area">
+          <div class="discord-msg-row">
+            <img src="assets/kith-and-kin-logo.jpg" alt="Bot Avatar" class="discord-avatar">
+            <div class="discord-msg-content">
+              <div class="discord-msg-header">
+                <span class="discord-bot-name">Kith &amp; Kin Bot</span>
+                <span class="discord-bot-badge">BOT</span>
+                <span class="discord-timestamp" id="discordTimestamp">Today at 7:00 PM</span>
+              </div>
+              <!-- Discord Embed Card -->
+              <div class="discord-embed-card">
+                <div class="discord-embed-title">🏆 KITH &amp; KIN — PARTICIPATION LEADERBOARD</div>
+                <div class="discord-embed-desc">Honoring guild attendance, role versatility, leadership, and carry shepherds over raw parses.</div>
+                
+                <div class="discord-embed-field">
+                  <div class="discord-field-name">👑 THE PODIUM OF CHAMPIONS</div>
+                  <div class="discord-field-val" id="discordPodiumVal">
+                    <!-- Populated via JS -->
+                  </div>
+                </div>
+
+                <div class="discord-embed-field">
+                  <div class="discord-field-name">⚔️ STANDINGS (4 - 10)</div>
+                  <div class="discord-codeblock" id="discordCodeblockVal">
+                    <!-- Populated via JS -->
+                  </div>
+                </div>
+
+                <div class="discord-embed-field">
+                  <div class="discord-field-name">📜 SCORING CODE OF THE REALM</div>
+                  <div class="discord-field-val">
+                    • <strong>Attendance:</strong> +15 pts / night<br>
+                    • <strong>Keys Completed:</strong> +10 pts (+5 timed, +2 per level &gt; +10)<br>
+                    • <strong>Role Flexibility:</strong> +5 pts (Dual Flex) / +10 pts (Triple Flex)<br>
+                    • <strong>Born Leader (👑):</strong> +8 pts / night willing to lead<br>
+                    • <strong>Stonk Back (🏋️):</strong> +8 pts / night willing to carry<br>
+                    • <strong>Carry Shepherd (🎒):</strong> +15 pts per key run with guildies in need
+                  </div>
+                </div>
+
+                <div class="discord-embed-footer">
+                  Kith &amp; Kin • Midnight Season 2 | Live Web App Synced
+                </div>
+              </div>
+
+              <!-- Discord Action Row Buttons -->
+              <div class="discord-action-row">
+                <a href="#" class="discord-btn-comp" style="text-decoration:none;">
+                  <span>🌐 View Web Leaderboard</span>
+                </a>
+                <button type="button" class="discord-btn-comp" id="discordMockRulesBtn">
+                  <span>ℹ️ Scoring Rules</span>
+                </button>
+                <button type="button" class="discord-btn-comp discord-btn-primary" id="discordMockRefreshBtn">
+                  <span>🔄 Refresh</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="discord-modal-footer">
+          <button type="button" class="btn btn-sm btn-gold" id="discordModalCopyBtn">📋 Copy Markdown for Discord</button>
+          <button type="button" class="btn btn-sm btn-ghost" id="discordModalDoneBtn">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Member Points Audit Modal -->
+    <div class="modal-backdrop" id="auditModal" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="modal card" style="max-width: 580px;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <h2 class="modal-title" id="auditTitle">📊 Points Breakdown</h2>
+            <p class="modal-subtitle" id="auditSubtitle">Individual participation audit</p>
+          </div>
+          <button type="button" class="btn-icon" id="closeAuditModalBtn" style="border:none; background:transparent; font-size:1.3rem; color:var(--text-gold); cursor:pointer;">✖</button>
+        </div>
+        <div class="modal-body" id="auditBody" style="padding: 1rem 1.25rem;">
+          <!-- Dynamically populated -->
+        </div>
+        <div class="modal-footer" style="padding: 0.75rem 1.25rem; display: flex; justify-content: flex-end;">
+          <button type="button" class="btn btn-sm btn-primary" id="auditDoneBtn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notice -->
+    <div class="toast-notice" id="toastNotice" hidden>
+      <span style="font-size: 1.2rem;">✅</span>
+      <span id="toastMessage">Copied to clipboard!</span>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="leaderboard-engine.js"></script>
+  <script src="leaderboard.js"></script>
+</body>
+</html>

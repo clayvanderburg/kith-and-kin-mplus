@@ -365,6 +365,22 @@ exports.handler = async (event, context) => {
         return jsonResponse({ type: 4, data: panel });
       }
 
+      if (subcommand === 'leaderboard') {
+        const engine = loadModule('leaderboard-engine');
+        const standings = engine
+          ? engine.computeLeaderboardStandings(state.players, state)
+          : [];
+        const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
+        const components = embeds ? embeds.createLeaderboardButtons(WEB_URL) : [];
+        return jsonResponse({
+          type: 4,
+          data: {
+            embeds: [embed],
+            components
+          }
+        });
+      }
+
       if (subcommand === 'sync-keys') {
         const attendees = (state.players || []).filter(p => p.attending);
         if (attendees.length === 0) {
@@ -528,6 +544,38 @@ exports.handler = async (event, context) => {
       (p.discordId && p.discordId === discordUser.id) ||
       (defaultName && p.name.toLowerCase() === defaultName.toLowerCase())
     );
+
+    // Leaderboard interactive buttons
+    if (customId === 'btn_leaderboard_refresh') {
+      const engine = loadModule('leaderboard-engine');
+      const standings = engine ? engine.computeLeaderboardStandings(state.players, state) : [];
+      const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
+      const components = embeds ? embeds.createLeaderboardButtons(WEB_URL) : [];
+      return jsonResponse({
+        type: 7,
+        data: {
+          embeds: [embed],
+          components
+        }
+      });
+    }
+
+    if (customId === 'btn_leaderboard_rules') {
+      return jsonResponse({
+        type: 4,
+        data: {
+          content: '### 📜 Kith & Kin Participation Scoring Code\n' +
+                   '• **Attendance:** +15 pts per Mythic+ night attended\n' +
+                   '• **Keys Completed:** +10 pts (+5 bonus if timed, +2 pts per level above +10)\n' +
+                   '• **Role Versatility:** +5 pts for Dual Flex (Tank/DPS, etc.), +10 pts for Triple Flex (Tank/Healer/DPS)\n' +
+                   '• **Born Leader (👑):** +8 pts per night volunteered to lead\n' +
+                   '• **Stonk Back (🏋️):** +8 pts per night volunteered "My back is stronk"\n' +
+                   '• **Carry Shepherd (🎒):** +15 pts per key run with guildies who need a carry\n\n' +
+                   `View the live interactive leaderboard: <${WEB_URL}/leaderboard.html>`,
+          flags: 64
+        }
+      });
+    }
 
     // Absent Button
     if (customId === 'btn_absent') {

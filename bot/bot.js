@@ -6,7 +6,8 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { registerCommands } = require('./commands');
-const { createRosterEmbed, createGroupEmbeds, createSignupButtons, createSignupFormComponents, createCharacterMatchComponents } = require('./embeds');
+const { createRosterEmbed, createGroupEmbeds, createSignupButtons, createSignupFormComponents, createCharacterMatchComponents, createLeaderboardEmbed, createLeaderboardButtons } = require('./embeds');
+const leaderboardEngine = require('./leaderboard-engine');
 const { searchGuildRoster, attachCharacter } = require('./roster-search');
 const { solveGroups, rollKeystone, DUNGEONS_MIDNIGHT_S2, WOW_CLASSES } = require('./solver');
 const { fetchRemoteState, pushRemoteState, lookupRaiderIo } = require('./sync');
@@ -126,6 +127,15 @@ async function handleSlashCommand(interaction) {
       content: `🌐 **Kith & Kin Mythic+ Night Web App:**\n${WEB_URL}`,
       ephemeral: false
     });
+  }
+
+  if (subcommand === 'leaderboard') {
+    await interaction.deferReply();
+    const state = await fetchRemoteState();
+    const standings = leaderboardEngine.computeLeaderboardStandings(state.players, state);
+    const embed = createLeaderboardEmbed(standings, WEB_URL);
+    const buttons = createLeaderboardButtons(WEB_URL);
+    return interaction.editReply({ embeds: [embed], components: buttons });
   }
 
   if (subcommand === 'roster') {
@@ -337,6 +347,29 @@ async function handleButtonInteraction(interaction) {
     return interaction.update({
       content: '❌ Sign-up form closed.',
       components: []
+    });
+  }
+
+  if (customId === 'btn_leaderboard_refresh') {
+    await interaction.deferUpdate();
+    const state = await fetchRemoteState();
+    const standings = leaderboardEngine.computeLeaderboardStandings(state.players, state);
+    const embed = createLeaderboardEmbed(standings, WEB_URL);
+    const buttons = createLeaderboardButtons(WEB_URL);
+    return interaction.editReply({ embeds: [embed], components: buttons });
+  }
+
+  if (customId === 'btn_leaderboard_rules') {
+    return interaction.reply({
+      content: '### 📜 Kith & Kin Participation Scoring Code\n' +
+               '• **Attendance:** +15 pts per Mythic+ night attended\n' +
+               '• **Keys Completed:** +10 pts (+5 bonus if timed, +2 pts per level above +10)\n' +
+               '• **Role Versatility:** +5 pts for Dual Flex (Tank/DPS, etc.), +10 pts for Triple Flex (Tank/Healer/DPS)\n' +
+               '• **Born Leader (👑):** +8 pts per night volunteered to lead\n' +
+               '• **Stonk Back (🏋️):** +8 pts per night volunteered "My back is stronk"\n' +
+               '• **Carry Shepherd (🎒):** +15 pts per key run with guildies who need a carry\n\n' +
+               `View the live interactive leaderboard: <${WEB_URL}/leaderboard.html>`,
+      ephemeral: true
     });
   }
 

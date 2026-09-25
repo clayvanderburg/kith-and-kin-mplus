@@ -118,6 +118,11 @@ const commands = [
         .setName('web')
         .setDescription('Get the direct link to the live web group generator')
     )
+    .addSubcommand(sub =>
+      sub
+        .setName('leaderboard')
+        .setDescription('🏆 View the Kith and Kin Mythic+ Participation Leaderboard & Top Champions')
+    )
 ];
 
 async function registerCommands(token, clientId, guildId) {
