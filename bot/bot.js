@@ -131,10 +131,11 @@ async function handleSlashCommand(interaction) {
 
   if (subcommand === 'leaderboard') {
     await interaction.deferReply();
-    const viewMode = interaction.options.getString('view') || 'auto';
+    const viewMode = interaction.options.getString('view') || 'demo';
     const state = await fetchRemoteState();
-    const forceLive = viewMode === 'live';
-    const standings = leaderboardEngine.computeLeaderboardStandings(state.players, state, forceLive);
+    const standings = (viewMode === 'live')
+      ? leaderboardEngine.computeLeaderboardStandings(state.players, state, true)
+      : leaderboardEngine.computeLeaderboardStandings(leaderboardEngine.DEMO_PLAYERS);
     const embed = createLeaderboardEmbed(standings, WEB_URL);
     const buttons = createLeaderboardButtons(WEB_URL);
     return interaction.editReply({ embeds: [embed], components: buttons });

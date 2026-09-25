@@ -367,11 +367,12 @@ exports.handler = async (event, context) => {
 
       if (subcommand === 'leaderboard') {
         const subOpts = options?.[0]?.options || [];
-        const viewMode = subOpts.find(o => o.name === 'view')?.value || 'auto';
+        const viewMode = subOpts.find(o => o.name === 'view')?.value || 'demo';
         const engine = loadModule('leaderboard-engine');
-        const forceLive = viewMode === 'live';
         const standings = engine
-          ? engine.computeLeaderboardStandings(state.players, state, forceLive)
+          ? (viewMode === 'live'
+              ? engine.computeLeaderboardStandings(state.players, state, true)
+              : engine.computeLeaderboardStandings(engine.DEMO_PLAYERS))
           : [];
         const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
         const components = embeds ? embeds.createLeaderboardButtons(WEB_URL).map(r => r.toJSON ? r.toJSON() : r) : [];
@@ -551,7 +552,7 @@ exports.handler = async (event, context) => {
     // Leaderboard interactive buttons
     if (customId === 'btn_leaderboard_refresh') {
       const engine = loadModule('leaderboard-engine');
-      const standings = engine ? engine.computeLeaderboardStandings(state.players, state) : [];
+      const standings = engine ? engine.computeLeaderboardStandings(engine.DEMO_PLAYERS) : [];
       const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
       const components = embeds ? embeds.createLeaderboardButtons(WEB_URL).map(r => r.toJSON ? r.toJSON() : r) : [];
       return jsonResponse({
