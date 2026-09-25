@@ -248,6 +248,13 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
+  let body = {};
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch (parseErr) {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Invalid JSON payload.' }) };
+  }
+
   try {
     if (body.action === 'roll') {
       return rollOwnGroup(event, state, mine, body);

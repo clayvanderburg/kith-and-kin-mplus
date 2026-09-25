@@ -181,11 +181,55 @@
         </div>
         <p class="player-lead" id="lastRunNote" style="margin-top:0.4rem;">Leave this blank until you select the keystone in your bags. Nothing is filled in from Raider.IO.</p>
         <button type="button" class="btn btn-sm" id="saveKeyBtn">Save my key</button>
-        <div class="desk-grid" style="margin-top: 0.9rem;">
-          <label>Key you ran
-            <input id="runKeyInput" class="form-input" maxlength="80" placeholder="Murder Row +16">
-          </label>
-          <label>Result
+        <div class="form-group" style="margin-top: 0.9rem;">
+          <label style="display:block; margin-bottom:0.35rem; font-weight:600;">Key you ran</label>
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 0.5rem; margin-bottom: 0.65rem;">
+            <select id="runDungeonSelect" class="form-select">
+              <option value="">-- Dungeon --</option>
+              <option value="Voidscar Arena">Voidscar Arena</option>
+              <option value="Murder Row">Murder Row</option>
+              <option value="The Blinding Vale">The Blinding Vale</option>
+              <option value="Den of Nalorakk">Den of Nalorakk</option>
+              <option value="Kings' Rest">Kings' Rest</option>
+              <option value="Altar of Fangs">Altar of Fangs</option>
+              <option value="Temple of Sethraliss">Temple of Sethraliss</option>
+              <option value="Ruby Life Pools">Ruby Life Pools</option>
+            </select>
+            <select id="runKeyLevelSelect" class="form-select">
+              <option value="">-- Level --</option>
+              <option value="2">+2</option>
+              <option value="3">+3</option>
+              <option value="4">+4</option>
+              <option value="5">+5</option>
+              <option value="6">+6</option>
+              <option value="7">+7</option>
+              <option value="8">+8</option>
+              <option value="9">+9</option>
+              <option value="10">+10</option>
+              <option value="11">+11</option>
+              <option value="12">+12</option>
+              <option value="13">+13</option>
+              <option value="14">+14</option>
+              <option value="15">+15</option>
+              <option value="16">+16</option>
+              <option value="17">+17</option>
+              <option value="18">+18</option>
+              <option value="19">+19</option>
+              <option value="20">+20</option>
+              <option value="21">+21</option>
+              <option value="22">+22</option>
+              <option value="23">+23</option>
+              <option value="24">+24</option>
+              <option value="25">+25</option>
+              <option value="26">+26</option>
+              <option value="27">+27</option>
+              <option value="28">+28</option>
+              <option value="29">+29</option>
+              <option value="30">+30</option>
+            </select>
+          </div>
+          <input type="hidden" id="runKeyInput" />
+          <label style="display:block; margin-bottom:0.35rem; font-weight:600;">Result
             <select id="runResult" class="form-select">
               <option value="yes">Timed</option>
               <option value="no">Depleted</option>
@@ -430,6 +474,6 @@
   <script src="player-stats.js?v=chronicler-1"></script>
   <script src="run-matcher.js?v=chronicler-1"></script>
   <script src="chronicler.js?v=chronicler-1"></script>
-  <script src="signup.js?v=chronicler-1"></script>
+  <script src="signup.js?v=runkey-1"></script>
 </body>
 </html>

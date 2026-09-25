@@ -63,6 +63,43 @@
     levelSelect.value = level;
   }
 
+  function syncRunKeyFromDropdowns() {
+    const dungeonSelect = document.getElementById('runDungeonSelect');
+    const levelSelect = document.getElementById('runKeyLevelSelect');
+    const runKey = document.getElementById('runKeyInput');
+    if (!runKey || !dungeonSelect || !levelSelect) return;
+    const dungeon = dungeonSelect.value.trim();
+    const level = levelSelect.value.trim();
+    if (dungeon && level) {
+      runKey.value = `${dungeon} +${level}`;
+    } else if (level) {
+      runKey.value = `+${level}`;
+    } else if (dungeon) {
+      runKey.value = dungeon;
+    } else {
+      runKey.value = '';
+    }
+  }
+
+  function setDropdownsFromRunKey(str) {
+    const dungeonSelect = document.getElementById('runDungeonSelect');
+    const levelSelect = document.getElementById('runKeyLevelSelect');
+    const runKey = document.getElementById('runKeyInput');
+    if (!dungeonSelect || !levelSelect) return;
+    if (runKey) runKey.value = str || '';
+    if (!str) {
+      dungeonSelect.value = '';
+      levelSelect.value = '';
+      return;
+    }
+    const trimmed = String(str).trim();
+    const plusMatch = trimmed.match(/\+(\d+)/);
+    const level = plusMatch ? plusMatch[1] : '';
+    const dungeonPart = trimmed.replace(/\+.*$/, '').trim();
+    dungeonSelect.value = dungeonPart;
+    levelSelect.value = level;
+  }
+
   function checkedValues(container) {
     return [...container.querySelectorAll('input:checked')].map(input => input.value);
   }
@@ -199,9 +236,8 @@
     document.querySelectorAll('#statusRow .status-btn').forEach(button => {
       button.classList.toggle('is-on', button.dataset.status === (signup.nightStatus || 'waiting'));
     });
-    const keyInput = document.getElementById('runKeyInput');
-    if (keyInput && !keyInput.value) keyInput.value = signup.ownedKey || '';
     setDropdownsFromOwnedKey(signup.ownedKey || '');
+    setDropdownsFromRunKey(signup.ownedKey || '');
     const lastRun = document.getElementById('lastRunNote');
     if (lastRun) lastRun.textContent = 'Leave this blank until you select the keystone in your bags.';
     renderHistory(signup.runLog);
@@ -639,6 +675,8 @@
     });
     document.getElementById('ownedDungeonSelect')?.addEventListener('change', syncOwnedKeyFromDropdowns);
     document.getElementById('ownedKeyLevelSelect')?.addEventListener('change', syncOwnedKeyFromDropdowns);
+    document.getElementById('runDungeonSelect')?.addEventListener('change', syncRunKeyFromDropdowns);
+    document.getElementById('runKeyLevelSelect')?.addEventListener('change', syncRunKeyFromDropdowns);
 
     document.getElementById('keystoneSigil')?.addEventListener('click', () => {
       const sigil = document.getElementById('keystoneSigil');
@@ -659,12 +697,18 @@
       }
     });
     document.getElementById('logRunBtn').addEventListener('click', async () => {
+      syncRunKeyFromDropdowns();
+      const runKeyVal = document.getElementById('runKeyInput').value.trim();
       const line = document.getElementById('nightStatus');
+      if (!runKeyVal) {
+        line.textContent = 'Please select the dungeon and level for the key you ran.';
+        return;
+      }
       line.textContent = 'Saving the key...';
       try {
         await postMe({
           action: 'log-run',
-          key: document.getElementById('runKeyInput').value,
+          key: runKeyVal,
           success: document.getElementById('runResult').value === 'yes',
           note: document.getElementById('runNote').value,
           satisfaction
