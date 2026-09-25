@@ -156,6 +156,7 @@ Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it
 
   // Candidate models to try in order
   const candidateModels = [
+    { ver: 'v1beta', name: 'gemini-3.8-flash' },
     { ver: 'v1beta', name: 'gemini-2.0-flash' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
     { ver: 'v1', name: 'gemini-1.5-flash' },
@@ -204,7 +205,9 @@ Keep it punchy, engaging, and under 400 words. Format with markdown emojis so it
 
     const listData = JSON.parse(listText);
     const available = (listData.models || []).find(m =>
-      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('flash')
+      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('3.8-flash')
+    ) || (listData.models || []).find(m =>
+      m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent') && m.name.includes('flash') && !m.name.includes('2.5')
     ) || (listData.models || []).find(m =>
       m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
     );
