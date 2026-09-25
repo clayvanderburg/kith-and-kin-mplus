@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/jpeg" href="assets/kith-and-kin-logo.jpg">
-  <link rel="stylesheet" href="styles.css?v=logo-1">
+  <link rel="stylesheet" href="styles.css?v=form-btn-1">
 </head>
 <body>
   <!-- Ambient Audio Elements synthesized via Web Audio API -->
@@ -263,17 +263,11 @@
           </div>
         </div>
 
-        <!-- Big Launch Action -->
+        <!-- Launch Action Bar -->
         <div class="launch-action-bar">
-          <button id="generateGroupsBtn" class="btn btn-keystone">
-            <span class="keystone-glow"></span>
-            <span class="keystone-btn-content">
-              <span class="keystone-icon">💎</span>
-              <span class="keystone-text">
-                <span class="title">ACTIVATE KEYSTONE &amp; FORM GROUPS</span>
-                <span class="subtitle">Assemble 1 Tank, 1 Healer, 3 DPS per party</span>
-              </span>
-            </span>
+          <button id="generateGroupsBtn" class="btn btn-form-groups">
+            <span class="btn-form-groups-icon">⚔️</span>
+            <span class="btn-form-groups-text">FORM GROUPS</span>
           </button>
         </div>
 
@@ -299,7 +293,7 @@
             <div class="empty-state">
               <div class="empty-icon">🛡️⚔️💚</div>
               <h4>No groups formed yet</h4>
-              <p>Make sure at least 5 guild members (including at least 1 Tank &amp; 1 Healer) are marked attending, then click <strong>Activate Keystone</strong>!</p>
+              <p>Make sure at least 5 guild members (including at least 1 Tank &amp; 1 Healer) are marked attending, then click <strong>Form Groups</strong>!</p>
             </div>
           </div>
 
@@ -547,6 +541,6 @@
     .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
-  <script src="app.js?v=logo-1"></script>
+  <script src="app.js?v=form-btn-1"></script>
 </body>
 </html>
