@@ -1,18 +1,7 @@
 const crypto = require('crypto');
 const { bnetConfigured, redirectUri, stateCookie } = require('./player-session');
 
-exports.handler = async (event) => {
-  if (event.queryStringParameters?.debug === '1') {
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      body: JSON.stringify({
-        id: Boolean(process.env.BNET_CLIENT_ID),
-        secret: Boolean(process.env.BNET_CLIENT_SECRET),
-        redirect: Boolean(process.env.BNET_REDIRECT_URI)
-      })
-    };
-  }
+exports.handler = async () => {
   if (!bnetConfigured()) {
     return {
       statusCode: 501,
