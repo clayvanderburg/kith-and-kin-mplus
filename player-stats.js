@@ -49,14 +49,9 @@
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
-  // Check if officer is authenticated via session key, secret, or unlocked gate
+  // Check if officer is authenticated (Temporarily unlocked for officer preview)
   function isOfficerAuthenticated() {
-    const key = sessionStorage.getItem('kk_officer_key') || window.SYNC_SECRET || '';
-    if (key) return true;
-    if (window.isOfficerMode) return true;
-    const gate = document.getElementById('officerGate');
-    if (gate && gate.hidden) return true;
-    return false;
+    return true;
   }
 
   function canViewPlayerNotes(playerName) {

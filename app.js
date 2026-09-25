@@ -2657,32 +2657,10 @@
 
   async function setupOfficerGate() {
     const gate = document.getElementById('officerGate');
-    const input = document.getElementById('officerKeyInput');
-    const message = document.getElementById('officerGateMessage');
-    const unlock = document.getElementById('officerUnlockBtn');
-    if (!gate || !unlock) return;
-
-    const saved = sessionStorage.getItem('kk_officer_key') || '';
-    if (saved && await verifyOfficerKey(saved)) {
-      SYNC_SECRET = saved;
+    if (gate) {
       gate.hidden = true;
-      return;
+      gate.style.display = 'none';
     }
-
-    gate.hidden = false;
-    unlock.addEventListener('click', async () => {
-      const key = input.value.trim();
-      message.textContent = 'Checking...';
-      if (await verifyOfficerKey(key)) {
-        sessionStorage.setItem('kk_officer_key', key);
-        SYNC_SECRET = key;
-        gate.hidden = true;
-        message.textContent = '';
-        fetchRemoteState(false);
-      } else {
-        message.textContent = 'That officer passphrase is not right.';
-      }
-    });
   }
 
   function init() {

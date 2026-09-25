@@ -371,7 +371,7 @@ exports.handler = async (event, context) => {
           ? engine.computeLeaderboardStandings(state.players, state)
           : [];
         const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
-        const components = embeds ? embeds.createLeaderboardButtons(WEB_URL) : [];
+        const components = embeds ? embeds.createLeaderboardButtons(WEB_URL).map(r => r.toJSON ? r.toJSON() : r) : [];
         return jsonResponse({
           type: 4,
           data: {
@@ -550,7 +550,7 @@ exports.handler = async (event, context) => {
       const engine = loadModule('leaderboard-engine');
       const standings = engine ? engine.computeLeaderboardStandings(state.players, state) : [];
       const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
-      const components = embeds ? embeds.createLeaderboardButtons(WEB_URL) : [];
+      const components = embeds ? embeds.createLeaderboardButtons(WEB_URL).map(r => r.toJSON ? r.toJSON() : r) : [];
       return jsonResponse({
         type: 7,
         data: {

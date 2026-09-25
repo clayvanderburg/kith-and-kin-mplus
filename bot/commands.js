@@ -142,26 +142,21 @@ async function registerCommands(token, clientId, guildId) {
         { body: commandsData }
       );
       console.log(`[Commands] Registered ${commandsData.length} slash commands to guild ${guildId}`);
-      // A leftover global copy shows up beside the guild command as a second /mplus.
-      await rest.put(Routes.applicationCommands(clientId), { body: [] });
-      console.log('[Commands] Cleared global slash commands so only the guild command remains.');
-      return;
     } catch (err) {
-      if (err.code === 50001 || err.status === 403) {
-        console.warn(`[Commands] Bot is not added to guild ${guildId} yet (Missing Access).`);
-        console.log(`[Commands] Registering globally so commands are active once High Council invites the bot...`);
-      } else {
-        throw err;
-      }
+      console.warn(`[Commands] Warning registering to guild ${guildId}:`, err.message);
     }
   }
 
   // Global command registration
-  await rest.put(
-    Routes.applicationCommands(clientId),
-    { body: commandsData }
-  );
-  console.log(`[Commands] Successfully registered ${commandsData.length} global slash commands!`);
+  try {
+    await rest.put(
+      Routes.applicationCommands(clientId),
+      { body: commandsData }
+    );
+    console.log(`[Commands] Successfully registered ${commandsData.length} global slash commands!`);
+  } catch (err) {
+    console.warn('[Commands] Warning registering global commands:', err.message);
+  }
 }
 
 module.exports = {

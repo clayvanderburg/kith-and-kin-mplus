@@ -564,16 +564,27 @@ function createLeaderboardEmbed(standings, webUrl = 'https://knkmplus.netlify.ap
 }
 
 function createLeaderboardButtons(webUrl = 'https://knkmplus.netlify.app') {
-  return [
-    {
-      type: 1,
-      components: [
-        { type: 2, style: ButtonStyle.Link || 5, url: `${webUrl}/leaderboard.html`, label: '🌐 View Web Leaderboard' },
-        { type: 2, style: ButtonStyle.Secondary || 2, custom_id: 'btn_leaderboard_rules', label: 'ℹ️ Scoring Rules' },
-        { type: 2, style: ButtonStyle.Primary || 1, custom_id: 'btn_leaderboard_refresh', label: '🔄 Refresh' }
-      ]
-    }
-  ];
+  const linkStyle = (ButtonStyle && ButtonStyle.Link) ? ButtonStyle.Link : 5;
+  const secondaryStyle = (ButtonStyle && ButtonStyle.Secondary) ? ButtonStyle.Secondary : 2;
+  const primaryStyle = (ButtonStyle && ButtonStyle.Primary) ? ButtonStyle.Primary : 1;
+
+  const btnWeb = new ButtonBuilder()
+    .setStyle(linkStyle)
+    .setURL(`${webUrl.replace(/\/$/, '')}/leaderboard.html`)
+    .setLabel('🌐 View Web Leaderboard');
+
+  const btnRules = new ButtonBuilder()
+    .setCustomId('btn_leaderboard_rules')
+    .setStyle(secondaryStyle)
+    .setLabel('ℹ️ Scoring Rules');
+
+  const btnRefresh = new ButtonBuilder()
+    .setCustomId('btn_leaderboard_refresh')
+    .setStyle(primaryStyle)
+    .setLabel('🔄 Refresh');
+
+  const row = new ActionRowBuilder().addComponents(btnWeb, btnRules, btnRefresh);
+  return [row];
 }
 
 module.exports = {
