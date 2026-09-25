@@ -7,6 +7,25 @@
   # Only the shared bot modules. Never bundle bot/.env (bot token) or bot/node_modules.
   included_files = ["bot/*.js", "bot/guild-roster.json", "leaderboard-engine.js", "!bot/.env", "!bot/node_modules/**"]
 
+# The whole repo folder is published, so hide files that are not part of the website.
+[[redirects]]
+  from = "/bot/.env"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/*.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
