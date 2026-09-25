@@ -363,11 +363,27 @@
 
     list.innerHTML = ordered.map(group => {
       const memberRows = group.members.map(renderMemberSlot).join('');
+      const inKeyCount = (group.members || []).filter(m => m.nightStatus === 'in-key').length;
+      const totalMembers = (group.members || []).length;
+
+      let partyStatusHtml = '';
+      if (totalMembers > 0 && inKeyCount === totalMembers) {
+        partyStatusHtml = '<span class="party-status-indicator in-key" title="All members are currently In key">🗝️ In key</span>';
+      } else if (inKeyCount > 0) {
+        partyStatusHtml = `<span class="party-status-indicator in-key" title="${inKeyCount} of ${totalMembers} members are in key">🗝️ In key (${inKeyCount}/${totalMembers})</span>`;
+      } else {
+        partyStatusHtml = '<span class="party-status-indicator waiting" title="Party is waiting to run">⏳ Waiting</span>';
+      }
+
+      const rolledKey = (group.keystone || group.dungeon || '').trim();
+      const hasRolledKey = rolledKey && rolledKey !== 'No key rolled yet';
+      const hasLeftOut = (group.excludedPlayers || []).length > 0;
+
       return `
         <article class="party-card ${group.mine ? 'mine is-mine-group' : ''}">
           <div class="party-header">
             <div class="party-badge-title">
-              <span class="party-num">Party ${group.index + 1}${group.mine ? ' · ⭐ Your Party' : ''}</span>
+              <span class="party-num">Party ${group.index + 1}${group.mine ? ' · ⭐ Your Party' : ''} ·</span>
               <span class="party-name">${escapeHtml(group.name)}</span>
             </div>
             <div class="party-card-controls">
@@ -376,11 +392,13 @@
           </div>
 
           <div class="party-sub-meta">
-            <span class="party-key-target">🎯 ${escapeHtml(group.targetKeyStr || '+10–12')}</span>
-            <div class="party-dungeon-row">
-              <span class="party-dungeon-tag" title="Key rolled for this party">🔑 ${escapeHtml(group.keystone || group.dungeon || 'No key rolled yet')}</span>
+            <div class="party-sub-status">
+              ${partyStatusHtml}
             </div>
-            ${(group.excludedPlayers || []).length ? `<span class="party-left-out">Left out: ${escapeHtml(group.excludedPlayers.join(', '))}</span>` : ''}
+            <div class="party-sub-key-area">
+              ${hasRolledKey ? `<span class="party-dungeon-tag" title="Key rolled for this party">🔑 ${escapeHtml(rolledKey)}</span>` : ''}
+              ${hasLeftOut ? `<span class="party-left-out" title="Excluded from roll">Left out: ${escapeHtml(group.excludedPlayers.join(', '))}</span>` : ''}
+            </div>
           </div>
 
           <div class="party-utility-bar">

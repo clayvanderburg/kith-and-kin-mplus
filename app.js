@@ -1655,10 +1655,31 @@
       card.className = `party-card ${grp.isLocked ? 'is-locked' : ''}`;
       card.style.animationDelay = `${index * 0.08}s`;
 
+      const members = [grp.tank, grp.healer, ...(grp.dps || [])].filter(Boolean);
+      const inKeyCount = members.filter(m => {
+        const live = state.players.find(p => p.name === m.name);
+        const st = live?.nightStatus || m.nightStatus;
+        return st === 'in-key';
+      }).length;
+      const totalMembers = members.length;
+
+      let partyStatusHtml = '';
+      if (totalMembers > 0 && inKeyCount === totalMembers) {
+        partyStatusHtml = '<span class="party-status-indicator in-key" title="All members are currently In key">🗝️ In key</span>';
+      } else if (inKeyCount > 0) {
+        partyStatusHtml = `<span class="party-status-indicator in-key" title="${inKeyCount} of ${totalMembers} members are in key">🗝️ In key (${inKeyCount}/${totalMembers})</span>`;
+      } else {
+        partyStatusHtml = '<span class="party-status-indicator waiting" title="Party is waiting to run">⏳ Waiting</span>';
+      }
+
+      const rolledKey = (grp.keystone || grp.dungeon || '').trim();
+      const hasRolledKey = rolledKey && rolledKey !== 'No key rolled yet';
+      const hasLeftOut = (grp.excludedPlayers || []).length > 0;
+
       card.innerHTML = `
         <div class="party-header">
           <div class="party-badge-title">
-            <span class="party-num">Party ${index + 1}</span>
+            <span class="party-num">Party ${index + 1} ·</span>
             <span class="party-name">${escapeHtml(grp.name)}</span>
           </div>
           <div class="party-card-controls">
@@ -1669,12 +1690,13 @@
         </div>
 
         <div class="party-sub-meta">
-          <span class="party-key-target">🎯 ${grp.targetKeyStr}</span>
-          <div class="party-dungeon-row">
-            <span class="party-dungeon-tag" title="Key rolled for this party">🔑 ${escapeHtml(grp.keystone || grp.dungeon || 'No key rolled yet')}</span>
-            <button type="button" class="btn-mini-roll party-card-reroll-btn" data-group-index="${index}" title="Roll one typed key from the players in Party ${index + 1}" ${grp.isLocked ? 'disabled' : ''}>🎲 Roll</button>
+          <div class="party-sub-status">
+            ${partyStatusHtml}
           </div>
-          ${(grp.excludedPlayers || []).length ? `<span class="party-left-out">Left out: ${escapeHtml((grp.excludedPlayers || []).join(', '))}</span>` : ''}
+          <div class="party-sub-key-area">
+            ${hasRolledKey ? `<span class="party-dungeon-tag" title="Key rolled for this party">🔑 ${escapeHtml(rolledKey)}</span>` : ''}
+            ${hasLeftOut ? `<span class="party-left-out" title="Excluded from roll">Left out: ${escapeHtml(grp.excludedPlayers.join(', '))}</span>` : ''}
+          </div>
         </div>
 
         <div class="party-utility-bar">
@@ -1685,7 +1707,7 @@
           <span class="party-util-badge ${grp.hasBrez ? 'ready' : 'missing'}" title="${grp.hasBrez ? 'Battle Rez ready: ' + escapeHtml(grp.brezProvider) : 'No Battle Rez class in this group!'}">
             🔄 ${grp.hasBrez ? 'BRez: ' + escapeHtml(grp.brezProvider) : 'BRez: Missing'}
           </span>
-          ${grp.isShitterGroup ? `<span class="party-util-badge shitter-group" title="Dedicated Shitter Alt Squad! (${grp.shitterCount} Shitters)">💩 Shitter Alt Squad</span>` : ''}
+          ${grp.isShitterGroup ? `<span class="party-util-badge shitter-group" title="Dedicated Shitter Alt Squad! (${grp.shitterCount} Shitters)">💩 Shitter Squad</span>` : ''}
           ${grp.hasCarryMatch ? `<span class="party-util-badge carry-assist" title="Carry Match: ${escapeHtml(grp.willingCarryNames.join(', '))} carrying ${escapeHtml(grp.needCarryNames.join(', '))}">🎒 Carry Assisted</span>` : ''}
         </div>
 
