@@ -3,8 +3,8 @@
  * No web API can see the keystone in someone's bags; guild addons (BigWigs/Details!/Astral Keys) can,
  * so one officer's game client collects the whole guild's keys and this endpoint stores them.
  */
-const { isOfficerRequest } = require('./lib/auth');
-const live = require('./lib/live-state');
+const { isOfficerRequest } = require('../auth');
+const live = require('../live-state');
 
 const HEADERS = { 'Content-Type': 'application/json' };
 

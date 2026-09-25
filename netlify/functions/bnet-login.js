@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { bnetConfigured, redirectUri, stateCookie } = require('./player-session');
+const { bnetConfigured, redirectUri, stateCookie } = require('./lib/player-session');
 
 exports.handler = async () => {
   if (!bnetConfigured()) {

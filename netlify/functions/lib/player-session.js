@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { safeEqual, sessionSecret } = require('./lib/auth');
+const { safeEqual, sessionSecret } = require('./auth');
 
 const MAX_COOKIE = 3200;
 

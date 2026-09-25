@@ -1,4 +1,4 @@
-const { readCookies, createSession, redirectUri } = require('./player-session');
+const { readCookies, createSession, redirectUri } = require('./lib/player-session');
 
 function html(status, message) {
   return {

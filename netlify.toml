@@ -93,9 +93,4 @@
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
     Cache-Control = "no-cache, no-store, must-revalidate"
 
-# Background jobs (times are UTC)
-[functions."refresh-scores"]
-  schedule = "*/15 * * * *"
-
-[functions."sync-night"]
-  schedule = "*/15 * * * 5,6"
+# Background job schedules live in netlify/functions/refresh-scores.mjs and sync-night.mjs (config.schedule).

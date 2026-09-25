@@ -1,10 +1,10 @@
 const path = require('path');
-const { readSession, bnetConfigured } = require('./player-session');
-const { readLiveState, writeMergedState } = require('./lib/live-state');
+const { readSession, bnetConfigured } = require('../player-session');
+const { readLiveState, writeMergedState } = require('../live-state');
 
 function loadKeystone() {
   try {
-    return require('../../bot/keystone');
+    return require('../../../../bot/keystone');
   } catch (err) {
     return require(path.join(process.cwd(), 'bot', 'keystone'));
   }

@@ -10,6 +10,7 @@ const path = require('path');
 // Safe dynamic imports of solver and embeds across local and Netlify Lambda environments
 function loadModule(name) {
   const possiblePaths = [
+    path.join(__dirname, '..', '..', '..', '..', 'bot', name),
     path.join(__dirname, '..', '..', 'bot', name),
     path.join(__dirname, '..', 'bot', name),
     path.join(__dirname, 'bot', name),
@@ -28,7 +29,7 @@ const solver = loadModule('solver');
 const embeds = loadModule('embeds');
 const rosterSearch = loadModule('roster-search');
 const rollUi = loadModule('roll-ui');
-const liveState = require('./lib/live-state');
+const liveState = require('../live-state');
 
 function foldName(value) {
   return String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();

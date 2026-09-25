@@ -3,8 +3,8 @@
  * Provides a cloud-synchronized JSON store for both the web application and Discord bot.
  */
 
-const { readLiveState, writeMergedState, updateDiscordCard } = require('./lib/live-state');
-const { isOfficerRequest, publicState } = require('./lib/auth');
+const { readLiveState, writeMergedState, updateDiscordCard } = require('../live-state');
+const { isOfficerRequest, publicState } = require('../auth');
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',

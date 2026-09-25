@@ -3,8 +3,8 @@
  * Generates entertaining, flavorful narrative recaps of M+ night.
  */
 
-const { readLiveState } = require('./lib/live-state');
-const { isOfficerRequest, header } = require('./lib/auth');
+const { readLiveState } = require('../live-state');
+const { isOfficerRequest, header } = require('../auth');
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',

@@ -2,8 +2,8 @@
  * Officer button: refresh attendees' scores and pull tonight's (or the latest Friday's) keys right now.
  * The scheduled jobs do the same thing automatically; this is for "I want it this minute".
  */
-const { isOfficerRequest } = require('./lib/auth');
-const { refreshScores, syncNight } = require('./lib/jobs');
+const { isOfficerRequest } = require('../auth');
+const { refreshScores, syncNight } = require('../jobs');
 
 const HEADERS = { 'Content-Type': 'application/json' };
 
