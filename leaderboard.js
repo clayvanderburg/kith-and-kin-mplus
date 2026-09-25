@@ -115,13 +115,8 @@
   // Fetch live state from backend
   async function fetchLiveState() {
     try {
-      const res = await fetch('/api/live-state');
-      if (res.ok) {
-        state.liveState = await res.json();
-      } else {
-        const fallback = await fetch('/api/state');
-        if (fallback.ok) state.liveState = await fallback.json();
-      }
+      const res = await fetch('/api/state', { cache: 'no-store' });
+      if (res.ok) state.liveState = await res.json();
     } catch (err) {
       console.warn('[Leaderboard] Live state fetch failed, staying on demo fallback:', err);
     }

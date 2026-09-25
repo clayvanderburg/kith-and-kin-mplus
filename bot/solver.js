@@ -82,9 +82,13 @@ function solveGroups(options = {}) {
 
   const availablePool = attendees.filter(p => !lockedPlayerIds.has(p.id));
   const totalPossibleGroups = Math.floor(attendees.length / 5);
-  const groupsNeeded = totalPossibleGroups - lockedGroups.length;
+  // Start from the most groups the headcount allows, then step down if tanks/healers run short.
+    const tankCapable = availablePool.filter(p => (p.roles || []).includes('Tank')).length;
+    const healerCapable = availablePool.filter(p => (p.roles || []).includes('Healer')).length;
+    let groupsNeeded = Math.min(totalPossibleGroups - lockedGroups.length, tankCapable, healerCapable);
+    const groupsWanted = totalPossibleGroups - lockedGroups.length;
 
-  if (groupsNeeded <= 0 && lockedGroups.length === 0) {
+  if (groupsWanted <= 0 && lockedGroups.length === 0) {
     return {
       groups: [],
       benched: availablePool,
@@ -95,6 +99,8 @@ function solveGroups(options = {}) {
   let bestResult = null;
   let bestScore = -Infinity;
   const NUM_SOLVER_ATTEMPTS = 500;
+
+  while (groupsNeeded > 0) {
 
   for (let attempt = 0; attempt < NUM_SOLVER_ATTEMPTS; attempt++) {
     const shuffled = shuffleArray([...availablePool]);
@@ -228,15 +234,21 @@ function solveGroups(options = {}) {
     }
   }
 
+    if (bestResult) break;
+
+    groupsNeeded--;
+
+  }
+
   if (!bestResult) {
     const tankCount = availablePool.filter(p => (p.roles || []).includes('Tank')).length;
     const healerCount = availablePool.filter(p => (p.roles || []).includes('Healer')).length;
     const dpsCount = availablePool.filter(p => (p.roles || []).includes('DPS')).length;
 
-    let msg = 'Could not form balanced groups. ';
-    if (tankCount < groupsNeeded) msg += `Need ${groupsNeeded - tankCount} more Tank(s). `;
-    if (healerCount < groupsNeeded) msg += `Need ${groupsNeeded - healerCount} more Healer(s). `;
-    if (dpsCount < groupsNeeded * 3) msg += `Need ${(groupsNeeded * 3) - dpsCount} more DPS. `;
+    let msg = 'Could not assemble a 1 Tank, 1 Healer, 3 DPS group.';
+    if (tankCount < 1) msg += ' Missing a Tank.';
+    else if (healerCount < 1) msg += ' Missing a Healer.';
+    else if (dpsCount < 3) msg += ' Need at least 3 DPS.';
 
     return {
       groups: lockedGroups,
@@ -248,6 +260,7 @@ function solveGroups(options = {}) {
   const activePool = (dungeonPool || DUNGEONS_MIDNIGHT_S2).filter(d => !excludedDungeons.includes(d));
   const poolToUse = activePool.length > 0 ? activePool : DUNGEONS_MIDNIGHT_S2;
   const shuffledDungeons = shuffleArray([...poolToUse]);
+  const shuffledNames = shuffleArray([...PARTY_NAMES]);
 
   const finalGroups = [...lockedGroups];
   bestResult.newGroups.forEach((grp, idx) => {

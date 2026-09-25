@@ -440,10 +440,50 @@
   const API_URL = (window.location.hostname.includes('netlify.app') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? '/api/state'
     : 'https://knkmplus.netlify.app/api/state';
-  let SYNC_SECRET = '';
   let pushDebounceTimer = null;
   let isFetchingRemote = false;
-  let localEditedAt = 0;
+  let isPushing = false;
+  // True only while a real officer edit has not reached the server yet.
+  let hasPendingEdits = false;
+  let unlockPromptOpen = false;
+
+  function officerKey() {
+    try {
+      return sessionStorage.getItem('kk_officer_key') || window.SYNC_SECRET || '';
+    } catch (e) {
+      return window.SYNC_SECRET || '';
+    }
+  }
+
+  function rememberOfficerKey(key) {
+    window.SYNC_SECRET = key;
+    try { sessionStorage.setItem('kk_officer_key', key); } catch (e) {}
+  }
+
+  function forgetOfficerKey() {
+    window.SYNC_SECRET = '';
+    try { sessionStorage.removeItem('kk_officer_key'); } catch (e) {}
+  }
+
+  // Viewing is open. Saving to the shared roster needs the officer passphrase once per browser session.
+  async function ensureOfficerKey() {
+    if (officerKey()) return true;
+    if (unlockPromptOpen) return false;
+    unlockPromptOpen = true;
+    try {
+      const key = (window.prompt('Officer passphrase to save changes to the shared roster (asked once per session):') || '').trim();
+      if (!key) return false;
+      if (await verifyOfficerKey(key)) {
+        rememberOfficerKey(key);
+        showToast('🔓 Officer editing unlocked for this session.');
+        return true;
+      }
+      showToast('❌ Wrong officer passphrase. Changes are only saved in this browser.');
+      return false;
+    } finally {
+      unlockPromptOpen = false;
+    }
+  }
 
   function updateSyncStatus(status, label) {
     const badge = document.getElementById('discordSyncStatus');
@@ -467,29 +507,31 @@
   }
 
   async function fetchRemoteState(silent = false) {
-    if (isFetchingRemote) return;
+    if (isFetchingRemote || isPushing || pushDebounceTimer) return;
+    if (hasPendingEdits) {
+      // Unsaved officer edits exist. Try to save them instead of overwriting them with the server copy.
+      pushRemoteState();
+      return;
+    }
     isFetchingRemote = true;
-    updateSyncStatus('syncing', 'Syncing...');
+    if (!silent) updateSyncStatus('syncing', 'Syncing...');
 
     try {
+      const headers = { 'Accept': 'application/json' };
+      const key = officerKey();
+      if (key) headers['x-sync-secret'] = key;
       const res = await fetch(`${API_URL}?_t=${Date.now()}`, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
+        headers,
         cache: 'no-store'
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      // An edit started while this request was in flight. Keep it; the next poll pulls again.
+      if (hasPendingEdits || pushDebounceTimer) return;
 
       if (data && !data.empty) {
-        const remoteTime = Date.parse(data.lastUpdated) || 0;
-        const localStamp = Math.max(localEditedAt, Date.parse(localStorage.getItem('kk_local_updated') || '') || 0);
-        const localHasRoster = (state.players || []).length > 0 || (state.formedGroups || []).length > 0;
-        if (localHasRoster && localStamp > remoteTime) {
-          updateSyncStatus('syncing', 'Saving site changes...');
-          pushRemoteState();
-          return;
-        }
         if (data.events && typeof data.events === 'object' && Object.keys(data.events).length > 0) {
           state.events = data.events;
           if (data.currentEventId && state.events[data.currentEventId]) {
@@ -531,7 +573,7 @@
         if (data.lastUpdated) localStorage.setItem('kk_local_updated', data.lastUpdated);
         renderRoster();
         renderGroups();
-        updateSyncStatus('synced', 'Discord Synced');
+        updateSyncStatus('synced', officerKey() ? 'Discord Synced' : 'Synced (view only)');
         if (!silent) {
           showToast('✨ Synced roster with Discord bot & cloud!');
         }
@@ -547,11 +589,16 @@
   }
 
   function pushRemoteState() {
-    if (!SYNC_SECRET) return;
-    localEditedAt = Date.now();
+    hasPendingEdits = true;
     clearTimeout(pushDebounceTimer);
     updateSyncStatus('syncing', 'Saving...');
     pushDebounceTimer = setTimeout(async () => {
+      pushDebounceTimer = null;
+      if (!(await ensureOfficerKey())) {
+        updateSyncStatus('offline', 'Not saved — click Sync to unlock');
+        return;
+      }
+      isPushing = true;
       try {
         if (state.events && state.currentEventId && state.events[state.currentEventId]) {
           state.events[state.currentEventId].players = state.players;
@@ -573,19 +620,25 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-sync-secret': SYNC_SECRET
+            'x-sync-secret': officerKey()
           },
           body: JSON.stringify(payload)
         });
 
         if (res.ok) {
+          hasPendingEdits = false;
           updateSyncStatus('synced', 'Discord Synced');
+        } else if (res.status === 401) {
+          forgetOfficerKey();
+          updateSyncStatus('error', 'Passphrase rejected — click Sync');
         } else {
-          updateSyncStatus('offline', 'Local Storage');
+          updateSyncStatus('error', `Save failed (HTTP ${res.status})`);
         }
       } catch (err) {
         console.warn('[Cloud Sync] Push error:', err);
-        updateSyncStatus('offline', 'Local Storage');
+        updateSyncStatus('offline', 'Offline — will retry');
+      } finally {
+        isPushing = false;
       }
     }, 1000);
   }
@@ -987,9 +1040,13 @@
 
     // Calculate how many more groups we need/can form
     const totalPossibleGroups = Math.floor(attendees.length / 5);
-    const groupsNeeded = totalPossibleGroups - lockedGroups.length;
+    // Start from the most groups the headcount allows, then step down if tanks/healers run short.
+    const tankCapable = availablePool.filter(p => (p.roles || []).includes('Tank')).length;
+    const healerCapable = availablePool.filter(p => (p.roles || []).includes('Healer')).length;
+    let groupsNeeded = Math.min(totalPossibleGroups - lockedGroups.length, tankCapable, healerCapable);
+    const groupsWanted = totalPossibleGroups - lockedGroups.length;
 
-    if (groupsNeeded <= 0 && lockedGroups.length === 0) {
+    if (groupsWanted <= 0 && lockedGroups.length === 0) {
       return {
         groups: [],
         benched: availablePool,
@@ -1001,6 +1058,8 @@
     let bestResult = null;
     let bestScore = -Infinity;
     const NUM_SOLVER_ATTEMPTS = 400;
+
+    while (groupsNeeded > 0) {
 
     for (let attempt = 0; attempt < NUM_SOLVER_ATTEMPTS; attempt++) {
       // Shuffle available pool for stochastic variation
@@ -1178,6 +1237,12 @@
           benched: benched
         };
       }
+    }
+
+      if (bestResult) break;
+
+      groupsNeeded--;
+
     }
 
     // If solver found no groups because we don't have enough tanks or healers
@@ -2887,8 +2952,12 @@
     // Discord / Cloud Manual Sync button
     const manualSyncBtn = document.getElementById('manualSyncBtn');
     if (manualSyncBtn) {
-      manualSyncBtn.addEventListener('click', () => {
+      manualSyncBtn.addEventListener('click', async () => {
         playSound('click');
+        if (hasPendingEdits) {
+          if (await ensureOfficerKey()) pushRemoteState();
+          return;
+        }
         fetchRemoteState(false);
       });
     }
