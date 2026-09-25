@@ -125,6 +125,7 @@
       body: JSON.stringify({
         name: selected.name,
         realm: selected.realm,
+        eventId: document.getElementById('eventSelect').value,
         roles: checkedValues(document.getElementById('roleRow')),
         keyBrackets: checkedValues(document.getElementById('bracketRow')),
         isLeader: document.getElementById('optLeader').checked,
@@ -136,7 +137,7 @@
     });
     const data = await res.json();
     if (!res.ok) {
-      saveStatus.textContent = data.error || 'Save failed.';
+      saveStatus.textContent = data.error || data.errorMessage || data.message || 'Save failed.';
       return;
     }
     saveStatus.textContent = data.signup?.attending === false
@@ -181,7 +182,12 @@
     signupCard.hidden = false;
     characters = data.characters || [];
     document.getElementById('hello').textContent = data.battleTag;
-    document.getElementById('tagLine').textContent = 'Choose the character you are bringing. This only changes your signup.';
+    document.getElementById('tagLine').textContent = 'Choose the night and the character you are bringing. This only changes your signup.';
+    const eventSelect = document.getElementById('eventSelect');
+    const events = data.events?.length ? data.events : [{ id: 'event-default', name: 'Friday M+ Night', current: true }];
+    const preferred = data.signup?.eventId || events.find(item => item.current)?.id || events[0].id;
+    eventSelect.innerHTML = events.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('');
+    eventSelect.value = preferred;
     if (data.signup) {
       selected = characters.find(character => character.name === data.signup.name) || {
         name: data.signup.name,

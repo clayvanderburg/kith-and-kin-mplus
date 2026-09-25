@@ -1,4 +1,4 @@
-const SECRET = process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
+const SECRET = process.env.OFFICER_KEY || '';
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {

@@ -55,7 +55,8 @@ function publicPlayer(player) {
     isLeader: !!player.isLeader,
     isReserve: !!player.isReserve,
     isShitter: !!player.isShitter,
-    carryPreference: player.carryPreference || 'none'
+    carryPreference: player.carryPreference || 'none',
+    eventId: player.eventId || ''
   };
 }
 
@@ -110,11 +111,43 @@ async function lookupRaider(character) {
   }
 }
 
-function findOwnedCharacter(session, body) {
-  return (session.characters || []).find(character =>
-    fold(character.name) === fold(body.name) &&
-    fold(character.realm) === fold(body.realm)
+function listEvents(state) {
+  const events = state?.events && typeof state.events === 'object' ? state.events : {};
+  const entries = Object.values(events).filter(item => item && item.id);
+  if (!entries.length) {
+    return [{ id: 'event-default', name: 'Friday M+ Night', current: true }];
+  }
+  const current = state.currentEventId && events[state.currentEventId]
+    ? state.currentEventId
+    : entries[0].id;
+  return entries.map(item => ({
+    id: item.id,
+    name: item.name || 'Mythic+ Night',
+    current: item.id === current
+  }));
+}
+
+function upsertPlayer(list, record, previousName) {
+  const players = [...(list || [])];
+  const index = players.findIndex(player =>
+    (record.bnetId && player.bnetId === record.bnetId) || fold(player.name) === fold(record.name)
   );
+  if (index === -1) players.push(record);
+  else players[index] = { ...players[index], ...record };
+  if (previousName && fold(previousName) !== fold(record.name)) {
+    return players.filter(player => fold(player.name) !== fold(previousName) || player.bnetId === record.bnetId);
+  }
+  return players;
+}
+
+function findOwnedCharacter(session, body) {
+  const list = session.characters || [];
+  const exact = list.find(character =>
+    fold(character.name) === fold(body.name) && fold(character.realm) === fold(body.realm)
+  );
+  if (exact) return exact;
+  const byName = list.filter(character => fold(character.name) === fold(body.name));
+  return byName.length === 1 ? byName[0] : null;
 }
 
 exports.handler = async (event) => {
@@ -149,20 +182,30 @@ exports.handler = async (event) => {
         battleTag: session.battleTag,
         characters: session.characters || [],
         signup: publicPlayer(mine),
+        events: listEvents(state),
         groups: publicGroups(state, mine?.name)
       })
     };
   }
 
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: JSON_HEADERS, body: 'Method Not Allowed' };
+    return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  const body = JSON.parse(event.body || '{}');
-  if (body.action === 'roll') {
-    return rollOwnGroup(event, state, mine);
+  try {
+    const body = JSON.parse(event.body || '{}');
+    if (body.action === 'roll') {
+      return rollOwnGroup(event, state, mine);
+    }
+    return await saveSignup(event, state, session, body, mine);
+  } catch (err) {
+    console.error('[me] save failed:', err);
+    return {
+      statusCode: 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ error: err.message || 'Save failed.' })
+    };
   }
-  return saveSignup(event, state, session, body, mine);
 };
 
 async function saveSignup(event, state, session, body, existing) {
@@ -221,13 +264,39 @@ async function saveSignup(event, state, session, body, existing) {
     touchedAt: now,
     io: rio?.io || existing?.io || 0,
     ilvl: rio?.ilvl || existing?.ilvl || 0,
-    ownedKey: rio?.ownedKey || existing?.ownedKey || ''
+    ownedKey: rio?.ownedKey || existing?.ownedKey || '',
+    eventId: ''
   };
 
-  const incoming = { players: [record] };
+  const events = { ...(state.events || {}) };
+  let eventId = body.eventId && events[body.eventId] ? body.eventId : '';
+  if (!eventId) {
+    eventId = state.currentEventId && events[state.currentEventId]
+      ? state.currentEventId
+      : (Object.keys(events)[0] || 'event-default');
+  }
+  if (!events[eventId]) {
+    events[eventId] = {
+      id: eventId,
+      name: eventId === 'event-default' ? 'Friday M+ Night' : 'Mythic+ Night',
+      date: now,
+      players: [],
+      formedGroups: [],
+      benchedPlayers: []
+    };
+  }
+  record.eventId = eventId;
+  events[eventId].players = upsertPlayer(events[eventId].players, record, previousName);
+  const isCurrent = !state.currentEventId || state.currentEventId === eventId;
+
+  const incoming = {
+    events,
+    currentEventId: isCurrent ? eventId : state.currentEventId
+  };
+  if (isCurrent) incoming.players = [record];
   if (previousName && fold(previousName) !== fold(record.name)) {
     renameInGroups(state, previousName, record.name);
-    incoming.removedNames = [previousName];
+    if (isCurrent) incoming.removedNames = [previousName];
     incoming.formedGroups = state.formedGroups;
     incoming.benchedPlayers = state.benchedPlayers || [];
     incoming.groupsTouchedAt = now;
