@@ -101,38 +101,6 @@ const TMP_FILE = path.join('/tmp', 'kk_mplus_state.json');
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '66f468e2962fddf5f6c25d675f66df3970d481be92cc350c30358a12dfe527bb';
 const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
 
-// 29-player Kith and Kin guild roster - all start with attending: false
-const INITIAL_ROSTER = [
-  { id: 'kk-adrenaline', name: 'Adrenaline', className: 'Warrior', roles: ['Tank', 'DPS'], keyMin: 14, keyMax: 18, ownedKey: 'Murder Row +16', realm: 'Perenolde', region: 'us', ilvl: 322, io: 3236, rank: 0, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-bungulator', name: 'Bungulator', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 14, keyMax: 18, ownedKey: 'Murder Row +16', realm: 'Korgath', region: 'us', ilvl: 324, io: 3290, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-glaiven', name: 'Glaiven', className: 'Demon Hunter', roles: ['DPS', 'Tank'], keyMin: 10, keyMax: 14, ownedKey: "Kings' Rest +12", realm: 'Perenolde', region: 'us', ilvl: 323, io: 3138, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-shocktherapy', name: 'Shockthêràpy', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Altar of Fangs +14', realm: 'Perenolde', region: 'us', ilvl: 321, io: 3230, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-meanssa', name: 'Meanssa', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Voidscar Arena +14', realm: 'Frostmane', region: 'us', ilvl: 321, io: 3118, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-stirlingskat', name: 'Stirlingskat', className: 'Druid', roles: ['Healer', 'Tank', 'DPS'], keyMin: 12, keyMax: 16, ownedKey: 'Ruby Life Pools +14', realm: 'Moon Guard', region: 'us', ilvl: 317, io: 3118, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-sploosh', name: 'Splõõsh', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +13', realm: 'Korgath', region: 'us', ilvl: 322, io: 3104, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-noxxicc', name: 'Noxxicc', className: 'Death Knight', roles: ['Tank', 'DPS'], keyMin: 8, keyMax: 12, ownedKey: 'Murder Row +10', realm: 'Korgath', region: 'us', ilvl: 317, io: 2939, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-avaryn', name: 'Avaryn', className: 'Druid', roles: ['Healer', 'DPS', 'Tank'], keyMin: 10, keyMax: 14, ownedKey: "Kings' Rest +12", realm: 'Perenolde', region: 'us', ilvl: 319, io: 2931, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-tiblock', name: 'Tiblock', className: 'Warlock', roles: ['DPS'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +13', realm: 'Korgath', region: 'us', ilvl: 323, io: 2883, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-khaiduus', name: 'Khaiduus', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 9, keyMax: 13, ownedKey: 'Voidscar Arena +11', realm: 'Cairne', region: 'us', ilvl: 318, io: 2845, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-ravenlight', name: 'Ravenlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 11, keyMax: 15, ownedKey: 'Altar of Fangs +14', realm: 'Perenolde', region: 'us', ilvl: 319, io: 1457, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-tyberia', name: 'Tyberia', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 9, keyMax: 13, ownedKey: 'Altar of Fangs +12', realm: 'Korgath', region: 'us', ilvl: 311, io: 1359, rank: 2, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-engorged', name: 'Engorged', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: 'Den of Nalorakk +4', realm: 'Perenolde', region: 'us', ilvl: 118, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-holyscheisse', name: 'Holyscheisse', className: 'Druid', roles: ['DPS', 'Healer', 'Tank'], keyMin: 2, keyMax: 7, ownedKey: 'The Blinding Vale +5', realm: 'Korgath', region: 'us', ilvl: 291, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false, isLeader: false, isReserve: false },
-  { id: 'kk-myssa', name: 'Myssa', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 9, keyMax: 13, ownedKey: 'Temple of Sethraliss +11', realm: 'Frostmane', region: 'us', ilvl: 297, io: 2788, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-bearackobama', name: 'Bearackobamà', className: 'Druid', roles: ['DPS', 'Tank', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: 'Voidscar Arena +4', realm: 'Perenolde', region: 'us', ilvl: 260, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-charliestar', name: 'Charliestar', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 143, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-gredic', name: 'Gredic', className: 'Paladin', roles: ['Tank', 'Healer', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 295, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-khaidylock', name: 'Khaidylock', className: 'Warlock', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Cairne', region: 'us', ilvl: 263, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-knightlight', name: 'Kníghtlight', className: 'Paladin', roles: ['DPS', 'Tank', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 276, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-veralith', name: 'Veralith', className: 'Demon Hunter', roles: ['Tank', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 269, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-azerite', name: 'Azerite', className: 'Hunter', roles: ['DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 274, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-haiyu', name: 'Haiyu', className: 'Shaman', roles: ['Healer', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 135, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-valkyrin', name: 'Valkyrin', className: 'Paladin', roles: ['Healer', 'Tank', 'DPS'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 248, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-sylana', name: 'Sylana', className: 'Warrior', roles: ['DPS', 'Tank'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Perenolde', region: 'us', ilvl: 271, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-azernasty', name: 'Azernasty', className: 'Death Knight', roles: ['DPS', 'Tank'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 293, io: 0, rank: 2, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-ayahuasca', name: 'Ayahuascå', className: 'Shaman', roles: ['DPS', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Korgath', region: 'us', ilvl: 311, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false },
-  { id: 'kk-meowssa', name: 'Meowssa', className: 'Druid', roles: ['Tank', 'DPS', 'Healer'], keyMin: 2, keyMax: 6, ownedKey: '', realm: 'Frostmane', region: 'us', ilvl: 293, io: 0, rank: 1, attending: false, carryPreference: 'none', isShitter: false }
-];
 
 // The lambda event for this invocation. Strong blob reads must not use a warm cache.
 let activeLambdaEvent = null;
@@ -156,20 +124,11 @@ function rememberDiscordCard(interaction, state) {
   };
 }
 
+// Throws when storage is unreachable so we never save a blank roster over the real one.
 async function loadState() {
-  try {
-    const live = await liveState.readLiveState(activeLambdaEvent);
-    if (live && Array.isArray(live.players)) return live;
-  } catch (err) {
-    console.error('[Discord] Could not read shared state:', err.message);
-  }
-
-  return {
-    players: JSON.parse(JSON.stringify(INITIAL_ROSTER)),
-    formedGroups: [],
-    benchedPlayers: [],
-    lastUpdated: new Date().toISOString()
-  };
+  const live = await liveState.readLiveState(activeLambdaEvent);
+  if (live && Array.isArray(live.players)) return live;
+  return { players: [], formedGroups: [], benchedPlayers: [], lastUpdated: new Date().toISOString() };
 }
 
 async function saveState(data) {
@@ -216,20 +175,18 @@ function verifyDiscordSignature(rawBody, signature, timestamp, clientPublicKey) 
 /**
  * Raider.IO lookup helper
  */
-async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
+async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us', timeoutMs = 1200) {
   try {
     const cleanName = encodeURIComponent(name.trim());
     const cleanRealm = encodeURIComponent(realm.trim().toLowerCase().replace(/\s+/g, '-').replace(/'/g, ''));
     const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${cleanRealm}&name=${cleanName}&fields=gear,mythic_plus_scores_by_season:current,mythic_plus_recent_runs,mythic_plus_best_runs`;
-    const res = await fetch(url);
+    // Discord gives us 3 seconds to answer; never wait long on Raider.IO.
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) return null;
     const data = await res.json();
     const seasonData = Array.isArray(data.mythic_plus_scores_by_season)
       ? data.mythic_plus_scores_by_season[0]
       : data.mythic_plus_scores_by_season;
-
-    const recent = data.mythic_plus_recent_runs?.[0] || data.mythic_plus_best_runs?.[0];
-    const carried = loadModule('keystone')?.keystoneAfterRun(recent);
 
     return {
       name: data.name,
@@ -245,6 +202,42 @@ async function lookupRaiderIo(name, realm = 'Perenolde', region = 'us') {
   } catch (err) {
     return null;
   }
+}
+
+// Raider.IO cannot see the keystone in someone's bags, so this only refreshes IO and item level.
+async function refreshAttendeeScores(state) {
+  const attendees = (state.players || []).filter(p => p.attending);
+  const batch = attendees.slice(0, 10);
+  let updated = 0;
+  await Promise.all(batch.map(async p => {
+    const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde', p.region || 'us', 1200);
+    if (!data) return;
+    if (data.ilvl) p.ilvl = data.ilvl;
+    if (data.io) p.io = data.io;
+    if (data.ilvl || data.io) {
+      updated++;
+      touchPlayer(p);
+    }
+  }));
+  return { attendees: attendees.length, tried: batch.length, updated };
+}
+
+function refreshScoresMessage(result) {
+  const more = result.attendees > result.tried ? ` (first ${result.tried} of ${result.attendees}; refresh the rest on the website)` : '';
+  return `📈 **Refreshed Raider.IO score and item level for ${result.updated} member(s)**${more}.\nKeystones can't be read from Raider.IO — type yours on the [signup page](${WEB_URL}/signup.html).`;
+}
+
+function leaderboardMessage(state, viewMode = 'auto') {
+  const engine = loadModule('leaderboard-engine');
+  const players = state.players || [];
+  const totalRuns = players.reduce((sum, p) => sum + (Array.isArray(p.runLog) ? p.runLog.length : 0), 0);
+  const demo = viewMode === 'demo' || (viewMode !== 'live' && totalRuns < 10);
+  const standings = engine
+    ? (demo ? engine.computeLeaderboardStandings(engine.DEMO_PLAYERS) : engine.computeLeaderboardStandings(players, state, true))
+    : [];
+  const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL, { demo }).toJSON() : { title: 'Leaderboard' };
+  const components = embeds ? embeds.createLeaderboardButtons(WEB_URL, viewMode).map(r => r.toJSON ? r.toJSON() : r) : [];
+  return { embed, components };
 }
 
 exports.handler = async (event, context) => {
@@ -340,7 +333,13 @@ exports.handler = async (event, context) => {
     });
   }
 
-  const state = await loadState();
+  let state;
+  try {
+    state = await loadState();
+  } catch (err) {
+    console.error('[Discord] Could not read shared state:', err.message);
+    return jsonResponse({ type: 4, data: { content: '⚠️ The roster storage did not answer. Try again in a moment.', flags: 64 } });
+  }
 
   // 3. Slash Commands (Type 2)
   if (interaction.type === 2) {
@@ -359,7 +358,7 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'roster') {
-        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
+        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
         return jsonResponse({
           type: 4,
           data: { embeds: [embed] }
@@ -367,7 +366,7 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'post-signup') {
-        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
+        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
         const buttons = embeds ? embeds.createSignupButtons().map(r => r.toJSON()) : [];
         return jsonResponse({
           type: 4,
@@ -405,15 +404,8 @@ exports.handler = async (event, context) => {
 
       if (subcommand === 'leaderboard') {
         const subOpts = options?.[0]?.options || [];
-        const viewMode = subOpts.find(o => o.name === 'view')?.value || 'demo';
-        const engine = loadModule('leaderboard-engine');
-        const standings = engine
-          ? (viewMode === 'live'
-              ? engine.computeLeaderboardStandings(state.players, state, true)
-              : engine.computeLeaderboardStandings(engine.DEMO_PLAYERS))
-          : [];
-        const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
-        const components = embeds ? embeds.createLeaderboardButtons(WEB_URL).map(r => r.toJSON ? r.toJSON() : r) : [];
+        const viewMode = subOpts.find(o => o.name === 'view')?.value || 'auto';
+        const { embed, components } = leaderboardMessage(state, viewMode);
         return jsonResponse({
           type: 4,
           data: {
@@ -424,41 +416,12 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'sync-keys') {
-        const attendees = (state.players || []).filter(p => p.attending);
-        if (attendees.length === 0) {
-          return jsonResponse({
-            type: 4,
-            data: {
-              content: '⚠️ No attending members to sync keystones for. Use `/mplus signup` or RSVP buttons first!',
-              flags: 64
-            }
-          });
+        if (!(state.players || []).some(p => p.attending)) {
+          return ephemeral('⚠️ Nobody is signed up yet. Use `/mplus signup` or the sign-up card first.');
         }
-
-        let updatedCount = 0;
-        const syncBatch = attendees.slice(0, 8);
-        const syncPromises = syncBatch.map(async p => {
-          try {
-            const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-            if (data?.io) updatedCount++;
-            if (data?.ilvl) p.ilvl = data.ilvl;
-            if (data?.io) p.io = data.io;
-          } catch (e) {}
-        });
-
-        await Promise.race([
-          Promise.all(syncPromises),
-          new Promise(r => setTimeout(r, 2200))
-        ]);
-
-        await saveState(state);
-
-        return jsonResponse({
-          type: 4,
-          data: {
-            content: `🔑 **Refreshed Keystones from Raider.IO!**\nUpdated ${updatedCount} member active keys.\nCheck the full lineup on the [web dashboard](${WEB_URL}).`
-          }
-        });
+        const result = await refreshAttendeeScores(state);
+        if (result.updated) await saveState(state);
+        return jsonResponse({ type: 4, data: { content: refreshScoresMessage(result), flags: 64 } });
       }
 
       if (subcommand === 'form') {
@@ -479,17 +442,28 @@ exports.handler = async (event, context) => {
           });
         }
 
-        const result = solver ? solver.solveGroups(attending) : { groups: [], benched: [] };
+        const formOpts = options?.[0]?.options || [];
+        const avoidDupes = formOpts.find(o => o.name === 'avoid_dupes')?.value;
+        const result = solver
+          ? solver.solveGroups({ players: attending, avoidClassDupes: avoidDupes !== false, excludedDungeons: state.excludedDungeons || [] })
+          : { groups: [], benched: [] };
+        if (!result.groups.length) {
+          return ephemeral(`⚠️ ${result.message || 'Could not form any groups.'}`);
+        }
         state.formedGroups = result.groups;
         state.benchedPlayers = result.benched;
+        state.groupsTouchedAt = new Date().toISOString();
         await saveState(state);
 
-        const groupEmbeds = embeds ? embeds.createGroupEmbeds(result.groups, result.benched).map(e => e.toJSON()) : [];
+        // One embed keeps us under Discord's 10-embed / 6000-character message limits.
+        const embed = embeds
+          ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, result.groups, result.benched).toJSON()
+          : { title: 'Groups formed' };
         return jsonResponse({
           type: 4,
           data: {
-            content: `🏰 **Formed ${result.groups.length} Mythic+ Group(s)!**`,
-            embeds: groupEmbeds
+            content: `🏰 **Formed ${result.groups.length} Mythic+ group(s).**${result.benched.length ? ` ${result.benched.length} on the bench.` : ''}`,
+            embeds: [embed]
           }
         });
       }
@@ -591,11 +565,8 @@ exports.handler = async (event, context) => {
     let player = findOwnPlayer(state, discordUser?.id);
 
     // Leaderboard interactive buttons
-    if (customId === 'btn_leaderboard_refresh') {
-      const engine = loadModule('leaderboard-engine');
-      const standings = engine ? engine.computeLeaderboardStandings(engine.DEMO_PLAYERS) : [];
-      const embed = embeds ? embeds.createLeaderboardEmbed(standings, WEB_URL).toJSON() : { title: 'Leaderboard' };
-      const components = embeds ? embeds.createLeaderboardButtons(WEB_URL).map(r => r.toJSON ? r.toJSON() : r) : [];
+    if (customId === 'btn_leaderboard_refresh' || customId.startsWith('btn_leaderboard_refresh:')) {
+      const { embed, components } = leaderboardMessage(state, customId.split(':')[1] || 'auto');
       return jsonResponse({
         type: 7,
         data: {
@@ -614,7 +585,7 @@ exports.handler = async (event, context) => {
                    '• **Keys Completed:** +10 pts (+5 bonus if timed, +2 pts per level above +10)\n' +
                    '• **Role Versatility:** +5 pts for Dual Flex (Tank/DPS, etc.), +10 pts for Triple Flex (Tank/Healer/DPS)\n' +
                    '• **Born Leader (👑):** +8 pts per night volunteered to lead\n' +
-                   '• **Stonk Back (🏋️):** +8 pts per night volunteered "My back is stronk"\n' +
+                   '• **Stronk Back (🏋️):** +8 pts per night volunteered "My back is stronk"\n' +
                    '• **Carry Shepherd (🎒):** +15 pts per key run with guildies who need a carry\n\n' +
                    `View the live interactive leaderboard: <${WEB_URL}/leaderboard.html>`,
           flags: 64
@@ -850,14 +821,17 @@ exports.handler = async (event, context) => {
         });
       }
 
-      const result = solver ? solver.solveGroups(attending) : { groups: [], benched: [] };
+      const result = solver ? solver.solveGroups({ players: attending, excludedDungeons: state.excludedDungeons || [] }) : { groups: [], benched: [] };
+      if (!result.groups.length) {
+        return ephemeral(`⚠️ ${result.message || 'Could not form any groups.'}`);
+      }
       state.formedGroups = result.groups;
       state.benchedPlayers = result.benched;
       state.groupsTouchedAt = new Date().toISOString();
       await saveState(state);
 
       const embed = embeds
-        ? embeds.createRosterEmbed(state.players || [], WEB_URL, 'MadKing', result.groups, result.benched).toJSON()
+        ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, result.groups, result.benched).toJSON()
         : { title: 'Groups formed' };
       const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(row => row.toJSON()) : [];
       return jsonResponse({
@@ -873,6 +847,7 @@ exports.handler = async (event, context) => {
     if (customId === 'btn_shitter') {
       if (player) {
         player.isShitter = !player.isShitter;
+        touchPlayer(player);
         await saveState(state);
         return jsonResponse({
           type: 4,
@@ -886,33 +861,12 @@ exports.handler = async (event, context) => {
       return jsonResponse({ type: 4, data: panel });
     }
 
+    // Older cards still show this button.
     if (customId === 'btn_sync_keys') {
-      const attendees = (state.players || []).filter(p => p.attending);
-      if (attendees.length === 0) {
-        return jsonResponse({
-          type: 4,
-          data: { content: '⚠️ No attending members to sync keys for!', flags: 64 }
-        });
-      }
-
-      let count = 0;
-      const syncBatch = attendees.slice(0, 8);
-      await Promise.race([
-        Promise.all(syncBatch.map(async p => {
-          try {
-            const data = await lookupRaiderIo(p.name, p.realm || 'Perenolde');
-            if (data?.io) count++;
-          } catch (e) {}
-        })),
-        new Promise(r => setTimeout(r, 2200))
-      ]);
-      await saveState(state);
-      return jsonResponse({
-        type: 4,
-        data: {
-          content: `🔑 **Refreshed active keystones from Raider.IO!** (${count} keys updated)\nView updated roster on the [web dashboard](${WEB_URL}).`
-        }
-      });
+      if (!(state.players || []).some(p => p.attending)) return ephemeral('⚠️ Nobody is signed up yet.');
+      const result = await refreshAttendeeScores(state);
+      if (result.updated) await saveState(state);
+      return ephemeral(refreshScoresMessage(result));
     }
 
     if (customId === 'btn_refresh_roster') {
@@ -921,7 +875,7 @@ exports.handler = async (event, context) => {
       liveState.updateDiscordCard(view).catch(err => {
         console.error('[Discord] Card refresh failed:', err.message);
       });
-      const embed = embeds ? embeds.createRosterEmbed(view.players || [], WEB_URL, 'MadKing', view.formedGroups || [], view.benchedPlayers || []).toJSON() : { title: 'Roster' };
+      const embed = embeds ? embeds.createRosterEmbed(view.players || [], WEB_URL, undefined, view.formedGroups || [], view.benchedPlayers || []).toJSON() : { title: 'Roster' };
       const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : [];
       return jsonResponse({
         type: 7, // UPDATE_MESSAGE

@@ -24,5 +24,6 @@ if (!TOKEN || !CLIENT_ID) {
     console.log('✅ Successfully deployed all /mplus slash commands to Discord!');
   } catch (error) {
     console.error('❌ Failed to deploy slash commands:', error);
+    process.exitCode = 1;
   }
 })();

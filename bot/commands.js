@@ -77,16 +77,6 @@ const commands = [
       sub
         .setName('form')
         .setDescription('Captains and High Council: build the 5-man groups')
-        .addStringOption(opt =>
-          opt
-            .setName('strategy')
-            .setDescription('Group balancing strategy')
-            .addChoices(
-              { name: '🎯 Balanced Key Levels', value: 'balanced' },
-              { name: '🤝 Guild Mixer', value: 'guildMixer' },
-              { name: '🎲 Pure Chaos', value: 'pureChaos' }
-            )
-        )
         .addBooleanOption(opt =>
           opt
             .setName('avoid_dupes')
@@ -111,7 +101,7 @@ const commands = [
     .addSubcommand(sub =>
       sub
         .setName('sync-keys')
-        .setDescription('🔑 Refresh attending members’ active keystones from Raider.IO')
+        .setDescription('📈 Refresh attending members’ Raider.IO score and item level')
     )
     .addSubcommand(sub =>
       sub
@@ -127,8 +117,9 @@ const commands = [
             .setName('view')
             .setDescription('Choose leaderboard view')
             .addChoices(
-              { name: '🎭 Demo Showcase (Full Fake Stats)', value: 'demo' },
-              { name: '⚡ Live Guild Data', value: 'live' }
+              { name: '✨ Auto (live once 10+ keys are logged)', value: 'auto' },
+              { name: '⚡ Live Guild Data', value: 'live' },
+              { name: '🎭 Demo Showcase (Sample Stats)', value: 'demo' }
             )
         )
     )
@@ -144,28 +135,18 @@ async function registerCommands(token, clientId, guildId) {
     contexts: [0]
   }));
 
+  // Register in ONE place. Guild + global at the same time shows every command twice.
   if (guildId) {
-    try {
-      await rest.put(
-        Routes.applicationGuildCommands(clientId, guildId),
-        { body: commandsData }
-      );
-      console.log(`[Commands] Registered ${commandsData.length} slash commands to guild ${guildId}`);
-    } catch (err) {
-      console.warn(`[Commands] Warning registering to guild ${guildId}:`, err.message);
-    }
+    await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandsData });
+    console.log(`[Commands] Registered ${commandsData.length} slash commands to guild ${guildId}`);
+    // Remove old global copies so members stop seeing duplicates.
+    await rest.put(Routes.applicationCommands(clientId), { body: [] });
+    console.log('[Commands] Cleared global commands (guild copy is the only one now)');
+    return;
   }
 
-  // Global command registration
-  try {
-    await rest.put(
-      Routes.applicationCommands(clientId),
-      { body: commandsData }
-    );
-    console.log(`[Commands] Successfully registered ${commandsData.length} global slash commands!`);
-  } catch (err) {
-    console.warn('[Commands] Warning registering global commands:', err.message);
-  }
+  await rest.put(Routes.applicationCommands(clientId), { body: commandsData });
+  console.log(`[Commands] Registered ${commandsData.length} global slash commands (can take up to an hour to appear)`);
 }
 
 module.exports = {

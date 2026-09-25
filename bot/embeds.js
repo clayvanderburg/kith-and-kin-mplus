@@ -67,22 +67,77 @@ const ROLE_ICONS = {
   'DPS': '⚔️'
 };
 
-/**
- * Calculates Unix timestamp for the upcoming Friday 8:00 PM EST
- */
-function getNextFridayTimestamp() {
-  const now = new Date();
-  const target = new Date(now.getTime());
-  let daysUntilFriday = (5 - now.getDay() + 7) % 7;
-  if (daysUntilFriday === 0 && now.getHours() >= 20) {
-    daysUntilFriday = 7;
-  }
-  target.setDate(now.getDate() + daysUntilFriday);
-  target.setHours(20, 0, 0, 0);
-  return Math.floor(target.getTime() / 1000);
+const EVENT_TIME_ZONE = process.env.EVENT_TIME_ZONE || 'America/New_York';
+const EVENT_HOUR = Number(process.env.EVENT_HOUR || 20); // 8 PM in EVENT_TIME_ZONE
+const EVENT_LENGTH_HOURS = 4; // keep showing tonight's kickoff until the night is over
+const HOST_NAME = process.env.HOST_NAME || 'MadKing';
+
+// Wall-clock parts of `date` in the event time zone.
+function zonedParts(date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: EVENT_TIME_ZONE, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short'
+  }).formatToParts(date).reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+  return {
+    year: +parts.year, month: +parts.month, day: +parts.day,
+    hour: +parts.hour, minute: +parts.minute, second: +parts.second,
+    weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday)
+  };
 }
 
-function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = 'MadKing', formedGroups = [], benchedPlayers = []) {
+// UTC milliseconds for a wall-clock time in the event time zone (handles daylight saving).
+function zonedToUtc(year, month, day, hour) {
+  const guess = Date.UTC(year, month - 1, day, hour);
+  const p = zonedParts(new Date(guess));
+  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return guess - (asUtc - guess);
+}
+
+/**
+ * Unix timestamp for the next Friday kickoff (8:00 PM Eastern by default).
+ * Netlify runs in UTC, so the time zone must be explicit.
+ */
+function getNextFridayTimestamp(now = new Date()) {
+  const today = zonedParts(now);
+  let days = (5 - today.weekday + 7) % 7;
+  let target = zonedToUtc(today.year, today.month, today.day + days, EVENT_HOUR);
+  if (now.getTime() > target + EVENT_LENGTH_HOURS * 3600 * 1000) {
+    target = zonedToUtc(today.year, today.month, today.day + days + 7, EVENT_HOUR);
+  }
+  return Math.floor(target / 1000);
+}
+
+// Discord limits: title 256, description 4096, 25 fields, name 256, value 1024, 6000 characters in total.
+function clip(text, max) {
+  const value = String(text ?? '');
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function fitEmbed(embed, budget = 6000) {
+  const data = embed.data || embed;
+  if (data.title) data.title = clip(data.title, 256);
+  if (data.description) data.description = clip(data.description, 4096);
+  let fields = (data.fields || []).map(f => ({ ...f, name: clip(f.name || '\u200b', 256), value: clip(f.value || '\u200b', 1024) }));
+  if (fields.length > 25) fields = fields.slice(0, 25);
+  const size = () => (data.title || '').length + (data.description || '').length + (data.footer?.text || '').length +
+    fields.reduce((sum, f) => sum + f.name.length + f.value.length, 0);
+  let dropped = 0;
+  while (fields.length > 1 && size() > budget - 60) {
+    fields.pop();
+    dropped++;
+  }
+  if (dropped) fields.push({ name: '…', value: `${dropped} more section(s) — see the web app.`, inline: false });
+  data.fields = fields;
+  return embed;
+}
+
+// Add a field already clipped to Discord's limits (discord.js throws on oversize fields).
+function addField(embed, name, value, inline = false) {
+  embed.addFields({ name: clip(name || '\u200b', 256), value: clip(value || '\u200b', 1024), inline });
+  return embed;
+}
+
+function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = HOST_NAME, formedGroups = [], benchedPlayers = []) {
   const attending = (players || []).filter(p => p.attending === true);
   const absent = (players || []).filter(p => p.absent === true && !p.attending);
   const tanks = attending.filter(p => (p.roles || []).includes('Tank')).length;
@@ -105,7 +160,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
       .setColor(0x10B981) // Emerald victory green
       .setDescription(
         `👑 **Host:** ${hostName}  •  👥 **Attending:** **${attending.length}**  •  🏰 **Active Groups:** **${formedGroups.length}**\n` +
-        `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM EST\n\n` +
+        `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM ET\n\n` +
         `⚔️ **Parties have been forged for tonight!** Review your team, assign keys, and head into voice:\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
       );
@@ -129,26 +184,19 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
       });
 
       const body = [headerBits.join(' • '), lines.join('\n')].filter(Boolean).join('\n') || 'Empty Party';
-      embed.addFields({
-        name: `🏰 Group ${idx + 1}: ${g.name || 'Keystone Crew'} (Avg IO: ${g.avgIo || 0})`.slice(0, 256),
-        value: body.slice(0, 1024),
-        inline: false
-      });
+      addField(embed, `🏰 Group ${idx + 1}: ${g.name || 'Keystone Crew'} (Avg IO: ${g.avgIo || 0})`, body);
     });
 
     if (Array.isArray(benchedPlayers) && benchedPlayers.length > 0) {
-      embed.addFields({
-        name: `🍺 Bench / Reserves (${benchedPlayers.length})`.slice(0, 256),
-        value: benchedPlayers.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')})${p.isReserve ? ' 🍺' : ''}`).join('\n').slice(0, 1024),
-        inline: false
-      });
+      addField(embed, `🍺 Bench / Reserves (${benchedPlayers.length})`,
+        benchedPlayers.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')})${p.isReserve ? ' 🍺' : ''}`).join('\n'));
     }
 
     embed.setFooter({
       text: `Kith & Kin • Synced with Live Web App • Click [Refresh 🔄] to update`
     });
     embed.setTimestamp();
-    return embed;
+    return fitEmbed(embed);
   }
 
   const embed = new EmbedBuilder()
@@ -157,7 +205,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
     .setDescription(
       `Conquer **Midnight Season 2** keystones! Match IO ranges, balance Bloodlust & Battle Res, pair carries, and assemble full parties.\n\n` +
       `👑 **Host:** ${hostName}  •  👥 **Attending:** **${attending.length}**${absent.length ? ` (+${absent.length} absent)` : ''}\n` +
-      `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM EST\n` +
+      `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM ET\n` +
       `⏳ **Kickoff:** <t:${nextFriday}:F> (<t:${nextFriday}:R>)\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `🛡️ **Tanks:** ${tanks}  •  💚 **Healers:** ${healers}  •  ⚔️ **DPS:** ${dps}  •  🏰 **Groups:** **${maxGroups} Full**\n` +
@@ -193,7 +241,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
       const lines = pList.map((p, idx) => {
         const primaryRole = (p.roles && p.roles[0]) || 'DPS';
         const roleIcon = ROLE_ICONS[primaryRole] || '⚔️';
-        const ioStr = p.io ? `${(p.io / 1000).toFixed(1)}k` : `${p.ilvl || 320}ilvl`;
+        const ioStr = p.io ? `${(p.io / 1000).toFixed(1)}k` : (p.ilvl ? `${p.ilvl} ilvl` : 'new');
         const keyStr = p.ownedKey ? `+${p.ownedKey.split('+')[1] || p.keyMax || 10}` : `+${p.keyMax || 10}`;
         let flag = '';
         if (p.isLeader) flag += ' 👑';
@@ -205,11 +253,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
         return `${roleIcon} \`${idx + 1}\` **${p.name}** (${ioStr} • ${keyStr})${flag}`;
       });
 
-      embed.addFields({
-        name: `${icon} ${cls} (${pList.length})`,
-        value: lines.join('\n') || 'None',
-        inline: true
-      });
+      addField(embed, `${icon} ${cls} (${pList.length})`, lines.join('\n') || 'None', true);
     });
 
     // Special Vibe / Alt Squad Roster breakdown
@@ -234,11 +278,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
     }
 
     if (vibeBreakdown.length > 0) {
-      embed.addFields({
-        name: '🎭 Squad Preferences & Vibe',
-        value: vibeBreakdown.join('\n'),
-        inline: false
-      });
+      addField(embed, '🎭 Squad Preferences & Vibe', vibeBreakdown.join('\n'));
     }
   }
 
@@ -247,7 +287,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
   });
   embed.setTimestamp();
 
-  return embed;
+  return fitEmbed(embed);
 }
 
 function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.app') {
@@ -296,7 +336,7 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.a
       if (m.isShitter) flags.push('💩 Shitter');
       const flagStr = flags.length ? ` \`[${flags.join(' ')}]\`` : '';
 
-      return `${icon} **${m.name}** (${m.className}) — **${(m.io || 0).toLocaleString()} IO** (${m.ilvl || 320} ilvl)${flagStr}\n` +
+      return `${icon} **${m.name}** (${m.className}) — **${(m.io || 0).toLocaleString()} IO**${m.ilvl ? ` (${m.ilvl} ilvl)` : ''}${flagStr}\n` +
              `   └ Range: +${m.keyMin} to +${m.keyMax}${m.ownedKey ? ` | 🔑 ${m.ownedKey}` : ''}`;
     };
 
@@ -306,7 +346,7 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.a
       ...grp.dps.map(d => formatMemberLine('⚔️', d))
     ].join('\n\n');
 
-    embed.setDescription(metaDesc + membersText);
+    embed.setDescription(clip(metaDesc + membersText, 4096));
     embeds.push(embed);
   });
 
@@ -345,10 +385,6 @@ function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
     new ButtonBuilder()
       .setCustomId('btn_roll_key')
       .setLabel('Roll Key 🎲')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('btn_sync_keys')
-      .setLabel('Sync Keys 🔑')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('btn_refresh_roster')
@@ -500,30 +536,32 @@ function createSignupFormComponents({ player = null } = {}) {
   return [rowRoles, rowRange, rowVibes, rowActions];
 }
 
-function createLeaderboardEmbed(standings, webUrl = 'https://knkmplus.netlify.app') {
+function createLeaderboardEmbed(standings, webUrl = 'https://knkmplus.netlify.app', { demo = false } = {}) {
   const top = Array.isArray(standings) ? standings.slice(0, 10) : [];
   const p1 = top[0];
   const p2 = top[1];
   const p3 = top[2];
 
   const embed = new EmbedBuilder()
-    .setTitle('🏆 KITH & KIN — PARTICIPATION LEADERBOARD')
-    .setColor(0xF5D061)
-    .setDescription('*Honoring guild attendance, role versatility, leadership, and carry shepherds over raw parses.*');
+    .setTitle(demo ? '🎭 DEMO — KITH & KIN PARTICIPATION LEADERBOARD' : '🏆 KITH & KIN — PARTICIPATION LEADERBOARD')
+    .setColor(demo ? 0x64748B : 0xF5D061)
+    .setDescription(demo
+      ? '**⚠️ Sample data — not real standings.** Live standings appear once the season has 10+ logged keys.'
+      : '*Honoring guild attendance, role versatility, leadership, and carry shepherds over raw parses.*');
 
   if (p1 || p2 || p3) {
     let podiumText = '';
     if (p1) {
       podiumText += `🥇 **#1 ${p1.name}** (${p1.className}) — **${p1.totalPoints} pts** • *${p1.title}*\n` +
-                    `   └ 📅 ${p1.nightsAttended} Nights | 🗝️ ${p1.runsCount} Keys (${p1.timedCount} Timed) | 🎭 ${p1.roles.join('/')}${p1.isLeader ? ' | 👑 Leader' : ''}${p1.isStonk ? ' | 🏋️ Stonk' : ''}${p1.carryShepherdCount ? ` | 🎒 ${p1.carryShepherdCount} Carries` : ''}\n\n`;
+                    `   └ 📅 ${p1.nightsAttended} Nights | 🗝️ ${p1.runsCount} Keys (${p1.timedCount} Timed) | 🎭 ${p1.roles.join('/')}${p1.isLeader ? ' | 👑 Leader' : ''}${p1.isStonk ? ' | 🏋️ Stronk' : ''}${p1.carryShepherdCount ? ` | 🎒 ${p1.carryShepherdCount} Carries` : ''}\n\n`;
     }
     if (p2) {
       podiumText += `🥈 **#2 ${p2.name}** (${p2.className}) — **${p2.totalPoints} pts** • *${p2.title}*\n` +
-                    `   └ 📅 ${p2.nightsAttended} Nights | 🗝️ ${p2.runsCount} Keys (${p2.timedCount} Timed) | 🎭 ${p2.roles.join('/')}${p2.isLeader ? ' | 👑 Leader' : ''}${p2.isStonk ? ' | 🏋️ Stonk' : ''}${p2.carryShepherdCount ? ` | 🎒 ${p2.carryShepherdCount} Carries` : ''}\n\n`;
+                    `   └ 📅 ${p2.nightsAttended} Nights | 🗝️ ${p2.runsCount} Keys (${p2.timedCount} Timed) | 🎭 ${p2.roles.join('/')}${p2.isLeader ? ' | 👑 Leader' : ''}${p2.isStonk ? ' | 🏋️ Stronk' : ''}${p2.carryShepherdCount ? ` | 🎒 ${p2.carryShepherdCount} Carries` : ''}\n\n`;
     }
     if (p3) {
       podiumText += `🥉 **#3 ${p3.name}** (${p3.className}) — **${p3.totalPoints} pts** • *${p3.title}*\n` +
-                    `   └ 📅 ${p3.nightsAttended} Nights | 🗝️ ${p3.runsCount} Keys (${p3.timedCount} Timed) | 🎭 ${p3.roles.join('/')}${p3.isLeader ? ' | 👑 Leader' : ''}${p3.isStonk ? ' | 🏋️ Stonk' : ''}${p3.carryShepherdCount ? ` | 🎒 ${p3.carryShepherdCount} Carries` : ''}\n`;
+                    `   └ 📅 ${p3.nightsAttended} Nights | 🗝️ ${p3.runsCount} Keys (${p3.timedCount} Timed) | 🎭 ${p3.roles.join('/')}${p3.isLeader ? ' | 👑 Leader' : ''}${p3.isStonk ? ' | 🏋️ Stronk' : ''}${p3.carryShepherdCount ? ` | 🎒 ${p3.carryShepherdCount} Carries` : ''}\n`;
     }
     embed.addFields({ name: '👑 THE PODIUM OF CHAMPIONS', value: podiumText.trim() });
   }
@@ -555,15 +593,15 @@ function createLeaderboardEmbed(standings, webUrl = 'https://knkmplus.netlify.ap
            '• **Keys Completed:** +10 pts (+5 timed, +2 per level > +10)\n' +
            '• **Role Flexibility:** +5 pts (Dual Flex) / +10 pts (Triple Flex)\n' +
            '• **Born Leader (👑):** +8 pts / night willing to lead\n' +
-           '• **Stonk Back (🏋️):** +8 pts / night willing to carry\n' +
+           '• **Stronk Back (🏋️):** +8 pts / night willing to carry\n' +
            '• **Carry Shepherd (🎒):** +15 pts per key run with guildies in need'
   });
 
-  embed.setFooter({ text: 'Kith & Kin • Midnight Season 2 | Live Web App Synced' });
-  return embed;
+  embed.setFooter({ text: demo ? 'Kith & Kin • DEMO DATA' : 'Kith & Kin • Midnight Season 2 | Live Web App Synced' });
+  return fitEmbed(embed);
 }
 
-function createLeaderboardButtons(webUrl = 'https://knkmplus.netlify.app') {
+function createLeaderboardButtons(webUrl = 'https://knkmplus.netlify.app', view = 'auto') {
   const linkStyle = (ButtonStyle && ButtonStyle.Link) ? ButtonStyle.Link : 5;
   const secondaryStyle = (ButtonStyle && ButtonStyle.Secondary) ? ButtonStyle.Secondary : 2;
   const primaryStyle = (ButtonStyle && ButtonStyle.Primary) ? ButtonStyle.Primary : 1;
@@ -579,7 +617,7 @@ function createLeaderboardButtons(webUrl = 'https://knkmplus.netlify.app') {
     .setLabel('ℹ️ Scoring Rules');
 
   const btnRefresh = new ButtonBuilder()
-    .setCustomId('btn_leaderboard_refresh')
+    .setCustomId(`btn_leaderboard_refresh:${view}`)
     .setStyle(primaryStyle)
     .setLabel('🔄 Refresh');
 
@@ -588,6 +626,8 @@ function createLeaderboardButtons(webUrl = 'https://knkmplus.netlify.app') {
 }
 
 module.exports = {
+  fitEmbed,
+  getNextFridayTimestamp,
   createRosterEmbed,
   createGroupEmbeds,
   createSignupButtons,

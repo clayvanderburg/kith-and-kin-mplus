@@ -233,7 +233,7 @@ async function updateDiscordCard(state) {
   const embed = embeds.createRosterEmbed(
     state.players || [],
     webUrl,
-    'MadKing',
+    undefined,
     state.formedGroups || [],
     state.benchedPlayers || []
   ).toJSON();
