@@ -154,6 +154,9 @@ async function registerCommands(token, clientId, guildId) {
         { body: commandsData }
       );
       console.log(`[Commands] Registered ${commandsData.length} slash commands to guild ${guildId}`);
+      // A leftover global copy shows up beside the guild command as a second /mplus.
+      await rest.put(Routes.applicationCommands(clientId), { body: [] });
+      console.log('[Commands] Cleared global slash commands so only the guild command remains.');
       return;
     } catch (err) {
       if (err.code === 50001 || err.status === 403) {
