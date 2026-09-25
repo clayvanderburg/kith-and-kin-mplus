@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=nav-1">
   <style>
     .player-shell { max-width: 880px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
     .player-card { padding: 1.25rem; margin-bottom: 1rem; }
@@ -43,6 +43,11 @@
     .face-btn { font-size: 1.35rem; line-height: 1; }
     .history-item { padding: 0.55rem 0; border-top: 1px solid rgba(255,255,255,0.06); }
     .history-item small { color: var(--text-muted); }
+    .roll-flash { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: rgba(0,0,0,0.72); }
+    .roll-flash.is-on { display: grid; animation: rollPop 0.35s ease; }
+    .roll-flash-card { background: #141922; border: 2px solid var(--border-gold); border-radius: 18px; padding: 1.5rem 1.8rem; text-align: center; box-shadow: 0 0 40px rgba(245, 208, 97, 0.35); }
+    .roll-flash-card strong { display: block; font-family: Cinzel, serif; font-size: 2rem; color: var(--text-gold); margin-top: 0.3rem; }
+    @keyframes rollPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .status-line { min-height: 1.2rem; color: var(--text-gold); }
     .login-panel { text-align: center; padding: 1.5rem 0.5rem 0.5rem; }
     @media (max-width: 700px) {
@@ -54,6 +59,10 @@
 </head>
 <body>
   <div class="site-wrapper">
+    <nav class="site-nav" aria-label="Site">
+      <a href="signup.html" class="is-current">My Night</a>
+      <a href="index.html">Officer Desk</a>
+    </nav>
     <header class="guild-header">
       <div class="header-titles">
         <div class="guild-subtitle">World of Warcraft • Midnight Season 2</div>
@@ -134,6 +143,7 @@
         <label>Note
           <textarea id="runNote" class="form-input" maxlength="280" rows="2" placeholder="Smooth run, or what made it rough"></textarea>
         </label>
+        <p class="player-lead">Only you and officers can see this note.</p>
         <p class="player-lead" style="margin-top: 0.8rem;">How did the group feel?</p>
         <div class="face-row" id="faceRow">
           <button type="button" class="face-btn" data-face="1" title="Rough">😠</button>
@@ -142,6 +152,7 @@
           <button type="button" class="face-btn" data-face="4" title="Good">🙂</button>
           <button type="button" class="face-btn" data-face="5" title="Great">😄</button>
         </div>
+        <p class="player-lead">Only you and officers can see this rating.</p>
         <button type="button" class="btn btn-primary" id="logRunBtn" style="margin-top: 0.8rem;">Add to my record</button>
         <p class="status-line" id="nightStatus"></p>
         <h3>Your history</h3>
@@ -155,6 +166,14 @@
       </section>
     </main>
   </div>
-  <script src="signup.js?v=player-4"></script>
+  <div id="rollFlash" class="roll-flash" role="dialog" aria-live="assertive">
+    <div class="roll-flash-card">
+      <div>Your party rolled</div>
+      <strong id="rollFlashKey">—</strong>
+      <p class="player-lead" id="rollFlashWho"></p>
+      <button type="button" class="btn btn-primary" id="rollFlashClose">Got it</button>
+    </div>
+  </div>
+  <script src="signup.js?v=player-5"></script>
 </body>
 </html>

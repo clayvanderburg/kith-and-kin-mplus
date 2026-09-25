@@ -7,12 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=nav-1">
 </head>
 <body>
   <!-- Ambient Audio Elements synthesized via Web Audio API -->
   <div class="site-wrapper">
     <!-- Header -->
+    <nav class="site-nav" aria-label="Site">
+      <a href="signup.html">My Night</a>
+      <a href="index.html" class="is-current">Officer Desk</a>
+    </nav>
     <header class="guild-header">
       <div class="guild-crest">
         <div class="keystone-sigil" id="keystoneSigil" title="Click to pulse the keystone!">
@@ -337,6 +341,7 @@
           </div>
 
           <!-- Bench / Reserves Section -->
+          <div id="officerNotes" class="card" style="display:none; margin-top: 1rem; padding: 1rem;"></div>
           <div id="benchContainer" class="bench-container" style="display: none;">
             <div class="bench-header">
               <h4>☕ Tavern Reserves &amp; Rotation (Benched)</h4>
@@ -568,11 +573,11 @@
     </div>
   </div>
   <style>
-    .officer-gate { position: fixed; inset: 0; z-index: 80; background: rgba(5, 7, 12, 0.92); display: grid; place-items: center; padding: 1rem; }
+    .officer-gate { position: fixed; inset: 0; z-index: 30; background: rgba(5, 7, 12, 0.82); display: grid; place-items: center; padding: 1rem; padding-top: 4.5rem; }
     .officer-gate[hidden] { display: none; }
     .officer-gate-card { max-width: 460px; padding: 1.3rem; display: grid; gap: 0.7rem; }
     .officer-gate-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0; }
   </style>
-  <script src="app.js?v=sync-6"></script>
+  <script src="app.js?v=sync-7"></script>
 </body>
 </html>

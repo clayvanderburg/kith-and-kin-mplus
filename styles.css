@@ -73,6 +73,34 @@ body {
   padding: 1.25rem 1.5rem;
 }
 
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: -0.4rem 0 1rem;
+  padding: 0.45rem;
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  background: rgba(8, 10, 16, 0.92);
+  width: fit-content;
+}
+
+.site-nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-weight: 700;
+}
+
+.site-nav a.is-current {
+  color: #1a1408;
+  background: linear-gradient(180deg, #f5d061, #c89e47);
+}
+
 /* ==========================================================================
    Header & Guild Crest
    ========================================================================== */
