@@ -483,8 +483,11 @@
 
       if (data && !data.empty) {
         const remoteTime = Date.parse(data.lastUpdated) || 0;
-        if (localEditedAt && localEditedAt > remoteTime) {
-          updateSyncStatus('synced', 'Discord Synced');
+        const localStamp = Math.max(localEditedAt, Date.parse(localStorage.getItem('kk_local_updated') || '') || 0);
+        const localHasRoster = (state.players || []).length > 0 || (state.formedGroups || []).length > 0;
+        if (localHasRoster && localStamp > remoteTime) {
+          updateSyncStatus('syncing', 'Saving site changes...');
+          pushRemoteState();
           return;
         }
         if (data.events && typeof data.events === 'object' && Object.keys(data.events).length > 0) {
@@ -525,6 +528,7 @@
         savePlayersLocal();
         saveGroupsLocal();
         saveEventsLocal();
+        if (data.lastUpdated) localStorage.setItem('kk_local_updated', data.lastUpdated);
         renderRoster();
         renderGroups();
         updateSyncStatus('synced', 'Discord Synced');
@@ -586,9 +590,16 @@
     }, 1000);
   }
 
+  function touchLocalStamp() {
+    try {
+      localStorage.setItem('kk_local_updated', new Date().toISOString());
+    } catch (e) {}
+  }
+
   function savePlayersLocal() {
     try {
       localStorage.setItem('kk_mplus_players', JSON.stringify(state.players));
+      touchLocalStamp();
     } catch (e) {
       console.error('Could not save players to localStorage', e);
     }
@@ -603,6 +614,7 @@
     try {
       localStorage.setItem('kk_mplus_groups', JSON.stringify(state.formedGroups));
       localStorage.setItem('kk_mplus_benched', JSON.stringify(state.benchedPlayers || []));
+      touchLocalStamp();
     } catch (e) {
       console.error('Could not save groups to localStorage', e);
     }

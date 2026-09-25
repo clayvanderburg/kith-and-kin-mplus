@@ -842,11 +842,8 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'btn_refresh_roster') {
-      rememberDiscordCard(interaction, state);
-      const saved = await liveState.writeMergedState(activeLambdaEvent, {
-        discordCard: state.discordCard || null
-      });
-      const view = liveState.reconcileState(saved);
+      const live = await liveState.readLiveState(activeLambdaEvent);
+      const view = liveState.reconcileState(live || { players: [], formedGroups: [], benchedPlayers: [] });
       liveState.updateDiscordCard(view).catch(err => {
         console.error('[Discord] Card refresh failed:', err.message);
       });

@@ -5,6 +5,13 @@
 
 const { readLiveState, writeMergedState, updateDiscordCard } = require('./live-state');
 const SYNC_SECRET = process.env.SYNC_SECRET || 'kith_and_kin_mythic_key_2026';
+const OFFICER_KEY = process.env.OFFICER_KEY || '';
+
+function syncSecretOk(incoming) {
+  if (!incoming) return false;
+  if (incoming === SYNC_SECRET) return true;
+  return Boolean(OFFICER_KEY) && incoming === OFFICER_KEY;
+}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -61,7 +68,7 @@ exports.handler = async (event, context) => {
     try {
       // Validate secret if configured
       const incomingSecret = event.headers['x-sync-secret'] || event.headers['X-Sync-Secret'];
-      if (SYNC_SECRET && incomingSecret !== SYNC_SECRET) {
+      if (!syncSecretOk(incomingSecret)) {
         return {
           statusCode: 401,
           headers: CORS_HEADERS,

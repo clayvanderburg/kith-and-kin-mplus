@@ -178,7 +178,14 @@ async function readLiveState(event) {
 
 async function writeMergedState(event, incoming) {
   const latest = await readLiveState(event);
+  if (!latest && incoming && !incoming.players && !incoming.formedGroups && !incoming.events) {
+    return null;
+  }
   const merged = mergeStates(latest, incoming);
+  const rosterChange = Boolean(
+    incoming && (incoming.players || incoming.formedGroups || incoming.events || incoming.groupsTouchedAt)
+  );
+  if (!rosterChange && latest?.lastUpdated) merged.lastUpdated = latest.lastUpdated;
   await useStore(event, (store) => store.setJSON(STATE_KEY, merged));
   return merged;
 }
