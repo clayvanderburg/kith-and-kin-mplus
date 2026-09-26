@@ -1003,7 +1003,7 @@ exports.handler = async (event, context) => {
       });
     }
 
-    return ephemeral('⚠️ That form has expired. Click **Sign Up / Edit RSVP 📝** again.');
+    return ephemeral('⚠️ That form has expired. Click **Sign Up / Edit 📝** again.');
   }
 
   return ephemeral('⚠️ Unknown action. Try the buttons on the latest sign-up card.');
