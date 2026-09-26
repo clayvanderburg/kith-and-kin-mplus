@@ -11,19 +11,18 @@ const commands = [
     .addSubcommand(sub =>
       sub
         .setName('signup')
-        .setDescription('Sign up or update your character for tonight’s Mythic+ Night')
+        .setDescription('Sign up or switch characters for Mythic+ Night')
         .addStringOption(opt =>
           opt
             .setName('character')
-            .setDescription('Your World of Warcraft character name (type to search guild roster)')
+            .setDescription('Start typing your name and pick it. Outside the guild? Type Name-Realm')
             .setAutocomplete(true)
             .setRequired(true)
         )
         .addStringOption(opt =>
           opt
             .setName('role')
-            .setDescription('Your primary role')
-            .setRequired(true)
+            .setDescription('Optional: set roles now (or pick them on the next screen)')
             .addChoices(
               { name: '🛡️ Tank', value: 'Tank' },
               { name: '💚 Healer', value: 'Healer' },
@@ -77,6 +76,11 @@ const commands = [
       sub
         .setName('form')
         .setDescription('Captains and High Council: build the 5-man groups')
+        .addBooleanOption(opt =>
+          opt
+            .setName('reshuffle')
+            .setDescription('Rebuild ALL groups from scratch (default: keep groups, only group people waiting)')
+        )
         .addBooleanOption(opt =>
           opt
             .setName('avoid_dupes')

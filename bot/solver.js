@@ -70,7 +70,8 @@ function solveGroups(options = {}) {
     balanceIo = true,
     lockedGroups = []
   } = opts;
-  const attendees = players.filter(p => p.attending !== false);
+  const attendees = players.filter(p => p.attending !== false)
+    .map(p => ({ ...p, keyMin: Number(p.keyMin) || 9, keyMax: Number(p.keyMax) || 12 }));
 
   // Exclude players already locked into existing preserved groups
   const lockedPlayerIds = new Set();

@@ -227,6 +227,15 @@ exports.handler = async (event) => {
     console.error('[me] roster read failed:', err.message);
   }
   let mine = (state.players || []).find(player => player.bnetId && player.bnetId === session.bnetId);
+  if (!mine) {
+    // Signed up through Discord first? Battle.net proves they own the character, so pick that entry up.
+    const loose = r => fold(r).replace(/[^a-z0-9]/g, '');
+    const owned = (session.characters || []);
+    const time = p => Date.parse(p.activeAt || p.touchedAt || '') || 0;
+    mine = (state.players || [])
+      .filter(player => !player.bnetId && owned.some(c => fold(c.name) === fold(player.name) && loose(c.realm) === loose(player.realm)))
+      .sort((a, b) => (b.attending ? 1 : 0) - (a.attending ? 1 : 0) || time(b) - time(a))[0];
+  }
 
   if (event.httpMethod === 'GET') {
     return {
@@ -274,7 +283,9 @@ exports.handler = async (event) => {
     if (body.action === 'edit-run') {
       return editRunLog(event, state, mine, body);
     }
-    return await saveSignup(event, state, session, body, mine);
+    // A Discord-only entry is reused only when they pick that same character; otherwise it stays as their alt.
+    const base = mine && !mine.bnetId && fold(mine.name) !== fold(body.name) ? null : mine;
+    return await saveSignup(event, state, session, body, base);
   } catch (err) {
     console.error('[me] save failed:', err);
     return {

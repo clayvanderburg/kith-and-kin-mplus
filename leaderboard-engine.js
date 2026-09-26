@@ -690,8 +690,9 @@
     const people = [];
     groups.forEach(chars => {
       const runsOf = c => (Array.isArray(c.runLog) ? c.runLog.length : 0);
+      // The row is named after the player's chosen main (⭐), else the character they play most.
       const main = [...chars].sort((a, b) =>
-        (b.attending ? 1 : 0) - (a.attending ? 1 : 0) || runsOf(b) - runsOf(a) || (b.io || 0) - (a.io || 0))[0];
+        (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0) || runsOf(b) - runsOf(a) || (b.attending ? 1 : 0) - (a.attending ? 1 : 0) || (b.io || 0) - (a.io || 0))[0];
       const seen = new Set();
       const runLog = [];
       chars.forEach(c => (c.runLog || []).forEach(run => {

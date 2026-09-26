@@ -54,42 +54,276 @@ function findPlayerByName(state, name) {
 
 // The character this Discord member most recently claimed.
 function findOwnPlayer(state, discordUserId) {
-  if (!discordUserId) return null;
-  return (state.players || [])
-    .filter(p => p.discordId === discordUserId)
-    .sort((a, b) => (Date.parse(b.touchedAt || '') || 0) - (Date.parse(a.touchedAt || '') || 0))[0] || null;
-}
-
-function bindSignupCharacter(state, discordUser, rawName) {
-  if (!rosterSearch) return null;
-  const typed = String(rawName || '').replace(/^__custom__:?/, '').trim();
-  const rosterHit = rosterSearch.findRosterEntry(typed);
-  const existing = findPlayerByName(state, rosterHit?.name || typed);
-  const error = claimError(existing, discordUser?.id);
-  if (error) return { error };
-  return rosterSearch.attachCharacter(state, discordUser?.id, rawName);
+  return activeCharacter(state, discordUserId);
 }
 
 function ephemeral(content) {
   return jsonResponse({ type: 4, data: { content, flags: 64 } });
 }
 
-function signupPreferencesMessage(player) {
+// ---- Characters a Discord member owns -------------------------------------------------
+// A member can claim several characters (main + alts). The "active" one is the one they're
+// playing tonight (most recently picked). Switching characters mid-night keeps their group spot.
+
+function sameChar(a, b) {
+  return foldName(a?.name) === foldName(b?.name) && foldName(a?.realm) === foldName(b?.realm);
+}
+
+function myCharacters(state, userId) {
+  if (!userId) return [];
+  return (state.players || []).filter(p => p.discordId === userId);
+}
+
+function activeCharacter(state, userId) {
+  const time = p => Date.parse(p.activeAt || p.touchedAt || '') || 0;
+  return myCharacters(state, userId).sort((a, b) => time(b) - time(a))[0] || null;
+}
+
+function findCharacter(state, name, realm) {
+  const players = state.players || [];
+  const exact = players.find(p => foldName(p.name) === foldName(name) && (!realm || foldName(p.realm) === foldName(realm)));
+  if (exact) return exact;
+  if (!realm) return null;
+  // Realm spelled differently ("MoonGuard" vs "Moon Guard")
+  const loose = r => foldName(r).replace(/[^a-z0-9]/g, '');
+  return players.find(p => foldName(p.name) === foldName(name) && loose(p.realm) === loose(realm)) || null;
+}
+
+function groupSlotOf(state, player) {
+  const groups = state.formedGroups || [];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (!g) continue;
+    if (g.tank && foldName(g.tank.name) === foldName(player.name)) return { index: i, role: 'Tank' };
+    if (g.healer && foldName(g.healer.name) === foldName(player.name)) return { index: i, role: 'Healer' };
+    if ((g.dps || []).some(d => d && foldName(d.name) === foldName(player.name))) return { index: i, role: 'DPS' };
+  }
+  return null;
+}
+
+// Put `to` into every group slot `from` was holding.
+function swapInGroups(state, from, to) {
+  const snap = { id: to.id, name: to.name, className: to.className, realm: to.realm, roles: to.roles, io: to.io, ilvl: to.ilvl };
+  const is = m => m && foldName(m.name) === foldName(from.name);
+  let changed = false;
+  for (const g of state.formedGroups || []) {
+    if (!g) continue;
+    if (is(g.tank)) { g.tank = { ...g.tank, ...snap, assignedRole: 'Tank' }; changed = true; }
+    if (is(g.healer)) { g.healer = { ...g.healer, ...snap, assignedRole: 'Healer' }; changed = true; }
+    g.dps = (g.dps || []).map(d => {
+      if (!is(d)) return d;
+      changed = true;
+      return { ...d, ...snap, assignedRole: 'DPS' };
+    });
+  }
+  return changed;
+}
+
+function removeFromGroups(state, player) {
+  const is = m => m && foldName(m.name) === foldName(player.name);
+  let changed = false;
+  for (const g of state.formedGroups || []) {
+    if (!g) continue;
+    if (is(g.tank)) { g.tank = null; changed = true; }
+    if (is(g.healer)) { g.healer = null; changed = true; }
+    if ((g.dps || []).some(is)) { g.dps = g.dps.map(d => (is(d) ? null : d)); changed = true; }
+  }
+  return changed;
+}
+
+// Make `target` the character this member is playing tonight.
+function activateCharacter(state, userId, target) {
+  const now = new Date().toISOString();
+  const previous = activeCharacter(state, userId);
+  let note = '';
+  if (previous && !sameChar(previous, target) && previous.attending) {
+    previous.attending = false;
+    previous.touchedAt = now;
+    const slot = groupSlotOf(state, previous);
+    if (slot && swapInGroups(state, previous, target)) {
+      state.groupsTouchedAt = now;
+      note = `\n🔁 Took **${previous.name}**'s spot in **Group ${slot.index + 1}** (${slot.role}).`;
+    }
+  }
+  target.discordId = userId;
+  target.attending = true;
+  target.absent = false;
+  target.declinedAt = null;
+  target.activeAt = now;
+  target.touchedAt = now;
+  if (!myCharacters(state, userId).some(p => p.isMain)) target.isMain = true;
+  return note;
+}
+
+/**
+ * Claim a character for this member. `info` comes from the guild roster or a Raider.IO lookup,
+ * so every character is real — no "Adventurer" placeholders.
+ */
+function claimCharacter(state, userId, info) {
+  let target = findCharacter(state, info.name, info.realm);
+  const err = claimError(target, userId);
+  if (err) return { error: err };
+  if (!target) {
+    const role = ['Tank', 'Healer', 'DPS'].includes(info.role) ? info.role : 'DPS';
+    target = {
+      id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: info.name,
+      realm: info.realm || 'Perenolde',
+      region: 'us',
+      className: info.className || 'Adventurer',
+      roles: [role],
+      keyMin: 9,
+      keyMax: 12,
+      keyBrackets: ['10-12'],
+      carryPreference: 'none',
+      isShitter: false,
+      isLeader: false,
+      isReserve: false,
+      io: info.io || 0,
+      ilvl: info.ilvl || 0,
+      guildMember: !!info.guildMember
+    };
+    state.players = state.players || [];
+    state.players.push(target);
+  } else {
+    if (info.className && (!target.className || target.className === 'Adventurer')) target.className = info.className;
+    if (info.realm && !target.realm) target.realm = info.realm;
+    if (info.io && !target.io) target.io = info.io;
+  }
+  const note = activateCharacter(state, userId, target);
+  return { player: target, note };
+}
+
+let signupCommandId = null;
+// Clickable "/mplus signup" mention. Clicking it opens the command with live name search.
+async function signupCommandMention(interaction) {
+  if (!signupCommandId && process.env.DISCORD_TOKEN && interaction.application_id) {
+    const base = `https://discord.com/api/v10/applications/${interaction.application_id}`;
+    for (const url of [interaction.guild_id && `${base}/guilds/${interaction.guild_id}/commands`, `${base}/commands`].filter(Boolean)) {
+      try {
+        const res = await fetch(url, { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }, signal: AbortSignal.timeout(800) });
+        if (!res.ok) continue;
+        const cmd = (await res.json()).find(c => c.name === 'mplus');
+        if (cmd) { signupCommandId = cmd.id; break; }
+      } catch (err) { /* fall back to plain text */ }
+    }
+  }
+  return signupCommandId ? `</mplus signup:${signupCommandId}>` : '`/mplus signup`';
+}
+
+async function addCharacterMessage(interaction, intro = '') {
+  const mention = await signupCommandMention(interaction);
   return {
-    content: `### 📝 Friday Mythic+ Night Sign-Up\nCharacter: **${player.name}** (${player.className}${player.realm ? ` — ${player.realm}` : ''})\nPick one or more roles, key goals (**6-8 Hero Crests**, **9-12 Myth Crests & Vault**, **12+ Score Push**), and vibes, then **Save My RSVP**.`,
-    components: embeds ? embeds.createSignupFormComponents({ player }) : []
+    content: `${intro}### ➕ Pick your character\nClick ${mention}, then start typing your name — your character shows up in the list as you type. Pick it and hit Enter.\n` +
+      `• **Not in the guild?** Type \`Name-Realm\` (e.g. \`Noxxicc-Korgath\`) and pick the 🔎 option — we look it up on Raider.IO.\n` +
+      `• On a phone and the list won't show? Use **Search by name** below.`,
+    components: [{
+      type: 1,
+      components: [
+        { type: 2, style: 2, custom_id: 'btn_search_modal', label: 'Search by name 🔍' },
+        { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
+      ]
+    }],
+    flags: 64
   };
 }
 
-function signupMatchMessage(result) {
-  const count = result?.matchCount || 0;
-  const label = result?.typedName ? `**${result.typedName}**` : 'that name';
+function signupPanel(state, userId, player, note = '') {
+  const slot = groupSlotOf(state, player);
+  const status = player.attending
+    ? `✅ **Signed up for tonight**${slot ? ` · in **Group ${slot.index + 1}** as ${slot.role}` : ' · waiting for a group'}`
+    : '💤 **Not signed up for tonight** — change anything below to sign up';
+  const keys = `+${player.keyMin || 9} to +${player.keyMax || 12}`;
   return {
-    content: count
-      ? `### 📝 Find Your Character\n${count} guild match${count === 1 ? '' : 'es'} for ${label}. Pick one, or use the name even if they are not in the guild.`
-      : `### 📝 Find Your Character\nNo guild match for ${label}. Pick **not in guild** to sign that name up anyway, or search again.`,
-    components: embeds ? embeds.createCharacterMatchComponents(result?.matches || [], result?.typedName || '') : [],
+    content: `### 📝 ${player.name}${player.isMain ? ' ⭐' : ''} · ${player.className || 'Player'} · ${player.realm || ''}\n` +
+      `${status}\nRoles: **${(player.roles || []).join(' / ') || 'DPS'}** · Keys: **${keys}**${note}\n` +
+      `-# Changes save instantly. Use the character menu to switch toons or add an alt.`,
+    components: embeds ? embeds.createSignupFormComponents({ player, characters: myCharacters(state, userId) }) : [],
     flags: 64
+  };
+}
+
+async function lookupCharacter(name, realm) {
+  const rio = await lookupRaiderIo(name, realm, 'us', 1500);
+  if (!rio?.name) return null;
+  return { name: rio.name, realm: rio.realm || realm, className: rio.className, io: rio.io, ilvl: rio.ilvl };
+}
+
+// Turn what the member picked/typed into a real character, or explain what to do.
+async function resolveCharacterChoice(raw) {
+  const value = String(raw || '').trim();
+  if (!value || value === '__hint__') {
+    return { error: 'Start typing your name and **pick it from the list**. For characters outside the guild, type `Name-Realm`.' };
+  }
+  let name = value;
+  let realm = '';
+  let lookup = false;
+  if (value.startsWith('__lookup__:')) {
+    [name, realm] = value.slice('__lookup__:'.length).split(/-(.+)/);
+    lookup = true;
+  } else if (value.includes('|')) {
+    [name, realm] = value.split('|');
+  } else if (value.includes('-')) {
+    [name, realm] = value.split(/-(.+)/);
+  }
+  name = (name || '').trim();
+  realm = (realm || '').trim();
+
+  if (!lookup && rosterSearch) {
+    const matches = rosterSearch.searchGuildRoster(name, 50).matches
+      .filter(e => foldName(e.name) === foldName(name) && (!realm || foldName(e.realm) === foldName(realm)));
+    if (matches.length === 1 || (matches.length && realm)) {
+      const e = matches[0];
+      return { info: { name: e.name, realm: e.realm, className: e.className, role: e.role, guildMember: true } };
+    }
+    if (matches.length > 1) {
+      return { error: `More than one **${name}** in the guild (${matches.map(m => m.realm).join(', ')}). Pick the right one from the list.` };
+    }
+  }
+  if (!realm) {
+    return { error: `**${name}** isn't on the guild roster. If they're outside the guild, type \`${name}-Realm\` and pick the 🔎 option.` };
+  }
+  const found = await lookupCharacter(name, realm);
+  if (!found) return { error: `Couldn't find **${name}** on **${realm}** on Raider.IO. Check the spelling and realm.` };
+  return { info: found };
+}
+
+
+/**
+ * Form groups. By default existing groups are kept and only people still waiting are grouped,
+ * because people keep arriving and swapping characters through the night.
+ * `reshuffle: true` rebuilds every group from scratch.
+ */
+function formGroups(state, { reshuffle = false, avoidClassDupes = true } = {}) {
+  const attending = (state.players || []).filter(p => p.attending);
+  const existing = reshuffle ? [] : (state.formedGroups || []).filter(Boolean);
+  const grouped = new Set();
+  for (const g of existing) {
+    for (const m of [g.tank, g.healer, ...(g.dps || [])]) if (m?.name) grouped.add(foldName(m.name));
+  }
+  const waiting = attending.filter(p => !grouped.has(foldName(p.name)));
+  if (waiting.length < 5) {
+    return {
+      error: existing.length
+        ? `Only ${waiting.length} waiting — need 5 (1 tank, 1 healer, 3 DPS) for another group. To rebuild every group, use \`/mplus form reshuffle:True\`.`
+        : `Need at least 5 signed up to form a group (have ${attending.length}).`
+    };
+  }
+  const result = solver
+    ? solver.solveGroups({ players: waiting, avoidClassDupes, excludedDungeons: state.excludedDungeons || [] })
+    : { groups: [], benched: waiting };
+  if (!result.groups.length) return { error: result.message || 'Could not form a group from the people waiting.' };
+  state.formedGroups = [...existing, ...result.groups];
+  state.benchedPlayers = result.benched || [];
+  state.groupsTouchedAt = new Date().toISOString();
+  return { added: result.groups.length, total: state.formedGroups.length, waiting: (result.benched || []).length };
+}
+
+function cardMessage(state, content) {
+  return {
+    content,
+    embeds: embeds ? [embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || []).toJSON()] : [],
+    components: embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : []
   };
 }
 
@@ -311,16 +545,19 @@ exports.handler = async (event, context) => {
     let choices = [];
 
     try {
-      const result = rosterSearch ? rosterSearch.searchGuildRoster(query, 24) : { matches: [], exact: null, typedName: query };
-      choices = (result.matches || []).map(entry => ({
-        name: `${entry.name} (${entry.className || 'Player'} - ${entry.realm || 'Guild'})`.slice(0, 100),
-        value: entry.name.slice(0, 100)
-      }));
-      if (result.typedName && !result.exact) {
-        choices.unshift({
-          name: `➕ "${result.typedName}" (not in guild)`.slice(0, 100),
-          value: result.typedName.slice(0, 100)
-        });
+      const typed = String(query || '').trim();
+      const [namePart, realmPart] = typed.split(/-(.+)/);
+      const result = rosterSearch ? rosterSearch.searchGuildRoster(namePart || '', 23) : { matches: [], exact: null };
+      choices = (result.matches || [])
+        .filter(e => !realmPart || foldName(e.realm).startsWith(foldName(realmPart)))
+        .map(entry => ({
+          name: `${entry.name} — ${entry.className || 'Player'} (${entry.realm || 'Guild'})`.slice(0, 100),
+          value: `${entry.name}|${entry.realm || ''}`.slice(0, 100)
+        }));
+      if (namePart && realmPart) {
+        choices.unshift({ name: `🔎 ${namePart} on ${realmPart} — look up on Raider.IO`.slice(0, 100), value: `__lookup__:${namePart}-${realmPart}`.slice(0, 100) });
+      } else if (typed && !choices.length) {
+        choices.push({ name: 'Not in the guild? Type Name-Realm (e.g. Noxxicc-Korgath)', value: '__hint__' });
       }
     } catch (err) {
       console.error('[Discord Autocomplete] Error loading roster:', err);
@@ -427,101 +664,39 @@ exports.handler = async (event, context) => {
 
       if (subcommand === 'form') {
         if (!rollUi?.isLeader(interaction.member)) {
-          return jsonResponse({
-            type: 4,
-            data: { content: 'Only Captains and High Council can form groups. Use `/mplus form` if you have one of those roles.', flags: 64 }
-          });
+          return ephemeral('Only Captains and High Council can form groups.');
         }
-        const attending = (state.players || []).filter(p => p.attending);
-        if (attending.length < 5) {
-          return jsonResponse({
-            type: 4,
-            data: {
-              content: `⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Use \`/mplus signup\` or click the buttons to register!`,
-              flags: 64
-            }
-          });
-        }
-
         const formOpts = options?.[0]?.options || [];
+        const reshuffle = formOpts.find(o => o.name === 'reshuffle')?.value === true;
         const avoidDupes = formOpts.find(o => o.name === 'avoid_dupes')?.value;
-        const result = solver
-          ? solver.solveGroups({ players: attending, avoidClassDupes: avoidDupes !== false, excludedDungeons: state.excludedDungeons || [] })
-          : { groups: [], benched: [] };
-        if (!result.groups.length) {
-          return ephemeral(`⚠️ ${result.message || 'Could not form any groups.'}`);
-        }
-        state.formedGroups = result.groups;
-        state.benchedPlayers = result.benched;
-        state.groupsTouchedAt = new Date().toISOString();
+        const r = formGroups(state, { reshuffle, avoidClassDupes: avoidDupes !== false });
+        if (r.error) return ephemeral(`⚠️ ${r.error}`);
         await saveState(state);
-
-        // One embed keeps us under Discord's 10-embed / 6000-character message limits.
-        const embed = embeds
-          ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, result.groups, result.benched).toJSON()
-          : { title: 'Groups formed' };
         return jsonResponse({
           type: 4,
-          data: {
-            content: `🏰 **Formed ${result.groups.length} Mythic+ group(s).**${result.benched.length ? ` ${result.benched.length} on the bench.` : ''}`,
-            embeds: [embed]
-          }
+          data: cardMessage(state, reshuffle
+            ? `🏰 **Rebuilt all groups** (${r.total}).`
+            : `🏰 **Formed ${r.added} new group${r.added === 1 ? '' : 's'}** (${r.total} total). ${r.waiting} still waiting.`)
         });
       }
 
       if (subcommand === 'signup') {
         const subOpts = options[0].options || [];
         const getOpt = (n) => subOpts.find(o => o.name === n)?.value;
-
-        const charName = getOpt('character');
-        const roles = (getOpt('role') || 'DPS').split(',');
-        const minKey = getOpt('min_key') || 6;
-        const maxKey = getOpt('max_key') || 12;
-        const keystone = getOpt('keystone') || '';
-        const carryPref = getOpt('carry_pref') || 'none';
-        const isShitter = getOpt('shitter') || false;
-
-        const signupUserId = (interaction.member?.user || interaction.user)?.id;
-        let player = findPlayerByName(state, charName);
-        const signupClaim = claimError(player, signupUserId);
-        if (signupClaim) return ephemeral(`⚠️ ${signupClaim}`);
-        const rosterEntry = rosterSearch ? rosterSearch.findRosterEntry(charName) : null;
-        const rIo = await lookupRaiderIo(charName, player?.realm || rosterEntry?.realm || 'Perenolde');
-
-        const newPlayer = {
-          id: player?.id || `discord-${Date.now()}`,
-          name: rIo?.name || charName,
-          className: rIo?.className || player?.className || 'Warrior',
-          realm: rIo?.realm || player?.realm || rosterEntry?.realm || 'Perenolde',
-          ilvl: rIo?.ilvl || player?.ilvl || 0,
-          io: rIo?.io || player?.io || 0,
-          discordId: signupUserId,
-          touchedAt: new Date().toISOString(),
-          roles,
-          keyMin: minKey,
-          keyMax: maxKey,
-          ownedKey: keystone || rIo?.ownedKey || player?.ownedKey || '',
-          attending: true,
-          carryPreference: carryPref,
-          isShitter: !!isShitter
-        };
-
-        if (player) {
-          Object.assign(player, newPlayer);
-        } else {
-          state.players = state.players || [];
-          state.players.push(newPlayer);
-        }
-
+        const userId = (interaction.member?.user || interaction.user)?.id;
+        const picked = await resolveCharacterChoice(getOpt('character'));
+        if (picked.error) return ephemeral(`⚠️ ${picked.error}`);
+        const claimed = claimCharacter(state, userId, picked.info);
+        if (claimed.error) return ephemeral(`⚠️ ${claimed.error}`);
+        const player = claimed.player;
+        // Optional quick-set options still work for people who like typing everything.
+        if (getOpt('role')) player.roles = String(getOpt('role')).split(',');
+        if (getOpt('min_key')) player.keyMin = getOpt('min_key');
+        if (getOpt('max_key')) player.keyMax = getOpt('max_key');
+        if (getOpt('carry_pref')) player.carryPreference = getOpt('carry_pref');
+        if (getOpt('shitter') !== undefined) player.isShitter = !!getOpt('shitter');
         await saveState(state);
-
-        return jsonResponse({
-          type: 4,
-          data: {
-            content: `✅ Signed up **${newPlayer.name}** (${newPlayer.className}) as **${roles.join('/')}**! (ilvl: ${newPlayer.ilvl}, IO: ${newPlayer.io})\nSynced to [web dashboard](${WEB_URL}).`,
-            flags: 64
-          }
-        });
+        return jsonResponse({ type: 4, data: signupPanel(state, userId, player, `\n🎉 Signed up **${player.name}**.${claimed.note}`) });
       }
     }
   }
@@ -563,7 +738,7 @@ exports.handler = async (event, context) => {
         }
       });
     }
-    let player = findOwnPlayer(state, discordUser?.id);
+    let player = activeCharacter(state, discordUser?.id);
 
     // Leaderboard interactive buttons
     if (customId === 'btn_leaderboard_refresh' || customId.startsWith('btn_leaderboard_refresh:')) {
@@ -594,204 +769,127 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // Absent Button
+    const userId = discordUser?.id;
+
+    // "Can't make it" — only people who click this show on the card's Can't-make-it list.
     if (customId === 'btn_absent') {
-      if (player) {
-        player.attending = false;
-        player.absent = true;
-        touchPlayer(player);
-        await saveState(state);
-        return jsonResponse({
-          type: 4,
-          data: {
-            content: `💤 Marked **${player.name}** as absent for Friday night. We'll catch you next time!`,
-            flags: 64
-          }
-        });
-      }
-      return jsonResponse({
-        type: 4,
-        data: {
-          content: `Could not find an active sign-up for you. Click **[Sign Up / Edit RSVP 📝]** if you need to register!`,
-          flags: 64
-        }
-      });
-    }
-
-    // 1. Open character search. Discord selects cap at 25, so typing filters the full roster.
-    if (customId === 'btn_open_signup' || customId === 'btn_search_again' || customId === 'btn_custom_modal') {
-      const prefill = player?.name || '';
-      return jsonResponse({
-        type: 9,
-        data: rosterSearch ? rosterSearch.characterSearchModal(prefill) : {
-          custom_id: 'modal_char_search',
-          title: 'Find Your Character',
-          components: [{
-            type: 1,
-            components: [{
-              type: 4,
-              custom_id: 'char_query',
-              label: 'Type a guild name, or any alt',
-              style: 1,
-              required: true
-            }]
-          }]
-        }
-      });
-    }
-
-    // 2. Pick a filtered match, or a name that is not in the guild.
-    if (customId === 'select_character') {
-      const selected = interaction.data.values?.[0] || '';
-      if (selected === '__custom__') {
-        return jsonResponse({
-          type: 9,
-          data: rosterSearch ? rosterSearch.characterSearchModal('') : {
-            custom_id: 'modal_char_search',
-            title: 'Find Your Character',
-            components: []
-          }
-        });
-      }
-
-      const chosenName = selected.startsWith('__custom__:') ? selected.slice('__custom__:'.length) : selected;
-      const targetPlayer = bindSignupCharacter(state, discordUser, chosenName);
-      if (targetPlayer?.error) return ephemeral(`⚠️ ${targetPlayer.error}`);
-      if (!targetPlayer) {
-        return jsonResponse({
-          type: 4,
-          data: { content: '⚠️ Type a character name to search the guild roster.', flags: 64 }
-        });
-      }
-      touchPlayer(targetPlayer);
+      if (!player) return ephemeral('You aren’t signed up with a character yet, so there’s nothing to cancel. 👍');
+      player.attending = false;
+      player.absent = true;
+      player.declinedAt = new Date().toISOString();
+      touchPlayer(player);
       await saveState(state);
-      return jsonResponse({
-        type: 7,
-        data: signupPreferencesMessage(targetPlayer)
-      });
+      const slot = groupSlotOf(state, player);
+      return ephemeral(`💤 **${player.name}** is marked as can’t make it tonight.${slot ? ` You’re still listed in Group ${slot.index + 1} — let an officer know so they can fill your spot.` : ''} Click **Sign Up / Edit** any time to come back.`);
     }
 
-    // 3. Select Role(s) Multi-Select
-    if (customId === 'select_roles') {
-      const selectedRoles = interaction.data.values || ['DPS'];
-      let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
-      if (targetPlayer) {
-        targetPlayer.roles = selectedRoles;
-        targetPlayer.attending = true;
-        targetPlayer.absent = false;
-        touchPlayer(targetPlayer);
-        await saveState(state);
-      }
-      const components = embeds ? embeds.createSignupFormComponents({
-        players: state.players || [],
-        defaultName,
-        player: targetPlayer
-      }) : [];
-      return jsonResponse({
-        type: 7,
-        data: {
-          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Role(s) set to: **${selectedRoles.join('/')}**\nSelect your comfortable key range and preferences:`,
-          components
-        }
-      });
+    // Sign Up / Edit: straight to your entry if you have one, otherwise pick a character.
+    if (customId === 'btn_open_signup') {
+      if (player) return jsonResponse({ type: 4, data: signupPanel(state, userId, player) });
+      return jsonResponse({ type: 4, data: await addCharacterMessage(interaction) });
     }
 
-    // 4. Select Key Goals & Brackets Multi-Select
-    if (customId === 'select_key_range') {
-      const selectedBrackets = interaction.data.values || ['10-12'];
-      let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
-      if (targetPlayer) {
-        targetPlayer.keyBrackets = selectedBrackets;
+    // Fallback search (mobile): a text box, then a list of guild matches. Never creates unknown characters.
+    if (customId === 'btn_search_modal' || customId === 'btn_search_again' || customId === 'btn_custom_modal') {
+      return jsonResponse({ type: 9, data: rosterSearch.characterSearchModal('') });
+    }
+
+    if (customId === 'select_character') {
+      const picked = await resolveCharacterChoice(interaction.data.values?.[0]);
+      if (picked.error) return ephemeral(`⚠️ ${picked.error}`);
+      const claimed = claimCharacter(state, userId, picked.info);
+      if (claimed.error) return ephemeral(`⚠️ ${claimed.error}`);
+      await saveState(state);
+      return jsonResponse({ type: 7, data: signupPanel(state, userId, claimed.player, claimed.note) });
+    }
+
+    // Switch which of your characters you're on tonight, or add another.
+    if (customId === 'select_my_char') {
+      const value = interaction.data.values?.[0] || '';
+      if (value === '__add__') return jsonResponse({ type: 7, data: await addCharacterMessage(interaction) });
+      const [name, realm] = value.split('|');
+      const target = findCharacter(state, name, realm);
+      if (!target || target.discordId !== userId) return ephemeral('⚠️ That character isn’t one of yours anymore. Click **Sign Up / Edit** again.');
+      const note = activateCharacter(state, userId, target);
+      await saveState(state);
+      return jsonResponse({ type: 7, data: signupPanel(state, userId, target, `\n🔄 Switched to **${target.name}** for tonight.${note}`) });
+    }
+
+    if (customId === 'select_roles' || customId === 'select_key_range' || customId === 'select_vibes') {
+      if (!player) return jsonResponse({ type: 7, data: await addCharacterMessage(interaction) });
+      const values = interaction.data.values || [];
+      if (customId === 'select_roles') {
+        player.roles = values.length ? values : ['DPS'];
+      } else if (customId === 'select_key_range') {
+        const brackets = values.length ? values : ['10-12'];
         let minKey = 30;
         let maxKey = 2;
-        if (selectedBrackets.includes('6-8')) { minKey = Math.min(minKey, 6); maxKey = Math.max(maxKey, 8); }
-        if (selectedBrackets.includes('10-12')) { minKey = Math.min(minKey, 9); maxKey = Math.max(maxKey, 12); }
-        if (selectedBrackets.includes('12+')) { minKey = Math.min(minKey, 12); maxKey = Math.max(maxKey, 18); }
-        targetPlayer.keyMin = minKey;
-        targetPlayer.keyMax = maxKey;
-        targetPlayer.attending = true;
-        targetPlayer.absent = false;
-        touchPlayer(targetPlayer);
-        await saveState(state);
+        if (brackets.includes('6-8')) { minKey = Math.min(minKey, 6); maxKey = Math.max(maxKey, 8); }
+        if (brackets.includes('10-12')) { minKey = Math.min(minKey, 9); maxKey = Math.max(maxKey, 12); }
+        if (brackets.includes('12+')) { minKey = Math.min(minKey, 12); maxKey = Math.max(maxKey, 18); }
+        player.keyBrackets = brackets;
+        player.keyMin = minKey;
+        player.keyMax = maxKey;
+      } else {
+        player.isLeader = values.includes('vibe_leader');
+        player.isReserve = values.includes('vibe_reserve');
+        player.isShitter = values.includes('vibe_shitter');
+        player.carryPreference = values.includes('vibe_need_carry') ? 'need_carry' : (values.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
       }
-      const components = embeds ? embeds.createSignupFormComponents({
-        players: state.players || [],
-        defaultName,
-        player: targetPlayer
-      }) : [];
-      return jsonResponse({
-        type: 7,
-        data: {
-          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Key goals set to: **${selectedBrackets.join(', ')}** (+${targetPlayer?.keyMin || 10} to +${targetPlayer?.keyMax || 15})`,
-          components
-        }
-      });
-    }
-
-    // 5. Select Squad Vibes & Preferences (Multi-Select)
-    if (customId === 'select_vibes') {
-      const vibes = interaction.data.values || [];
-      let targetPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
-      if (targetPlayer) {
-        targetPlayer.isLeader = vibes.includes('vibe_leader');
-        targetPlayer.isReserve = vibes.includes('vibe_reserve');
-        targetPlayer.carryPreference = vibes.includes('vibe_need_carry') ? 'need_carry' : (vibes.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
-        targetPlayer.isShitter = vibes.includes('vibe_shitter');
-        targetPlayer.attending = true;
-        targetPlayer.absent = false;
-        touchPlayer(targetPlayer);
-        await saveState(state);
-      }
-      const components = embeds ? embeds.createSignupFormComponents({
-        players: state.players || [],
-        defaultName,
-        player: targetPlayer
-      }) : [];
-      let vibeTags = [];
-      if (targetPlayer?.isLeader) vibeTags.push('👑 Born Leader');
-      if (targetPlayer?.isReserve) vibeTags.push('🍺 Reserve');
-      if (targetPlayer?.carryPreference === 'need_carry') vibeTags.push('🎒 Needs Carry');
-      if (targetPlayer?.carryPreference === 'willing_carry') vibeTags.push('🏋️ Stronk Back');
-      if (targetPlayer?.isShitter) vibeTags.push('💩 Shitter');
-
-      return jsonResponse({
-        type: 7,
-        data: {
-          content: `### 📝 Friday Mythic+ Night Sign-Up\n✅ Preferences updated: **${vibeTags.length ? vibeTags.join(', ') : 'Standard'}**\nClick **Save My RSVP ✅** to finish!`,
-          components
-        }
-      });
-    }
-
-    // 6. Confirm & Save RSVP Button
-    if (customId === 'btn_confirm_rsvp') {
-      let rsvpPlayer = player || (state.players || []).find(p => p.discordId === discordUser.id);
-      if (!rsvpPlayer) {
-        return jsonResponse({
-          type: 7,
-          data: {
-            content: '⚠️ Search for a character name before confirming!',
-            components: embeds ? embeds.createSignupFormComponents({ players: state.players || [], defaultName, player: null }) : []
-          }
-        });
-      }
-      rsvpPlayer.attending = true;
-      rsvpPlayer.absent = false;
-      rsvpPlayer.discordId = discordUser.id;
-      touchPlayer(rsvpPlayer);
+      player.attending = true;
+      player.absent = false;
+      player.declinedAt = null;
+      touchPlayer(player);
       await saveState(state);
+      return jsonResponse({ type: 7, data: signupPanel(state, userId, player, '\n✔️ Saved.') });
+    }
 
-      let badges = [];
-      if (rsvpPlayer.isLeader) badges.push('👑 Born Leader');
-      if (rsvpPlayer.isReserve) badges.push('🍺 Voluntary Reserve');
-      if (rsvpPlayer.carryPreference === 'need_carry') badges.push('🎒 Needs Carry');
-      if (rsvpPlayer.carryPreference === 'willing_carry') badges.push('🏋️ Stronk Back');
-      if (rsvpPlayer.isShitter) badges.push('💩 Shitter');
+    if (customId === 'btn_set_main') {
+      if (!player) return ephemeral('Pick a character first.');
+      for (const c of myCharacters(state, userId)) {
+        if (c.isMain && !sameChar(c, player)) { c.isMain = false; touchPlayer(c); }
+      }
+      player.isMain = true;
+      touchPlayer(player);
+      await saveState(state);
+      return jsonResponse({ type: 7, data: signupPanel(state, userId, player, `\n⭐ **${player.name}** is now your main. Your alts’ keys and nights count toward it on the leaderboard.`) });
+    }
 
+    if (customId === 'btn_remove_char') {
+      if (!player) return ephemeral('Nothing to remove.');
+      const now = new Date().toISOString();
+      const inGuild = rosterSearch && rosterSearch.findRosterEntry(player.name);
+      if (removeFromGroups(state, player)) state.groupsTouchedAt = now;
+      if (inGuild || player.bnetId) {
+        // Guild characters stay on the roster; they're just no longer yours.
+        player.discordId = null;
+        player.attending = false;
+        player.isMain = false;
+        player.activeAt = null;
+        player.touchedAt = now;
+      } else {
+        state.players = (state.players || []).filter(p => !sameChar(p, player));
+        state.deleted = { ...(state.deleted || {}), [foldName(player.name)]: now };
+      }
+      await saveState(state);
+      const next = activeCharacter(state, userId);
+      if (next) return jsonResponse({ type: 7, data: signupPanel(state, userId, next, `\n🗑️ Removed **${player.name}**.`) });
+      return jsonResponse({ type: 7, data: { content: `🗑️ Removed **${player.name}**. Click **Sign Up / Edit** to add a character again.`, components: [] } });
+    }
+
+    if (customId === 'btn_confirm_rsvp') {
+      if (!player) return jsonResponse({ type: 7, data: await addCharacterMessage(interaction) });
+      if (!player.attending) {
+        player.attending = true;
+        player.declinedAt = null;
+        touchPlayer(player);
+        await saveState(state);
+      }
+      const slot = groupSlotOf(state, player);
       return jsonResponse({
         type: 7,
         data: {
-          content: `🎉 **RSVP Confirmed for ${rsvpPlayer.name}!**\n• Role(s): **${(rsvpPlayer.roles || []).join('/')}**\n• Keys: **+${rsvpPlayer.keyMin} to +${rsvpPlayer.keyMax}**${badges.length ? '\n• Preferences: ' + badges.join(', ') : ''}\n\nSynced to the [web dashboard](${WEB_URL})! Click **Refresh 🔄** on the main event card to view the updated roster lineup.`,
+          content: `✅ **${player.name}** is signed up — ${(player.roles || []).join(' / ')}, keys +${player.keyMin}–${player.keyMax}.${slot ? ` You’re in **Group ${slot.index + 1}**.` : ' Waiting for a group.'}\nClick **Sign Up / Edit** any time to change it or switch characters.`,
           components: []
         }
       });
@@ -806,42 +904,14 @@ exports.handler = async (event, context) => {
 
     if (customId === 'btn_form_groups') {
       if (!rollUi?.isLeader(interaction.member)) {
-        return jsonResponse({
-          type: 4,
-          data: { content: 'Only Captains and High Council can form groups. Use `/mplus form`.', flags: 64 }
-        });
+        return ephemeral('Only Captains and High Council can form groups.');
       }
-      const attending = (state.players || []).filter(p => p.attending);
-      if (attending.length < 5) {
-        return jsonResponse({
-          type: 4,
-          data: {
-            content: `⚠️ Need at least 5 attending players to form groups. Currently have ${attending.length}. Click a role button to sign up!`,
-            flags: 64
-          }
-        });
-      }
-
-      const result = solver ? solver.solveGroups({ players: attending, excludedDungeons: state.excludedDungeons || [] }) : { groups: [], benched: [] };
-      if (!result.groups.length) {
-        return ephemeral(`⚠️ ${result.message || 'Could not form any groups.'}`);
-      }
-      state.formedGroups = result.groups;
-      state.benchedPlayers = result.benched;
-      state.groupsTouchedAt = new Date().toISOString();
+      const r = formGroups(state);
+      if (r.error) return ephemeral(`⚠️ ${r.error}`);
       await saveState(state);
-
-      const embed = embeds
-        ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, result.groups, result.benched).toJSON()
-        : { title: 'Groups formed' };
-      const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(row => row.toJSON()) : [];
       return jsonResponse({
         type: 7,
-        data: {
-          content: `🏰 **Formed ${result.groups.length} Mythic+ group(s).** Parties are on this card. Roll each party's key on the website.`,
-          embeds: [embed],
-          components: buttons
-        }
+        data: cardMessage(state, `🏰 **Formed ${r.added} new group${r.added === 1 ? '' : 's'}** (${r.total} total). Sign-ups stay open — press Form Groups again as more people arrive.`)
       });
     }
 
@@ -889,7 +959,7 @@ exports.handler = async (event, context) => {
 
     return jsonResponse({
       type: 4,
-      data: { content: '⚠️ Click **Sign Up / Edit RSVP 📝** first to pick your character.', flags: 64 }
+      data: { content: '⚠️ Click **Sign Up / Edit 📝** first to pick your character.', flags: 64 }
     });
   }
 
@@ -902,30 +972,34 @@ exports.handler = async (event, context) => {
 
     if (customId === 'modal_char_search') {
       const query = (getVal('char_query') || '').trim();
-      const result = rosterSearch
-        ? rosterSearch.searchGuildRoster(query, 24)
-        : { typedName: query, matches: [], exact: null, autoPick: null, matchCount: 0 };
-
-      if (result.autoPick || result.matchCount === 0) {
-        const chosen = result.autoPick?.name || result.typedName;
-        const targetPlayer = bindSignupCharacter(state, discordUser, chosen);
-        if (targetPlayer?.error) return ephemeral(`⚠️ ${targetPlayer.error}`);
-        if (!targetPlayer) {
-          return jsonResponse({
-            type: 4,
-            data: { content: '⚠️ Type a character name to search the guild roster.', flags: 64 }
-          });
-        }
+      const userId = discordUser?.id;
+      if (query.includes('-')) {
+        // Name-Realm: look it up (works for characters outside the guild too)
+        const picked = await resolveCharacterChoice(query);
+        if (picked.error) return ephemeral(`⚠️ ${picked.error}`);
+        const claimed = claimCharacter(state, userId, picked.info);
+        if (claimed.error) return ephemeral(`⚠️ ${claimed.error}`);
         await saveState(state);
-        return jsonResponse({
-          type: 4,
-          data: { ...signupPreferencesMessage(targetPlayer), flags: 64 }
-        });
+        return jsonResponse({ type: 4, data: signupPanel(state, userId, claimed.player, claimed.note) });
       }
-
+      const result = rosterSearch ? rosterSearch.searchGuildRoster(query, 25) : { matches: [], matchCount: 0 };
+      if (result.matchCount === 1) {
+        const e = result.matches[0];
+        const claimed = claimCharacter(state, userId, { name: e.name, realm: e.realm, className: e.className, role: e.role, guildMember: true });
+        if (claimed.error) return ephemeral(`⚠️ ${claimed.error}`);
+        await saveState(state);
+        return jsonResponse({ type: 4, data: signupPanel(state, userId, claimed.player, claimed.note) });
+      }
+      if (!result.matchCount) {
+        return ephemeral(`No guild member matches **${query || '(blank)'}**. For a character outside the guild, search again with \`Name-Realm\` (e.g. \`Noxxicc-Korgath\`).`);
+      }
       return jsonResponse({
         type: 4,
-        data: signupMatchMessage(result)
+        data: {
+          content: `### 🔍 ${result.matchCount} guild match${result.matchCount === 1 ? '' : 'es'} for **${query}**${result.matchCount > 25 ? ' (showing 25 — type more of the name to narrow it)' : ''}`,
+          components: embeds ? embeds.createCharacterMatchComponents(result.matches) : [],
+          flags: 64
+        }
       });
     }
 

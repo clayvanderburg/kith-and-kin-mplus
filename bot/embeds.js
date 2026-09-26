@@ -137,156 +137,120 @@ function addField(embed, name, value, inline = false) {
   return embed;
 }
 
-function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = HOST_NAME, formedGroups = [], benchedPlayers = []) {
-  const attending = (players || []).filter(p => p.attending === true);
-  const absent = (players || []).filter(p => p.absent === true && !p.attending);
-  const tanks = attending.filter(p => (p.roles || []).includes('Tank')).length;
-  const healers = attending.filter(p => (p.roles || []).includes('Healer')).length;
-  const dps = attending.filter(p => (p.roles || []).includes('DPS')).length;
-  const maxGroups = Math.min(tanks, healers, Math.floor(dps / 3));
+const ROLE_ICON = { Tank: '🛡️', Healer: '💚', DPS: '⚔️' };
+const DECLINE_WINDOW_MS = 6 * 24 * 3600 * 1000;
 
-  const leaders = attending.filter(p => p.isLeader);
-  const reserves = attending.filter(p => p.isReserve);
-  const needsCarry = attending.filter(p => p.carryPreference === 'need_carry');
-  const stronk = attending.filter(p => p.carryPreference === 'willing_carry');
-  const shitters = attending.filter(p => p.isShitter);
+function ioShort(p) {
+  return p.io ? `${(Number(p.io) / 1000).toFixed(1)}k` : '';
+}
 
-  const nextFriday = getNextFridayTimestamp();
+function vibeIcons(p) {
+  let s = '';
+  if (p.isLeader) s += '👑';
+  if (p.carryPreference === 'need_carry') s += '🎒';
+  if (p.carryPreference === 'willing_carry') s += '🏋️';
+  if (p.isShitter) s += '💩';
+  if (p.isReserve) s += '🍺';
+  return s;
+}
 
-  // If groups are formed, display the assembled group lineup directly in the main event card!
-  if (Array.isArray(formedGroups) && formedGroups.length > 0) {
-    const embed = new EmbedBuilder()
-      .setTitle('🏰 Friday Mythic+ Keystone Night — Groups Assembled!')
-      .setColor(0x10B981) // Emerald victory green
-      .setDescription(
-        `👑 **Host:** ${hostName}  •  👥 **Attending:** **${attending.length}**  •  🏰 **Active Groups:** **${formedGroups.length}**\n` +
-        `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM ET\n\n` +
-        `⚔️ **Parties have been forged for tonight!** Review your team, assign keys, and head into voice:\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
-      );
+// "Name 3.2k 🛡️⚔️ 👑" — other roles they can flex into, then vibe icons.
+function playerLine(p, { showRoles = true, primary = null } = {}) {
+  const roles = (p.roles || []).filter(r => r !== primary);
+  const bits = [`**${p.name}**`];
+  const io = ioShort(p);
+  if (io) bits.push(io);
+  if (showRoles && roles.length) bits.push(roles.map(r => ROLE_ICON[r] || '').join(''));
+  const vibes = vibeIcons(p);
+  if (vibes) bits.push(vibes);
+  return bits.join(' ');
+}
 
-    const ioLabel = (score) => `${(Number(score || 0) / 1000).toFixed(1)}k`;
-
-    formedGroups.forEach((g, idx) => {
-      const utilBadges = [];
-      if (g.hasLust) utilBadges.push('⚡ Lust');
-      if (g.hasBrez) utilBadges.push('🔄 BRez');
-      const headerBits = [];
-      if (g.leaderName) headerBits.push(`👑 Leader: **${g.leaderName}**`);
-      if (g.keystone || g.dungeon) headerBits.push(`🔑 \`${g.keystone || g.dungeon}\``);
-      if (utilBadges.length) headerBits.push(utilBadges.join(' '));
-
-      const lines = [];
-      if (g.tank) lines.push(`🛡️ **${g.tank.name}** (${g.tank.className} • ${ioLabel(g.tank.io)})`);
-      if (g.healer) lines.push(`💚 **${g.healer.name}** (${g.healer.className} • ${ioLabel(g.healer.io)})`);
-      (g.dps || []).forEach(d => {
-        lines.push(`⚔️ **${d.name}** (${d.className} • ${ioLabel(d.io)})`);
-      });
-
-      const body = [headerBits.join(' • '), lines.join('\n')].filter(Boolean).join('\n') || 'Empty Party';
-      addField(embed, `🏰 Group ${idx + 1}: ${g.name || 'Keystone Crew'} (Avg IO: ${g.avgIo || 0})`, body);
-    });
-
-    if (Array.isArray(benchedPlayers) && benchedPlayers.length > 0) {
-      addField(embed, `🍺 Bench / Reserves (${benchedPlayers.length})`,
-        benchedPlayers.map(p => `• **${p.name}** (${p.className} - ${(p.roles || []).join('/')})${p.isReserve ? ' 🍺' : ''}`).join('\n'));
-    }
-
-    embed.setFooter({
-      text: `Kith & Kin • Synced with Live Web App • Click [Refresh 🔄] to update`
-    });
-    embed.setTimestamp();
-    return fitEmbed(embed);
+function inGroupNames(formedGroups) {
+  const names = new Set();
+  for (const g of formedGroups || []) {
+    for (const m of [g?.tank, g?.healer, ...(g?.dps || [])]) if (m?.name) names.add(String(m.name).toLowerCase());
   }
+  return names;
+}
+
+function declinedThisWeek(players) {
+  const cutoff = Date.now() - DECLINE_WINDOW_MS;
+  return (players || []).filter(p => !p.attending && (Date.parse(p.declinedAt || '') || 0) > cutoff);
+}
+
+/**
+ * The sign-up card. Always open for sign-ups: people join through the night and switch characters,
+ * so formed groups and the waiting list are shown together.
+ */
+function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = HOST_NAME, formedGroups = [], benchedPlayers = []) {
+  const all = players || [];
+  const attending = all.filter(p => p.attending === true);
+  const byName = new Map(all.map(p => [String(p.name || '').toLowerCase(), p]));
+  const count = role => attending.filter(p => (p.roles || []).includes(role)).length;
+  const tanks = count('Tank');
+  const healers = count('Healer');
+  const dps = count('DPS');
+  const possible = Math.min(tanks, healers, Math.floor(attending.length / 5));
+  const kickoff = getNextFridayTimestamp();
+  const groups = Array.isArray(formedGroups) ? formedGroups.filter(Boolean) : [];
+  const grouped = inGroupNames(groups);
+  const waiting = attending.filter(p => !grouped.has(String(p.name || '').toLowerCase()));
+
+  const lines = [
+    `⏰ <t:${kickoff}:F> · <t:${kickoff}:R> · Host: **${hostName}**`,
+    `**${attending.length} signed up** · 🛡️ ${tanks} · 💚 ${healers} · ⚔️ ${dps} · room for **${possible}** group${possible === 1 ? '' : 's'}`
+  ];
+  if (groups.length) lines.push(`🏰 **${groups.length} group${groups.length === 1 ? '' : 's'} formed** · ${waiting.length} waiting · sign-ups stay open all night`);
 
   const embed = new EmbedBuilder()
-    .setTitle('🏰 Friday Mythic+ Keystone Night')
-    .setColor(0xDC2626) // Vivid red border matching Raid-Helper event styling
-    .setDescription(
-      `Conquer **Midnight Season 2** keystones! Match IO ranges, balance Bloodlust & Battle Res, pair carries, and assemble full parties.\n\n` +
-      `👑 **Host:** ${hostName}  •  👥 **Attending:** **${attending.length}**${absent.length ? ` (+${absent.length} absent)` : ''}\n` +
-      `📅 **Event:** Every Friday  •  ⏰ **Time:** 8:00 PM ET\n` +
-      `⏳ **Kickoff:** <t:${nextFriday}:F> (<t:${nextFriday}:R>)\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `🛡️ **Tanks:** ${tanks}  •  💚 **Healers:** ${healers}  •  ⚔️ **DPS:** ${dps}  •  🏰 **Groups:** **${maxGroups} Full**\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
-    );
+    .setTitle('⚔️ Kith & Kin — Friday Mythic+ Night')
+    .setColor(groups.length ? 0x10B981 : 0xDC2626)
+    .setDescription(lines.join('\n'));
 
-  if (attending.length === 0) {
-    embed.addFields({
-      name: '⚡ Sign-ups are OPEN!',
-      value: 'Click **`[Sign Up / Edit RSVP 📝]`** below to register your character and select your roles!'
+  if (groups.length) {
+    groups.forEach((g, idx) => {
+      const live = m => (m?.name && byName.get(String(m.name).toLowerCase())) || m;
+      const out = m => (m && byName.get(String(m.name).toLowerCase())?.attending === false ? ' 💤' : '');
+      // Only a key someone actually holds/rolled. The solver's dungeon pick is just a suggestion.
+      const key = g.keystone || g.dungeon;
+      const util = `${g.hasLust ? '⚡' : ''}${g.hasBrez ? '🔄' : ''}`;
+      const body = [
+        `🔑 ${key ? `\`${key}\`` : '*no key yet*'} ${util}`.trim(),
+        g.tank ? `🛡️ ${playerLine(live(g.tank), { showRoles: false })}${out(g.tank)}` : '🛡️ *open*',
+        g.healer ? `💚 ${playerLine(live(g.healer), { showRoles: false })}${out(g.healer)}` : '💚 *open*',
+        ...(g.dps || []).map(d => (d ? `⚔️ ${playerLine(live(d), { showRoles: false })}${out(d)}` : '⚔️ *open*'))
+      ];
+      addField(embed, `Group ${idx + 1} · ${g.name || 'Party'}`, body.join('\n'), true);
     });
+    if (waiting.length) {
+      addField(embed, `⏳ Waiting for a group (${waiting.length})`,
+        waiting.map(p => `${(p.roles || []).map(r => ROLE_ICON[r]).join('')} ${playerLine(p, { showRoles: false })}`).join('\n'));
+    }
+  } else if (attending.length) {
+    // One column per role. Each player appears once, under their first role, with flex roles shown as icons.
+    for (const role of ['Tank', 'Healer', 'DPS']) {
+      const list = attending.filter(p => ((p.roles || [])[0] || 'DPS') === role);
+      addField(embed, `${ROLE_ICON[role]} ${role === 'DPS' ? 'DPS' : role + 's'} (${list.length})`,
+        list.length ? list.map(p => playerLine(p, { primary: role })).join('\n') : '—', true);
+    }
   } else {
-    // Group attendees by WoW Class
-    const classGroups = {};
-    attending.forEach(p => {
-      const cls = p.className || 'Adventurer';
-      if (!classGroups[cls]) classGroups[cls] = [];
-      classGroups[cls].push(p);
-    });
-
-    // Sort classes by count descending, then alphabetically
-    const sortedClasses = Object.keys(classGroups).sort((a, b) => {
-      if (classGroups[b].length !== classGroups[a].length) {
-        return classGroups[b].length - classGroups[a].length;
-      }
-      return a.localeCompare(b);
-    });
-
-    // Add 3-column inline grid fields (Raid-Helper style)
-    sortedClasses.forEach(cls => {
-      const pList = classGroups[cls];
-      const icon = CLASS_ICONS[cls] || '⚔️';
-      const lines = pList.map((p, idx) => {
-        const primaryRole = (p.roles && p.roles[0]) || 'DPS';
-        const roleIcon = ROLE_ICONS[primaryRole] || '⚔️';
-        const ioStr = p.io ? `${(p.io / 1000).toFixed(1)}k` : (p.ilvl ? `${p.ilvl} ilvl` : 'new');
-        const keyStr = p.ownedKey ? `+${p.ownedKey.split('+')[1] || p.keyMax || 10}` : `+${p.keyMax || 10}`;
-        let flag = '';
-        if (p.isLeader) flag += ' 👑';
-        if (p.isReserve) flag += ' 🍺';
-        if (p.carryPreference === 'need_carry') flag += ' 🎒';
-        if (p.carryPreference === 'willing_carry') flag += ' 🏋️';
-        if (p.isShitter) flag += ' 💩';
-
-        return `${roleIcon} \`${idx + 1}\` **${p.name}** (${ioStr} • ${keyStr})${flag}`;
-      });
-
-      addField(embed, `${icon} ${cls} (${pList.length})`, lines.join('\n') || 'None', true);
-    });
-
-    // Special Vibe / Alt Squad Roster breakdown
-    let vibeBreakdown = [];
-    if (leaders.length > 0) {
-      vibeBreakdown.push(`👑 **Born Leaders (${leaders.length}):** ${leaders.map(p => `**${p.name}**`).join(', ')}`);
-    }
-    if (reserves.length > 0) {
-      vibeBreakdown.push(`🍺 **Bench / Reserves (${reserves.length}):** ${reserves.map(p => `**${p.name}**`).join(', ')}`);
-    }
-    if (needsCarry.length > 0) {
-      vibeBreakdown.push(`🎒 **Needs Carry (${needsCarry.length}):** ${needsCarry.map(p => `**${p.name}**`).join(', ')}`);
-    }
-    if (stronk.length > 0) {
-      vibeBreakdown.push(`🏋️ **Back is Stronk (${stronk.length}):** ${stronk.map(p => `**${p.name}**`).join(', ')}`);
-    }
-    if (shitters.length > 0) {
-      vibeBreakdown.push(`💩 **Shitter Alt Squad (${shitters.length}):** ${shitters.map(p => `**${p.name}**`).join(', ')}`);
-    }
-    if (absent.length > 0) {
-      vibeBreakdown.push(`💤 **Absent (${absent.length}):** ${absent.slice(0, 10).map(p => p.name).join(', ')}${absent.length > 10 ? ` +${absent.length - 10} more` : ''}`);
-    }
-
-    if (vibeBreakdown.length > 0) {
-      addField(embed, '🎭 Squad Preferences & Vibe', vibeBreakdown.join('\n'));
-    }
+    addField(embed, 'Sign-ups are open', 'Click **Sign Up / Edit 📝** below to pick your character, roles and key goals.');
   }
 
-  embed.setFooter({
-    text: `Kith & Kin • Midnight Season 2 • Click [Sign Up / Edit RSVP] below`
-  });
-  embed.setTimestamp();
+  const vibe = [];
+  const namesWith = f => attending.filter(f).map(p => p.name).join(', ');
+  if (attending.some(p => p.carryPreference === 'need_carry')) vibe.push(`🎒 Needs a carry: ${namesWith(p => p.carryPreference === 'need_carry')}`);
+  if (attending.some(p => p.isShitter)) vibe.push(`💩 Alt squad: ${namesWith(p => p.isShitter)}`);
+  if (vibe.length) addField(embed, 'Notes', vibe.join('\n'));
 
+  const declined = declinedThisWeek(all);
+  if (declined.length) {
+    addField(embed, `💤 Can't make it (${declined.length})`, declined.map(p => p.name).join(', '));
+  }
+
+  embed.setFooter({ text: '👑 leader · 🏋️ will carry · 🎒 needs carry · 🍺 happy to sit out · 💤 left for the night' });
+  embed.setTimestamp();
   return fitEmbed(embed);
 }
 
@@ -364,176 +328,129 @@ function createGroupEmbeds(groups, benched, webUrl = 'https://knkmplus.netlify.a
 }
 
 function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
-  // Row 1: Primary Actions
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('btn_open_signup')
-      .setLabel('Sign Up / Edit RSVP 📝')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('btn_absent')
-      .setLabel('Can’t Make It 💤')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setLabel('Sign Up on Web 🌐')
-      .setStyle(ButtonStyle.Link)
-      .setURL(`${webUrl.replace(/\/$/, '')}/signup.html`)
+    new ButtonBuilder().setCustomId('btn_open_signup').setLabel('Sign Up / Edit 📝').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('btn_absent').setLabel('Can’t Make It 💤').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setLabel('Website 🌐').setStyle(ButtonStyle.Link).setURL(`${webUrl.replace(/\/$/, '')}/signup.html`)
   );
-
-  // Row 2: Keystone Tools & Refresh
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('btn_roll_key')
-      .setLabel('Roll Key 🎲')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('btn_refresh_roster')
-      .setLabel('Refresh 🔄')
-      .setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('btn_roll_key').setLabel('Roll Key 🎲').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('btn_form_groups').setLabel('Form Groups 🏰').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('btn_refresh_roster').setLabel('Refresh 🔄').setStyle(ButtonStyle.Secondary)
   );
-
   return [row1, row2];
 }
 
 /**
- * Filtered guild matches. Discord select menus only hold 25 options,
- * so this list is the search result, never the whole roster.
+ * Guild matches for a typed name (fallback search). Values are "Name|Realm" so the exact
+ * character is claimed. Nothing is created for names that aren't found.
  */
-function createCharacterMatchComponents(matches = [], typedName = '') {
+function createCharacterMatchComponents(matches = []) {
   const options = [];
   const seen = new Set();
   for (const entry of matches) {
-    if (!entry?.name || seen.has(entry.name.toLowerCase())) continue;
-    seen.add(entry.name.toLowerCase());
+    const value = `${entry.name}|${entry.realm || ''}`.slice(0, 100);
+    if (!entry?.name || seen.has(value.toLowerCase())) continue;
+    seen.add(value.toLowerCase());
     options.push({
-      label: `${entry.name} (${entry.className || 'Player'})`.slice(0, 100),
-      value: entry.name.slice(0, 100),
+      label: `${entry.name} — ${entry.className || 'Player'}`.slice(0, 100),
+      value,
       description: `${entry.realm || 'Kith & Kin'}`.slice(0, 100)
     });
-    if (options.length >= 24) break;
+    if (options.length >= 25) break;
   }
-
-  const typed = String(typedName || '').trim().slice(0, 70);
-  const customValue = (typed ? `__custom__:${typed}` : '__custom__').slice(0, 100);
-  const alreadyListed = typed && options.some(opt => opt.value.toLowerCase() === typed.toLowerCase());
-  if (!alreadyListed) {
-    options.push({
-      label: (typed ? `➕ "${typed}" (not in guild)` : '➕ Name not in guild').slice(0, 100),
-      value: customValue,
-      description: 'Use this exact name even if they are not on the roster'
-    });
+  const rows = [];
+  if (options.length) {
+    rows.push({ type: 1, components: [{ type: 3, custom_id: 'select_character', placeholder: 'Pick your character', min_values: 1, max_values: 1, options }] });
   }
-
-  const placeholder = typed
-    ? `Matches for "${typed}"`.slice(0, 150)
-    : 'Pick a character';
-
-  return [
-    {
-      type: 1,
-      components: [
-        {
-          type: 3,
-          custom_id: 'select_character',
-          placeholder,
-          min_values: 1,
-          max_values: 1,
-          options: options.slice(0, 25)
-        }
-      ]
-    },
-    {
-      type: 1,
-      components: [
-        { type: 2, style: 1, custom_id: 'btn_search_again', label: 'Search Again ✏️' },
-        { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
-      ]
-    }
-  ];
+  rows.push({
+    type: 1,
+    components: [
+      { type: 2, style: 2, custom_id: 'btn_search_modal', label: 'Search again ✏️' },
+      { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
+    ]
+  });
+  return rows;
 }
 
 /**
- * Role, key-goal, and vibe picker shown after a character is chosen.
+ * The personal sign-up panel: roles, key goals, vibes, which of your characters you're on tonight,
+ * and actions. Every change saves immediately.
  */
-function createSignupFormComponents({ player = null } = {}) {
-  // 1. Roles Multi-Select Dropdown
+function createSignupFormComponents({ player = null, characters = [] } = {}) {
   const activeRoles = player?.roles || ['DPS'];
+  const activeBrackets = player?.keyBrackets || (player?.keyMax ? (player.keyMax > 12 ? ['12+'] : (player.keyMax >= 9 ? ['10-12'] : ['6-8'])) : ['10-12']);
   const rowRoles = {
     type: 1,
-    components: [
-      {
-        type: 3,
-        custom_id: 'select_roles',
-        placeholder: `Select Roles (Multi-Select: Tank, Healer, DPS)... Currently: ${activeRoles.join('/')}`,
-        min_values: 1,
-        max_values: 3,
-        options: [
-          { label: 'Tank', value: 'Tank', emoji: { name: '🛡️' }, description: 'Ready to tank 5-man parties', default: activeRoles.includes('Tank') },
-          { label: 'Healer', value: 'Healer', emoji: { name: '💚' }, description: 'Ready to heal 5-man parties', default: activeRoles.includes('Healer') },
-          { label: 'DPS', value: 'DPS', emoji: { name: '⚔️' }, description: 'Damage dealer', default: activeRoles.includes('DPS') }
-        ]
-      }
-    ]
+    components: [{
+      type: 3,
+      custom_id: 'select_roles',
+      placeholder: 'Roles you can play tonight',
+      min_values: 1,
+      max_values: 3,
+      options: [
+        { label: 'Tank', value: 'Tank', emoji: { name: '🛡️' }, default: activeRoles.includes('Tank') },
+        { label: 'Healer', value: 'Healer', emoji: { name: '💚' }, default: activeRoles.includes('Healer') },
+        { label: 'DPS', value: 'DPS', emoji: { name: '⚔️' }, default: activeRoles.includes('DPS') }
+      ]
+    }]
   };
-
-  // 3. Key Goals & Brackets Multi-Select Dropdown
-  const activeBrackets = player?.keyBrackets || (player?.keyMax ? (player.keyMax > 12 ? ['12+'] : (player.keyMax >= 10 ? ['10-12'] : ['6-8'])) : ['10-12']);
   const rowRange = {
     type: 1,
-    components: [
-      {
-        type: 3,
-        custom_id: 'select_key_range',
-        placeholder: 'Select Key Goals (6-8, 9-12, 12+)...',
-        min_values: 1,
-        max_values: 3,
-        options: [
-          { label: '6-8 (Hero Crest Farm)', value: '6-8', emoji: { name: '🌱' }, description: 'Hero crest farming and upgrades', default: activeBrackets.includes('6-8') },
-          { label: '9-12 (Myth Crests & Vault)', value: '10-12', emoji: { name: '🗝️' }, description: 'Myth crests start at +9; max Vault reward at +10', default: activeBrackets.includes('10-12') },
-          { label: '12+ (Score Push)', value: '12+', emoji: { name: '🔥' }, description: 'Keystone score pushing and high keys', default: activeBrackets.includes('12+') }
-        ]
-      }
-    ]
+    components: [{
+      type: 3,
+      custom_id: 'select_key_range',
+      placeholder: 'Key goals (pick any)',
+      min_values: 1,
+      max_values: 3,
+      options: [
+        { label: '6-8 · Hero crests', value: '6-8', emoji: { name: '🌱' }, default: activeBrackets.includes('6-8') },
+        { label: '9-12 · Myth crests & max Vault', value: '10-12', emoji: { name: '🗝️' }, default: activeBrackets.includes('10-12') },
+        { label: '12+ · Score push', value: '12+', emoji: { name: '🔥' }, default: activeBrackets.includes('12+') }
+      ]
+    }]
   };
-
-  // 4. Squad Vibes & Preferences (Multi-Select)
-  const isLeader = player?.isLeader || false;
-  const isReserve = player?.isReserve || false;
-  const isNeedCarry = player?.carryPreference === 'need_carry';
-  const isWillingCarry = player?.carryPreference === 'willing_carry';
-  const isShitter = player?.isShitter || false;
-
   const rowVibes = {
     type: 1,
-    components: [
-      {
-        type: 3,
-        custom_id: 'select_vibes',
-        placeholder: 'Select Vibes & Preferences (Leader, Reserve, Carry, Shitter)...',
-        min_values: 0,
-        max_values: 5,
-        options: [
-          { label: 'Born Leader (willing to lead group)', value: 'vibe_leader', emoji: { name: '👑' }, description: 'Willing to lead and guide a 5-man party', default: isLeader },
-          { label: 'Bench / Reserve (willing to rotate out)', value: 'vibe_reserve', emoji: { name: '🍺' }, description: 'Happy to sit reserve or rotate out for others', default: isReserve },
-          { label: 'Need Carry (pair me with high-IO carries)', value: 'vibe_need_carry', emoji: { name: '🎒' }, description: 'Needs assistance pushing keystone levels', default: isNeedCarry },
-          { label: 'Back is Stronk (willing to carry)', value: 'vibe_willing_carry', emoji: { name: '🏋️' }, description: 'Ready to anchor and carry lower keys', default: isWillingCarry },
-          { label: 'Shitter Alt Squad (chill alt run)', value: 'vibe_shitter', emoji: { name: '💩' }, description: 'Under-geared alt run, pure fun', default: isShitter }
-        ]
-      }
-    ]
+    components: [{
+      type: 3,
+      custom_id: 'select_vibes',
+      placeholder: 'Extras (optional)',
+      min_values: 0,
+      max_values: 5,
+      options: [
+        { label: 'Happy to lead a group', value: 'vibe_leader', emoji: { name: '👑' }, default: !!player?.isLeader },
+        { label: 'Will carry lower keys', value: 'vibe_willing_carry', emoji: { name: '🏋️' }, default: player?.carryPreference === 'willing_carry' },
+        { label: 'Could use a carry', value: 'vibe_need_carry', emoji: { name: '🎒' }, default: player?.carryPreference === 'need_carry' },
+        { label: 'Alt / chill squad', value: 'vibe_shitter', emoji: { name: '💩' }, default: !!player?.isShitter },
+        { label: 'Happy to sit out if needed', value: 'vibe_reserve', emoji: { name: '🍺' }, default: !!player?.isReserve }
+      ]
+    }]
   };
+  const rows = [rowRoles, rowRange, rowVibes];
 
-  // 5. Submit / Action Buttons
-  const rowActions = {
+  const charOptions = (characters || []).slice(0, 24).map(c => ({
+    label: `${c.name} — ${c.className || 'Player'}`.slice(0, 100),
+    value: `${c.name}|${c.realm || ''}`.slice(0, 100),
+    description: `${c.realm || ''}${c.isMain ? ' · ⭐ main' : ''}${c.attending ? ' · signed up' : ''}`.slice(0, 100) || undefined,
+    default: player ? c.name === player.name && (c.realm || '') === (player.realm || '') : false
+  }));
+  charOptions.push({ label: 'Add another character', value: '__add__', emoji: { name: '➕' } });
+  rows.push({
+    type: 1,
+    components: [{ type: 3, custom_id: 'select_my_char', placeholder: 'Switch character', min_values: 1, max_values: 1, options: charOptions }]
+  });
+
+  rows.push({
     type: 1,
     components: [
-      { type: 2, style: 3, custom_id: 'btn_confirm_rsvp', label: 'Save My RSVP ✅' },
-      { type: 2, style: 1, custom_id: 'btn_search_again', label: 'Search Name Again ✏️' },
-      { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
+      { type: 2, style: 3, custom_id: 'btn_confirm_rsvp', label: 'Done ✅' },
+      { type: 2, style: 2, custom_id: 'btn_set_main', label: player?.isMain ? '⭐ Main' : 'Make main ⭐', disabled: !!player?.isMain },
+      { type: 2, style: 2, custom_id: 'btn_absent', label: 'Can’t make it 💤' },
+      { type: 2, style: 4, custom_id: 'btn_remove_char', label: 'Remove character' }
     ]
-  };
-
-  return [rowRoles, rowRange, rowVibes, rowActions];
+  });
+  return rows;
 }
 
 function createLeaderboardEmbed(standings, webUrl = 'https://knkmplus.netlify.app', { demo = false } = {}) {
