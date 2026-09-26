@@ -4,11 +4,8 @@
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
   # Only the shared bot modules. Never bundle bot/.env (bot token) or bot/node_modules.
   included_files = ["bot/*.js", "bot/guild-roster.json", "leaderboard-engine.js", "!bot/.env", "!bot/node_modules/**"]
-  # v2 (.mjs) functions are bundled with esbuild; ship these packages as-is so require() finds them at runtime.
-  external_node_modules = ["@netlify/blobs", "discord.js"]
 
 # The whole repo folder is published, so hide files that are not part of the website.
 [[redirects]]
@@ -96,4 +93,9 @@
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
     Cache-Control = "no-cache, no-store, must-revalidate"
 
-# Background job schedules live in netlify/functions/refresh-scores.mjs and sync-night.mjs (config.schedule).
+# Background jobs (times are UTC)
+[functions."refresh-scores"]
+  schedule = "*/15 * * * *"
+
+[functions."sync-night"]
+  schedule = "*/15 * * * 5,6"
