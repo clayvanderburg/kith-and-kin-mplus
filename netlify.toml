@@ -4,6 +4,7 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
   # Only the shared bot modules. Never bundle bot/.env (bot token) or bot/node_modules.
   included_files = ["bot/*.js", "bot/guild-roster.json", "leaderboard-engine.js", "!bot/.env", "!bot/node_modules/**"]
   # v2 (.mjs) functions are bundled with esbuild; ship these packages as-is so require() finds them at runtime.
