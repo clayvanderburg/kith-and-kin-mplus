@@ -376,6 +376,7 @@ async function updateDiscordCard(state) {
   const groupCount = (state.formedGroups || []).length;
 
   const res = await fetch(`https://discord.com/api/v10/channels/${card.channelId}/messages/${card.messageId}`, {
+    signal: AbortSignal.timeout(2500),
     method: 'PATCH',
     headers: {
       Authorization: `Bot ${token}`,
@@ -398,7 +399,27 @@ async function updateDiscordCard(state) {
   return { updated: true };
 }
 
+/**
+ * Update the Discord card and WAIT for it (capped). Netlify/Lambda freezes the function as soon as
+ * the handler returns, so a fire-and-forget fetch usually never reaches Discord.
+ */
+async function refreshDiscordCard(state, maxMs = 2500, tag = 'live-state') {
+  let timer;
+  try {
+    return await Promise.race([
+      updateDiscordCard(state),
+      new Promise(resolve => { timer = setTimeout(() => resolve({ updated: false, timedOut: true }), maxMs); })
+    ]);
+  } catch (err) {
+    console.error(`[${tag}] Discord card refresh failed:`, err.message);
+    return { updated: false, error: err.message };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 module.exports = {
+  refreshDiscordCard,
   STORE_NAME,
   SCORES_KEY,
   NIGHTS_KEY,

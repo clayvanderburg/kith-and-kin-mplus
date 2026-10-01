@@ -3,7 +3,7 @@
  * Provides a cloud-synchronized JSON store for both the web application and Discord bot.
  */
 
-const { readLiveState, writeMergedState, updateDiscordCard } = require('../live-state');
+const { readLiveState, writeMergedState, refreshDiscordCard } = require('../live-state');
 const { isOfficerRequest, publicState } = require('../auth');
 
 const CORS_HEADERS = {
@@ -97,9 +97,7 @@ exports.handler = async (event, context) => {
       };
 
       const saved = await writeMergedState(event, stateToSave);
-      updateDiscordCard(saved).catch(err => {
-        console.error('[State] Discord card refresh failed:', err.message);
-      });
+      await refreshDiscordCard(saved, 2500, 'State');
 
       return {
         statusCode: 200,
@@ -197,7 +195,7 @@ async function applyOps(event, ops) {
   }
 
   const saved = await writeMergedState(event, incoming, 'Officer (website)');
-  updateDiscordCard(saved).catch(err => console.error('[State] Discord card refresh failed:', err.message));
+  await refreshDiscordCard(saved, 2500, 'State');
   // Re-read so the version includes overlays, exactly as the next GET will report it.
   const fresh = await readLiveState(event);
   return {

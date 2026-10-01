@@ -368,9 +368,8 @@ async function loadState() {
 
 async function saveState(data) {
   const saved = await liveState.writeMergedState(activeLambdaEvent, data, 'Discord');
-  liveState.updateDiscordCard(saved).catch(err => {
-    console.error('[Discord] Card refresh failed:', err.message);
-  });
+  // Discord gives us 3s to answer; the save already used some, so cap the card update.
+  await liveState.refreshDiscordCard(saved, 1200, 'Discord');
   return saved;
 }
 
@@ -943,9 +942,7 @@ exports.handler = async (event, context) => {
     if (customId === 'btn_refresh_roster') {
       const live = await liveState.readLiveState(activeLambdaEvent);
       const view = liveState.reconcileState(live || { players: [], formedGroups: [], benchedPlayers: [] });
-      liveState.updateDiscordCard(view).catch(err => {
-        console.error('[Discord] Card refresh failed:', err.message);
-      });
+      // The response below (type 7) already redraws the card that was clicked.
       const embed = embeds ? embeds.createRosterEmbed(view.players || [], WEB_URL, undefined, view.formedGroups || [], view.benchedPlayers || []).toJSON() : { title: 'Roster' };
       const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : [];
       return jsonResponse({
