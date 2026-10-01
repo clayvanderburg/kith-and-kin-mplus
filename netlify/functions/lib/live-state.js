@@ -300,17 +300,22 @@ async function writeBlob(event, key, value) {
 }
 
 async function readLiveState(event, { overlays = true } = {}) {
-  const data = await useStore(event, (store) => store.get(STATE_KEY, { type: 'json' }));
+  // Read the roster and both overlays at the same time (one round trip instead of two).
+  const [data, scores, nights] = await Promise.all([
+    useStore(event, (store) => store.get(STATE_KEY, { type: 'json' })),
+    overlays ? readBlob(event, SCORES_KEY) : null,
+    overlays ? readBlob(event, NIGHTS_KEY) : null
+  ]);
   if (!data || typeof data !== 'object') return null;
   const state = reconcileState(data);
   if (overlays) {
-    const [scores, nights] = await Promise.all([readBlob(event, SCORES_KEY), readBlob(event, NIGHTS_KEY)]);
     applyScores(state, scores);
     state.nights = nights && typeof nights === 'object' ? nights : {};
     let latestScore = '';
     for (const v of Object.values(scores || {})) if (v && v.at > latestScore) latestScore = v.at;
     // Changes whenever the roster, groups, scores or attendance change. Pages poll with ?since=<version>.
-    state.version = `${state.lastUpdated || ''}|${latestScore}|${Object.keys(state.nights).length}`;
+    const shows = Object.values(state.nights).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
+    state.version = `${state.lastUpdated || ''}|${latestScore}|${Object.keys(state.nights).length}.${shows}`;
   }
   return assignPeople(state);
 }
