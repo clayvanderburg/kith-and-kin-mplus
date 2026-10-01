@@ -874,6 +874,8 @@
   }
 
   // --- Roster Rendering ---
+  let lastRosterFiltered = [];
+  let rosterShowAll = false;
   function renderRoster() {
     const container = document.getElementById('rosterList');
     if (!container) return;
@@ -930,8 +932,10 @@
       return;
     }
 
-    // Sort filtered players
+    lastRosterFiltered = filtered;
+    // Sort filtered players: tonight's sign-ups always on top, then the chosen order.
     const sorted = [...filtered].sort((a, b) => {
+      if (!!a.attending !== !!b.attending) return a.attending ? -1 : 1;
       if (state.sortField === 'name') {
         return a.name.localeCompare(b.name);
       }
@@ -954,7 +958,10 @@
       return 0;
     });
 
-    sorted.forEach(player => {
+    // Drawing all ~700 guild characters makes phones crawl; show sign-ups + the first batch.
+    const limit = state.searchQuery || rosterShowAll ? sorted.length : Math.max(60, sorted.filter(p => p.attending).length + 25);
+    const hiddenCount = sorted.length - limit;
+    sorted.slice(0, limit).forEach(player => {
       const classInfo = WOW_CLASSES[player.className] || { color: '#ffffff' };
       const row = document.createElement('div');
       row.className = `player-row is-collapsed ${player.attending ? '' : 'inactive'}`;
@@ -1018,6 +1025,15 @@
       `;
       container.appendChild(row);
     });
+
+    if (hiddenCount > 0) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'btn btn-sm btn-ghost roster-show-more';
+      more.textContent = `Show ${hiddenCount} more not signed up (or search a name)`;
+      more.addEventListener('click', () => { rosterShowAll = true; renderRoster(); });
+      container.appendChild(more);
+    }
 
     attachRosterRowEvents();
   }
@@ -3044,7 +3060,7 @@
     });
 
     // Reset Defaults
-    document.getElementById('resetSampleBtn').addEventListener('click', () => {
+    document.getElementById('resetSampleBtn')?.addEventListener('click', () => {
       if (confirm('Reset to default Kith and Kin sample roster? (Your current list will be replaced)')) {
         state.players = JSON.parse(JSON.stringify(SAMPLE_ROSTER));
         savePlayers();
@@ -3055,14 +3071,20 @@
     });
 
     // Attendance bulk actions
+    // Bulk attendance only touches the players currently shown by search/filters.
+    const bulkTargets = (verb) => {
+      const list = lastRosterFiltered.length ? lastRosterFiltered : state.players;
+      if (list.length > 25 && !confirm(`${verb} all ${list.length} characters in this list? (Use search or the filters to narrow it first.)`)) return [];
+      return list;
+    };
     document.getElementById('selectAllBtn').addEventListener('click', () => {
-      state.players.forEach(p => { p.attending = true; p.absent = false; p.touchedAt = new Date().toISOString(); });
+      bulkTargets('Mark attending').forEach(p => { p.attending = true; p.absent = false; p.touchedAt = new Date().toISOString(); });
       savePlayers();
       renderRoster();
       playSound('click');
     });
     document.getElementById('deselectAllBtn').addEventListener('click', () => {
-      state.players.forEach(p => { p.attending = false; p.absent = true; p.touchedAt = new Date().toISOString(); });
+      bulkTargets('Un-mark').forEach(p => { p.attending = false; p.absent = true; p.touchedAt = new Date().toISOString(); });
       savePlayers();
       renderRoster();
       playSound('click');
