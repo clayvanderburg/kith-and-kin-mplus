@@ -177,7 +177,10 @@ node bot/deploy-commands.js
 | Raider.IO score + ilvl for the whole guild | Scheduled every 15 min, ~170 characters per run (attendees first, then oldest). Stored in blob `scores`, overlaid on every read. | `netlify/functions/refresh-scores.js`, `lib/jobs.js` |
 | Friday keys + attendance | Scheduled every 15 min Fri/Sat UTC; inside the night window (kickoff −2h to +9h ET) pulls attendees' **and their alts'** Raider.IO recent runs, logs each run once per character (`rio-<keystone_run_id>`), links hand-logged duplicates, records who showed up in blob `nights`. | `netlify/functions/sync-night.js`, `lib/jobs.js` |
 | Alts | Characters are tied to one person by Battle.net account (`bnetId` + `accountChars` from login) and Discord account (`discordId`). Every player gets a hashed `personId`; the leaderboard merges a person's characters into one row. | `lib/live-state.js#assignPeople`, `leaderboard-engine.js#aggregatePeople` |
-| Current keystones | No web API exposes bag keystones. The standalone `addon/KithKinKeys` addon speaks LibKeystone (BigWigs), Open Raid (Details!, via bundled LibDeflate), Astral Keys (incl. guild sync relays of offline members) and chat keystone links; `tools/key-uploader.js` on an officer's PC posts them to `/api/keys` after `/reload`/logout. Keys older than the Tuesday reset are cleared. | `addon/`, `tools/`, `netlify/functions/keys.js` |
+| Current keystones | No web API exposes bag keystones. The standalone `addon/KithKinKeys` addon speaks LibKeystone (BigWigs), Open Raid (Details!, via bundled LibDeflate), Astral Keys (incl. guild sync relays of offline members) and chat keystone links. Officers install the **officer kit** (`officers.html` → `downloads/kithkin-officer-kit.zip`, PowerShell, no Node) which posts them to `/api/keys` after `/reload`/logout using the officer passphrase. `tools/key-uploader.js` is the older Node version. Keys older than the Tuesday reset are cleared. Rebuild the zip with `node tools/build-officer-kit.js` after changing `officer-kit/` or `addon/`. | `addon/`, `officer-kit/`, `tools/`, `netlify/functions/keys.js` |
+| Roles / key goals | Score refresh stores Raider.IO per-role scores. First time a character is picked (Discord or website) roles + key brackets are pre-filled (`suggestSignup`); never overwritten once `rolesChosenAt` / `keysChosenAt` is set. | `lib/live-state.js#suggestSignup` |
+| Held key for groups | Both solvers pick the best key a member holds (in range, closest to target, not excluded, this week, `keyManual`). | `bot/solver.js#pickHeldKey`, `app.js` |
+| Weekly reset | First sync-night run 30 min after the night ends un-marks everyone who signed up before it ended, clears groups and can't-make-it flags, archives to blob `archive/<date>`. `AUTO_WEEKLY_RESET=off` disables; `AUTO_POST_CARD=on` also posts a fresh Discord card. | `lib/jobs.js#weeklyReset` |
 | Officer "Sync Raider.IO" button | `POST /api/refresh-now`: attendees' scores + latest Friday's runs immediately. | `netlify/functions/refresh-now.js` |
 
 Setup on the officer PC: `node tools\install-addon.js` once, then `tools\start-key-uploader.cmd` (minimized window; add a shortcut to shell:startup to auto-start).
@@ -186,9 +189,11 @@ Setup on the officer PC: `node tools\install-addon.js` once, then `tools\start-k
 
 ## 8. Sync Model (read this before touching saves)
 
-- One shared blob (`current_state`). All blob-backed functions run as **Netlify v2** (`*.mjs` wrappers → `lib/handlers/*`) so reads are strongly consistent.
+- One shared blob (`current_state`). Functions are classic Lambda-style entries (`netlify/functions/*.js` → `lib/handlers/*`). Strong-consistency reads fall back to eventual in this mode (the v2 `.mjs` attempt broke because the bundles couldn't find `@netlify/blobs`; see Needs-Clay notes before retrying).
 - **Control Center saves only changes** (`POST /api/state {ops:[...]}`): `upsert` (server stamps `touchedAt`), `delete` (tombstone in `state.deleted`), `groups` (must send `base` = the `groupsTouchedAt` it last saw; stale → **409**, client reloads groups), `meta`.
 - Merge rules: newer `touchedAt` wins, **ties keep the stored copy**; groups replaced only by a strictly newer `groupsTouchedAt`; explicit `absent: true` is respected even for grouped players; run logs always union.
 - Every write records `lastChange {by, at}`; pages poll `GET /api/state?since=<version>` every 4s (answers `{unchanged:true}` cheaply).
-- Discord signup card auto-updates after website saves (needs `DISCORD_TOKEN` on Netlify).
-- Known gap: deleting a whole event lineup isn't persisted server-side (event metadata merges additively).
+- Discord signup card auto-updates after website saves (needs `DISCORD_TOKEN` on Netlify). The update is awaited with a cap (Lambda freezes after return, so fire-and-forget never ran).
+- Deleted events are tombstoned in `state.deletedEvents`.
+- Rate limits: `netlify/edge-functions/limit-officer-*.js` are pass-through edge functions that only carry Netlify `rateLimit` config (officer-auth 10/min/IP, officer APIs 150/min/IP).
+- Embeds use plain-JSON builders (no discord.js load) for fast cold starts; `KK_USE_DISCORDJS=1` switches back.
