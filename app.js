@@ -1086,6 +1086,7 @@
           } else {
             player.roles.push(role);
           }
+          player.rolesChosenAt = new Date().toISOString();
           savePlayers();
           renderRoster();
           playSound('click');

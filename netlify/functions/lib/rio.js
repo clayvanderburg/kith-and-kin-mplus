@@ -43,6 +43,12 @@ async function fetchProfile(name, realm, region = 'us', timeoutMs = 3000) {
     spec: data.active_spec_name || '',
     role: data.active_spec_role || '',
     io: Math.round(season?.scores?.all || 0),
+    // Score per role tells us which roles this character actually plays.
+    roleScores: {
+      tank: Math.round(season?.scores?.tank || 0),
+      healer: Math.round(season?.scores?.healer || 0),
+      dps: Math.round(season?.scores?.dps || 0)
+    },
     ioColor: season?.segments?.all?.color || null,
     ilvl: Math.round(data.gear?.item_level_equipped || 0),
     avatar: data.thumbnail_url || null,

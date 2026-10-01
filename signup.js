@@ -133,10 +133,24 @@
       button.append(name, meta);
       button.addEventListener('click', () => {
         selected = character;
+        applySuggestion();
         renderCharacters();
       });
       charGrid.appendChild(button);
     });
+  }
+
+  // New sign-ups: tick the roles/keys Raider.IO says fit this character, until the player changes them.
+  let suggestions = {};
+  let touchedChoices = false;
+  function applySuggestion() {
+    if (touchedChoices || !selected) return;
+    const tip = suggestions[`${selected.name}|${selected.realm}`];
+    if (!tip) return;
+    if (tip.roles) setChecks(document.getElementById('roleRow'), tip.roles);
+    if (tip.keyBrackets) setChecks(document.getElementById('bracketRow'), tip.keyBrackets);
+    const note = document.getElementById('suggestNote');
+    if (note) note.hidden = false;
   }
 
   function fillForm(signup) {
@@ -639,7 +653,10 @@
     } else if (characters[0]) {
       selected = characters[0];
     }
+    suggestions = data.suggestions || {};
+    ['roleRow', 'bracketRow'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { touchedChoices = true; }));
     fillForm(data.signup);
+    if (!data.signup) applySuggestion();
     renderCharacters();
     showSignedUp(data.signup);
     renderGroups(data.groups);

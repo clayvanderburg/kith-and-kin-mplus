@@ -281,9 +281,64 @@ function applyScores(state, scores) {
     if (hit.ilvl) player.ilvl = hit.ilvl;
     if (hit.ioColor) player.ioColor = hit.ioColor;
     if (hit.spec) player.spec = hit.spec;
+    if (hit.roleScores) player.roleScores = hit.roleScores;
+    if (hit.role) player.activeRole = hit.role;
     player.scoreAt = hit.at || null;
   }
   return state;
+}
+
+/**
+ * Sensible defaults so people don't have to fill in roles/keys: roles they have real M+ score on
+ * (Raider.IO per-role score) and a key range that fits their overall score. Returns null when
+ * there's nothing to go on. Only used until the player picks roles/keys themselves.
+ */
+function suggestSignup(hit) {
+  if (!hit || typeof hit !== 'object') return null;
+  const scores = hit.roleScores || {};
+  const top = Math.max(scores.tank || 0, scores.healer || 0, scores.dps || 0);
+  let roles = [];
+  if (top > 0) {
+    // A role counts if it has at least 40% of their best role's score.
+    roles = [['Tank', scores.tank], ['Healer', scores.healer], ['DPS', scores.dps]]
+      .filter(([, score]) => (score || 0) > 0 && score >= top * 0.4)
+      .map(([role]) => role);
+  }
+  if (!roles.length) {
+    const active = String(hit.role || hit.activeRole || '').toUpperCase();
+    if (active === 'TANK') roles = ['Tank'];
+    else if (active === 'HEALING' || active === 'HEALER') roles = ['Healer'];
+    else if (active === 'DPS') roles = ['DPS'];
+  }
+  const io = Number(hit.io || 0);
+  let keyBrackets = null;
+  if (io > 0) keyBrackets = io < 1500 ? ['6-8'] : (io < 2500 ? ['10-12'] : ['10-12', '12+']);
+  if (!roles.length && !keyBrackets) return null;
+  return { roles: roles.length ? roles : null, keyBrackets };
+}
+
+function bracketRange(brackets) {
+  let keyMin = 30;
+  let keyMax = 2;
+  if (brackets.includes('6-8')) { keyMin = Math.min(keyMin, 6); keyMax = Math.max(keyMax, 8); }
+  if (brackets.includes('10-12')) { keyMin = Math.min(keyMin, 9); keyMax = Math.max(keyMax, 12); }
+  if (brackets.includes('12+')) { keyMin = Math.min(keyMin, 12); keyMax = Math.max(keyMax, 18); }
+  if (keyMin > keyMax) return { keyMin: 9, keyMax: 12 };
+  return { keyMin, keyMax };
+}
+
+/** Fill roles/keys from Raider.IO for a player who never chose them. Returns true if anything changed. */
+function applySuggestion(player) {
+  const tip = suggestSignup({ ...player, role: player.activeRole });
+  if (!tip) return false;
+  let changed = false;
+  if (tip.roles && !player.rolesChosenAt) { player.roles = tip.roles; changed = true; }
+  if (tip.keyBrackets && !player.keysChosenAt) {
+    player.keyBrackets = tip.keyBrackets;
+    Object.assign(player, bracketRange(tip.keyBrackets));
+    changed = true;
+  }
+  return changed;
 }
 
 async function readBlob(event, key) {
@@ -425,6 +480,9 @@ async function refreshDiscordCard(state, maxMs = 2500, tag = 'live-state') {
 
 module.exports = {
   refreshDiscordCard,
+  suggestSignup,
+  applySuggestion,
+  bracketRange,
   STORE_NAME,
   SCORES_KEY,
   NIGHTS_KEY,

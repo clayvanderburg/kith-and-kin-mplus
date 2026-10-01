@@ -190,7 +190,12 @@ function claimCharacter(state, userId, info) {
     if (info.realm && !target.realm) target.realm = info.realm;
     if (info.io && !target.io) target.io = info.io;
   }
+  // First time someone picks this character: fill roles/keys from Raider.IO so they rarely need to touch them.
+  const wasMine = target.discordId === userId;
   const note = activateCharacter(state, userId, target);
+  if (!wasMine && liveState.applySuggestion && liveState.applySuggestion(target)) {
+    return { player: target, note: `${note}\n✨ Filled in roles and keys from Raider.IO — change them below if they're wrong.` };
+  }
   return { player: target, note };
 }
 
@@ -819,7 +824,9 @@ exports.handler = async (event, context) => {
       const values = interaction.data.values || [];
       if (customId === 'select_roles') {
         player.roles = values.length ? values : ['DPS'];
+        player.rolesChosenAt = new Date().toISOString();
       } else if (customId === 'select_key_range') {
+        player.keysChosenAt = new Date().toISOString();
         const brackets = values.length ? values : ['10-12'];
         let minKey = 30;
         let maxKey = 2;

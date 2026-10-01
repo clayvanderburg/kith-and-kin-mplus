@@ -1,6 +1,6 @@
 const path = require('path');
 const { readSession, bnetConfigured } = require('../player-session');
-const { readLiveState, writeMergedState } = require('../live-state');
+const { readLiveState, writeMergedState, readBlob, SCORES_KEY, charKey, suggestSignup } = require('../live-state');
 
 function loadKeystone() {
   try {
@@ -238,6 +238,15 @@ exports.handler = async (event) => {
   }
 
   if (event.httpMethod === 'GET') {
+    // Pre-fill roles and key goals from Raider.IO for characters that haven't signed up yet.
+    const suggestions = {};
+    if (!mine) {
+      const scores = (await readBlob(event, SCORES_KEY)) || {};
+      for (const c of session.characters || []) {
+        const tip = suggestSignup(scores[charKey(c.name, c.realm)]);
+        if (tip) suggestions[`${c.name}|${c.realm}`] = tip;
+      }
+    }
     return {
       statusCode: 200,
       headers: JSON_HEADERS,
@@ -247,6 +256,7 @@ exports.handler = async (event) => {
         battleTag: session.battleTag,
         characters: session.characters || [],
         signup: publicPlayer(mine),
+        suggestions,
         events: listEvents(state),
         groups: publicGroups(state, mine?.name)
       })
@@ -457,6 +467,8 @@ async function saveSignup(event, state, session, body, existing) {
     keyBrackets: brackets,
     keyMin: range.keyMin,
     keyMax: range.keyMax,
+    rolesChosenAt: now,
+    keysChosenAt: now,
     isLeader: !!body.isLeader,
     isReserve: !!body.isReserve,
     isShitter: !!body.isShitter,

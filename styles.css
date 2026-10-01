@@ -4344,3 +4344,4 @@ body.is-dragging-player, body.is-dragging-player * { cursor: grabbing !important
   .empty-state { padding: 1.5rem 0.75rem; overflow-wrap: anywhere; }
   .empty-state p { max-width: 100%; }
 }
+.suggest-note { font-size: 0.8rem; color: var(--text-muted, #94a3b8); margin: -0.25rem 0 0.5rem; }

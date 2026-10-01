@@ -69,6 +69,8 @@ function scoreFrom(profile) {
     ilvl: profile.ilvl,
     ioColor: profile.ioColor,
     spec: profile.spec,
+    role: profile.role,
+    roleScores: profile.roleScores,
     className: profile.className,
     at: new Date().toISOString()
   };
