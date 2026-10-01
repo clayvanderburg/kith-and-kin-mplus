@@ -260,6 +260,30 @@ async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}
     benchedPlayers: state.benchedPlayers || []
   });
 
+  // Optional: post the end-of-night recap before the board is wiped (AUTO_POST_RECAP=on).
+  let recapPosted = false;
+  if (String(process.env.AUTO_POST_RECAP || '').toLowerCase() === 'on' && process.env.DISCORD_TOKEN && state.discordCard?.channelId) {
+    try {
+      const { buildRecap } = require('./handlers/chronicler-recap');
+      const { recap, summary } = await buildRecap(state, { tone: process.env.RECAP_TONE || 'xalatath', maxMs: 12000 });
+      if (summary && summary.totalRunsLogged > 0) {
+        const res = await fetch(`https://discord.com/api/v10/channels/${state.discordCard.channelId}/messages`, {
+          signal: AbortSignal.timeout(4000),
+          method: 'POST',
+          headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            embeds: [{ title: `📜 The Chronicle of ${last.dateKey}`, description: String(recap).slice(0, 4000), color: 0x800020 }],
+            allowed_mentions: { parse: [] }
+          })
+        });
+        recapPosted = res.ok;
+        if (!res.ok) console.error('[weekly-reset] recap post failed', res.status);
+      }
+    } catch (err) {
+      console.error('[weekly-reset] recap failed:', err.message);
+    }
+  }
+
   const incoming = { players: changed, weeklyResetFor: last.dateKey };
   if (clearGroups) Object.assign(incoming, { formedGroups: [], benchedPlayers: [], groupsTouchedAt: stamp });
   const saved = await live.writeMergedState(event, incoming, 'Weekly reset (automatic)');
@@ -274,7 +298,7 @@ async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}
     }
   }
   if (saved && !posted) await live.refreshDiscordCard(saved, 2500, 'weekly-reset');
-  return { reset: last.dateKey, unmarked: changed.length, groupsCleared: clearGroups, newCardPosted: posted };
+  return { reset: last.dateKey, unmarked: changed.length, groupsCleared: clearGroups, newCardPosted: posted, recapPosted };
 }
 
 module.exports = { nightWindow, refreshScores, syncNight, weeklyReset };

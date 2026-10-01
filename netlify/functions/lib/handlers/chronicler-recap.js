@@ -301,6 +301,37 @@ Include: Headline, By The Numbers, Key of the Night, Scuff Trophy, and Tavern MV
   return json.choices?.[0]?.message?.content;
 }
 
+/**
+ * Write tonight's recap from a state snapshot. Used by the officer button and by the optional
+ * automatic end-of-night post (AUTO_POST_RECAP=on). AI calls are capped so a slow API can't hang.
+ */
+async function buildRecap(state, { tone = 'xalatath', geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY, maxMs = 15000 } = {}) {
+  const summary = summarizeNight(state || { players: [] });
+  const capped = (promise) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), maxMs))]);
+  let recap = '';
+  let generator = 'rule-based';
+  let geminiError = null;
+  if (geminiKey) {
+    try {
+      const result = await capped(callGemini(geminiKey, summary, tone));
+      recap = result.text;
+      generator = result.modelName || 'gemini';
+    } catch (err) {
+      geminiError = err.message;
+    }
+  }
+  if (!recap && process.env.OPENAI_API_KEY) {
+    try {
+      recap = await capped(callOpenAI(process.env.OPENAI_API_KEY, summary, tone));
+      generator = 'openai-mini';
+    } catch (err) { /* fall back */ }
+  }
+  if (!recap) recap = generateRuleBasedRecap(summary, tone);
+  return { recap, generator, geminiError, summary };
+}
+
+exports.buildRecap = buildRecap;
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: CORS_HEADERS, body: '' };
