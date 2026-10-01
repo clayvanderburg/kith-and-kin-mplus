@@ -247,6 +247,23 @@ exports.handler = async (event) => {
       .sort((a, b) => (b.attending ? 1 : 0) - (a.attending ? 1 : 0) || time(b) - time(a))[0];
   }
 
+  if (event.httpMethod === 'GET' && mine) {
+    // Quietly link this Battle.net account to the entry (and remember all its characters) so alts'
+    // runs count for the same person without the player having to press Save.
+    const chars = (session.characters || []).map(c => ({ name: c.name, realm: c.realm })).slice(0, 80);
+    const needsLink = !mine.bnetId || (chars.length && (mine.accountChars || []).length !== chars.length);
+    if (needsLink && (!mine.bnetId || mine.bnetId === session.bnetId)) {
+      try {
+        const { personId, charKey: ck, ...rest } = mine;
+        const linked = { ...rest, bnetId: session.bnetId, battleTag: session.battleTag, accountChars: chars, touchedAt: new Date().toISOString() };
+        const saved = await writeMergedState(event, { players: [linked] }, 'Signup page (Battle.net link)');
+        if (saved) mine = (saved.players || []).find(p => sameCharacter(p, linked)) || mine;
+      } catch (err) {
+        console.error('[me] account link failed:', err.message);
+      }
+    }
+  }
+
   if (event.httpMethod === 'GET') {
     // Pre-fill roles and key goals from Raider.IO for characters that haven't signed up yet.
     const suggestions = {};
