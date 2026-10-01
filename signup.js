@@ -652,7 +652,9 @@
         characters = [selected, ...characters];
       }
     } else if (characters[0]) {
-      selected = characters[0];
+      // New here: start on the character they actually play M+ on (highest Raider.IO score).
+      const ioOf = c => Number((data.suggestions || {})[`${c.name}|${c.realm}`]?.io || 0);
+      selected = [...characters].sort((a, b) => ioOf(b) - ioOf(a))[0];
     }
     suggestions = data.suggestions || {};
     ['roleRow', 'bracketRow'].forEach(id => document.getElementById(id)?.addEventListener('change', () => { touchedChoices = true; }));

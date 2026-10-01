@@ -251,8 +251,9 @@ exports.handler = async (event) => {
     if (!mine) {
       const scores = (await readBlob(event, SCORES_KEY)) || {};
       for (const c of session.characters || []) {
-        const tip = suggestSignup(scores[charKey(c.name, c.realm)]);
-        if (tip) suggestions[`${c.name}|${c.realm}`] = tip;
+        const hit = scores[charKey(c.name, c.realm)];
+        const tip = suggestSignup(hit);
+        if (tip) suggestions[`${c.name}|${c.realm}`] = { ...tip, io: Number(hit?.io || 0) };
       }
     }
     return {
