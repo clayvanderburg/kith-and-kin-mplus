@@ -254,8 +254,10 @@ exports.handler = async (event) => {
     const needsLink = !mine.bnetId || (chars.length && (mine.accountChars || []).length !== chars.length);
     if (needsLink && (!mine.bnetId || mine.bnetId === session.bnetId)) {
       try {
-        const { personId, charKey: ck, ...rest } = mine;
-        const linked = { ...rest, bnetId: session.bnetId, battleTag: session.battleTag, accountChars: chars, touchedAt: new Date().toISOString() };
+        // Only the link fields, stamped 1ms after the stored copy: enough to win the merge, never
+        // newer than a real edit made at the same moment, and it doesn't move the sign-up time.
+        const stamp = new Date((Date.parse(mine.touchedAt || '') || 0) + 1).toISOString();
+        const linked = { name: mine.name, realm: mine.realm, bnetId: session.bnetId, battleTag: session.battleTag, accountChars: chars, touchedAt: stamp };
         const saved = await writeMergedState(event, { players: [linked] }, 'Signup page (Battle.net link)');
         if (saved) mine = (saved.players || []).find(p => sameCharacter(p, linked)) || mine;
       } catch (err) {
@@ -507,6 +509,7 @@ async function saveSignup(event, state, session, body, existing) {
     isShitter: !!body.isShitter,
     carryPreference: body.carryPreference === 'need_carry' || body.carryPreference === 'willing_carry' ? body.carryPreference : 'none',
     attending: body.attending !== false,
+    attendingAt: body.attending !== false ? (existing?.attending ? (existing.attendingAt || now) : now) : null,
     absent: body.attending === false,
     touchedAt: now,
     io: rio?.io || existing?.io || 0,

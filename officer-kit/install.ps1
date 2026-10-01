@@ -77,11 +77,14 @@ if (Test-Path $configFile) {
   if ($keep -notmatch '^[nN]') { $encrypted = $old.passphrase }
 }
 while (-not $encrypted) {
-  $secure = Read-Host 'Officer passphrase (same one you type on the Control Center)' -AsSecureString
-  $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-  try { $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+  $typed = Read-Host 'Officer passphrase (same one you type on the Control Center)' -AsSecureString
+  $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($typed)
+  try { $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr).Trim() } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+  if (-not $plain) { continue }
+  # Save exactly what was checked (trimmed), so the uploader sends the same thing the site accepted.
+  $secure = ConvertTo-SecureString $plain -AsPlainText -Force
   try {
-    $body = [Text.Encoding]::UTF8.GetBytes((@{ key = $plain.Trim() } | ConvertTo-Json -Compress))
+    $body = [Text.Encoding]::UTF8.GetBytes((@{ key = $plain } | ConvertTo-Json -Compress))
     $res = Invoke-RestMethod -Method Post -Uri ($Site.TrimEnd('/') + '/api/officer-auth') -Body $body -ContentType 'application/json; charset=utf-8' -TimeoutSec 20
     if ($res.ok) { $encrypted = ConvertFrom-SecureString $secure; Say 'Passphrase accepted.' 'Green' }
   } catch {

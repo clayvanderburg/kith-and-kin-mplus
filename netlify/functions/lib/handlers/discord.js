@@ -147,6 +147,7 @@ function activateCharacter(state, userId, target) {
   }
   target.discordId = userId;
   target.attending = true;
+  target.attendingAt = new Date().toISOString();
   target.absent = false;
   target.declinedAt = null;
   target.activeAt = now;
@@ -161,6 +162,8 @@ function activateCharacter(state, userId, target) {
  */
 function claimCharacter(state, userId, info) {
   let target = findCharacter(state, info.name, info.realm);
+  // Only pre-fill roles/keys for an entry nobody has ever used (guild import or brand new).
+  const neverUsed = !target || (!target.discordId && !target.bnetId && !target.activeAt && !(target.runLog || []).length && !target.rolesChosenAt);
   const err = claimError(target, userId);
   if (err) return { error: err };
   if (!target) {
@@ -191,9 +194,8 @@ function claimCharacter(state, userId, info) {
     if (info.io && !target.io) target.io = info.io;
   }
   // First time someone picks this character: fill roles/keys from Raider.IO so they rarely need to touch them.
-  const wasMine = target.discordId === userId;
   const note = activateCharacter(state, userId, target);
-  if (!wasMine && liveState.applySuggestion && liveState.applySuggestion(target)) {
+  if (neverUsed && liveState.applySuggestion && liveState.applySuggestion(target)) {
     return { player: target, note: `${note}\n✨ Filled in roles and keys from Raider.IO — change them below if they're wrong.` };
   }
   return { player: target, note };
@@ -344,6 +346,7 @@ const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
 
 // The lambda event for this invocation. Strong blob reads must not use a warm cache.
 let activeLambdaEvent = null;
+let requestStartedAt = Date.now();
 
 function touchPlayer(player) {
   if (!player) return player;
@@ -373,8 +376,10 @@ async function loadState() {
 
 async function saveState(data) {
   const saved = await liveState.writeMergedState(activeLambdaEvent, data, 'Discord');
-  // Discord gives us 3s to answer; the save already used some, so cap the card update.
-  await liveState.refreshDiscordCard(saved, 1200, 'Discord');
+  // Discord gives us 3s to answer. Spend only what's left (keep ~0.7s for the reply); otherwise
+  // skip it and let the next save or the Refresh button update the card.
+  const budget = Math.min(1200, 2300 - (Date.now() - requestStartedAt));
+  if (budget > 150) await liveState.refreshDiscordCard(saved, budget, 'Discord');
   return saved;
 }
 
@@ -481,6 +486,7 @@ function leaderboardMessage(state, viewMode = 'auto') {
 
 exports.handler = async (event, context) => {
   activeLambdaEvent = event;
+  requestStartedAt = Date.now();
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, body: '' };
   }
@@ -842,6 +848,7 @@ exports.handler = async (event, context) => {
         player.isShitter = values.includes('vibe_shitter');
         player.carryPreference = values.includes('vibe_need_carry') ? 'need_carry' : (values.includes('vibe_willing_carry') ? 'willing_carry' : 'none');
       }
+      if (!player.attending || !player.attendingAt) player.attendingAt = new Date().toISOString();
       player.attending = true;
       player.absent = false;
       player.declinedAt = null;
@@ -887,6 +894,7 @@ exports.handler = async (event, context) => {
       if (!player) return jsonResponse({ type: 7, data: await addCharacterMessage(interaction) });
       if (!player.attending) {
         player.attending = true;
+        player.attendingAt = new Date().toISOString();
         player.declinedAt = null;
         touchPlayer(player);
         await saveState(state);

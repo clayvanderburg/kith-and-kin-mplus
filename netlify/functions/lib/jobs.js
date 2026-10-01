@@ -241,13 +241,15 @@ async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}
   if (state.weeklyResetFor === last.dateKey) return { skipped: 'already reset', night: last.dateKey };
 
   const before = t => (Date.parse(t || '') || 0) <= last.end;
+  // When they signed up (falls back to last edit for entries saved before attendingAt existed).
+  const signedUpAt = p => p.attendingAt || p.declinedAt || p.touchedAt;
   const stamp = now.toISOString();
   const changed = [];
   for (const p of state.players || []) {
     const flagged = p.attending || p.absent || p.declinedAt;
-    if (!flagged || !before(p.touchedAt)) continue;
+    if (!flagged || !before(signedUpAt(p))) continue;
     const { personId, charKey, ...rest } = p;
-    changed.push({ ...rest, attending: false, absent: false, declinedAt: null, touchedAt: stamp });
+    changed.push({ ...rest, attending: false, absent: false, declinedAt: null, attendingAt: null, touchedAt: stamp });
   }
   const clearGroups = (state.formedGroups || []).length > 0 && before(state.groupsTouchedAt);
 
@@ -260,12 +262,27 @@ async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}
     benchedPlayers: state.benchedPlayers || []
   });
 
-  // Optional: post the end-of-night recap before the board is wiped (AUTO_POST_RECAP=on).
+  const incoming = { players: changed, weeklyResetFor: last.dateKey };
+  if (clearGroups) Object.assign(incoming, { formedGroups: [], benchedPlayers: [], groupsTouchedAt: stamp });
+  const saved = await live.writeMergedState(event, incoming, 'Weekly reset (automatic)');
+  let posted = false;
   let recapPosted = false;
-  if (String(process.env.AUTO_POST_RECAP || '').toLowerCase() === 'on' && process.env.DISCORD_TOKEN && state.discordCard?.channelId) {
+  if (saved && String(process.env.AUTO_POST_CARD || '').toLowerCase() === 'on') {
+    // Fresh card at the bottom of the channel for next week (the old one stays as history).
+    try {
+      const card = await live.postNewDiscordCard(saved);
+      if (card) { await live.writeMergedState(event, { discordCard: card }); posted = true; }
+    } catch (err) {
+      console.error('[weekly-reset] posting new card failed:', err.message);
+    }
+  }
+  if (saved && !posted) await live.refreshDiscordCard(saved, 2500, 'weekly-reset');
+  // Optional: post the end-of-night recap (from the snapshot taken before the reset). The reset is
+  // already saved, so a timeout here can't make the next run post it again.
+    if (String(process.env.AUTO_POST_RECAP || '').toLowerCase() === 'on' && process.env.DISCORD_TOKEN && state.discordCard?.channelId) {
     try {
       const { buildRecap } = require('./handlers/chronicler-recap');
-      const { recap, summary } = await buildRecap(state, { tone: process.env.RECAP_TONE || 'xalatath', maxMs: 12000 });
+      const { recap, summary } = await buildRecap(state, { tone: process.env.RECAP_TONE || 'xalatath', maxMs: 8000 });
       if (summary && summary.totalRunsLogged > 0) {
         const res = await fetch(`https://discord.com/api/v10/channels/${state.discordCard.channelId}/messages`, {
           signal: AbortSignal.timeout(4000),
@@ -283,21 +300,6 @@ async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}
       console.error('[weekly-reset] recap failed:', err.message);
     }
   }
-
-  const incoming = { players: changed, weeklyResetFor: last.dateKey };
-  if (clearGroups) Object.assign(incoming, { formedGroups: [], benchedPlayers: [], groupsTouchedAt: stamp });
-  const saved = await live.writeMergedState(event, incoming, 'Weekly reset (automatic)');
-  let posted = false;
-  if (saved && String(process.env.AUTO_POST_CARD || '').toLowerCase() === 'on') {
-    // Fresh card at the bottom of the channel for next week (the old one stays as history).
-    try {
-      const card = await live.postNewDiscordCard(saved);
-      if (card) { await live.writeMergedState(event, { discordCard: card }); posted = true; }
-    } catch (err) {
-      console.error('[weekly-reset] posting new card failed:', err.message);
-    }
-  }
-  if (saved && !posted) await live.refreshDiscordCard(saved, 2500, 'weekly-reset');
   return { reset: last.dateKey, unmarked: changed.length, groupsCleared: clearGroups, newCardPosted: posted, recapPosted };
 }
 

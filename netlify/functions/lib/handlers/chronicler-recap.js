@@ -307,7 +307,8 @@ Include: Headline, By The Numbers, Key of the Night, Scuff Trophy, and Tavern MV
  */
 async function buildRecap(state, { tone = 'xalatath', geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY, maxMs = 15000 } = {}) {
   const summary = summarizeNight(state || { players: [] });
-  const capped = (promise) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), maxMs))]);
+  const deadline = Date.now() + maxMs; // one budget for all AI attempts together
+  const capped = (promise) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), Math.max(0, deadline - Date.now())))]);
   let recap = '';
   let generator = 'rule-based';
   let geminiError = null;
@@ -320,7 +321,7 @@ async function buildRecap(state, { tone = 'xalatath', geminiKey = process.env.GE
       geminiError = err.message;
     }
   }
-  if (!recap && process.env.OPENAI_API_KEY) {
+  if (!recap && process.env.OPENAI_API_KEY && Date.now() < deadline - 1000) {
     try {
       recap = await capped(callOpenAI(process.env.OPENAI_API_KEY, summary, tone));
       generator = 'openai-mini';

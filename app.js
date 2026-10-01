@@ -923,6 +923,7 @@
       }
     }
 
+    lastRosterFiltered = filtered;
     if (filtered.length === 0) {
       container.innerHTML = `
         <div class="empty-state" style="padding: 2.5rem 1rem;">
@@ -1060,6 +1061,7 @@
         if (player) {
           player.attending = e.target.checked;
           player.absent = !e.target.checked;
+          player.attendingAt = e.target.checked ? new Date().toISOString() : null;
           player.touchedAt = new Date().toISOString();
           savePlayers();
           renderRoster();
@@ -2072,6 +2074,7 @@
       waitingBox = document.createElement('div');
       waitingBox.id = 'waitingList';
       waitingBox.className = 'waiting-list';
+      waitingBox.dataset.dest = 'waiting'; // drop here = take out of the party, still signed up
       benchContainer.appendChild(waitingBox);
     }
     waitingBox.innerHTML = waiting.length
@@ -2100,6 +2103,7 @@
           <span class="slot-stat-badge ilvl">${p.ilvl || 620} iLvl</span>
           <span class="slot-stat-badge io" style="color: ${getIoColor(p.io)};">${(p.io || 0).toLocaleString()} IO</span>
           <span class="key-range-pill">+${p.keyMin}-+${p.keyMax}</span>
+          ${moveMenu(p.name)}
         `;
         benchList.appendChild(pill);
       });
@@ -2165,6 +2169,9 @@
       putRosterPerson(origin, incoming);
       state.benchedPlayers = state.benchedPlayers || [];
       state.benchedPlayers.push(person);
+    } else if (dest === 'waiting') {
+      if (!origin) return;
+      clearRosterPerson(name);
     } else if (dest === 'bench') {
       if (origin?.kind === 'bench') return;
       // The spot stays open (shown as "Open Tank spot") until someone is dragged in.
@@ -2178,6 +2185,7 @@
       const slot = match[2];
       const di = match[3] === undefined ? null : Number(match[3]);
       const group = state.formedGroups[gi];
+      if (!group) { renderGroups(); return; } // groups changed under us (another officer)
       const occupant = slot === 'tank' ? group.tank : slot === 'healer' ? group.healer : group.dps[di];
       if (occupant && occupant.name.toLowerCase() === name.toLowerCase()) return;
       clearRosterPerson(name);
@@ -2259,7 +2267,7 @@
       const dest = drop?.dataset.dest;
       const fromDest = drag.source?.dataset?.dest;
       if (drag.started && dest && dest !== fromDest) moveFormedPlayer(drag.name, dest);
-      else if (drag.renderPending) renderGroups();
+      if (drag.renderPending) renderGroups();
     }
     // Highlight what's under the pointer; the highlighted spot is exactly where the drop lands.
     function updateOver() {
@@ -2698,8 +2706,11 @@
         p.keyMin = keyMin;
         p.keyMax = keyMax;
         p.keyBrackets = brackets;
+        if (ownedKey !== (p.ownedKey || '')) { p.keySource = ownedKey ? 'typed' : ''; p.keyAt = ownedKey ? touchedAt : null; }
         p.ownedKey = ownedKey;
         p.keyManual = Boolean(ownedKey);
+        p.rolesChosenAt = touchedAt;
+        p.keysChosenAt = touchedAt;
         p.carryPreference = carryPreference;
         p.isShitter = isShitter;
         p.isLeader = isLeader;
@@ -3107,12 +3118,15 @@
     // Attendance bulk actions
     // Bulk attendance only touches the players currently shown by search/filters.
     const bulkTargets = (verb) => {
-      const list = lastRosterFiltered.length ? lastRosterFiltered : state.players;
+      // Re-resolve to the live player objects (a sync may have replaced them since the last draw).
+      const ids = new Set(lastRosterFiltered.map(p => p.id));
+      const list = state.players.filter(p => ids.has(p.id));
+      if (!list.length) return [];
       if (list.length > 25 && !confirm(`${verb} all ${list.length} characters in this list? (Use search or the filters to narrow it first.)`)) return [];
       return list;
     };
     document.getElementById('selectAllBtn').addEventListener('click', () => {
-      bulkTargets('Mark attending').forEach(p => { p.attending = true; p.absent = false; p.touchedAt = new Date().toISOString(); });
+      bulkTargets('Mark attending').forEach(p => { if (!p.attending) p.attendingAt = new Date().toISOString(); p.attending = true; p.absent = false; p.touchedAt = new Date().toISOString(); });
       savePlayers();
       renderRoster();
       playSound('click');

@@ -4346,3 +4346,4 @@ body.is-dragging-player, body.is-dragging-player * { cursor: grabbing !important
 }
 .suggest-note { font-size: 0.8rem; color: var(--text-muted, #94a3b8); margin: -0.25rem 0 0.5rem; }
 .manual-log summary { cursor: pointer; color: var(--text-gold, #f5d061); font-weight: 600; padding: 0.35rem 0; }
+.waiting-list { padding: 0.5rem; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.12); }

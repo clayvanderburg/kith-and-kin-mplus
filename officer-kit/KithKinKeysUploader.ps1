@@ -85,7 +85,9 @@ while ($true) {
     $warned = $true
   }
   foreach ($file in $files) {
-    $stamp = (Get-Item $file).LastWriteTimeUtc.Ticks
+    $item = Get-Item $file -ErrorAction SilentlyContinue  # WoW may be rewriting the file right now
+    if (-not $item) { continue }
+    $stamp = $item.LastWriteTimeUtc.Ticks
     if ($seen[$file] -eq $stamp) { continue }
     try {
       Send-Keys $cfg $file
