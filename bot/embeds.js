@@ -219,7 +219,7 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
       const key = g.keystone || g.dungeon;
       const util = `${g.hasLust ? '⚡' : ''}${g.hasBrez ? '🔄' : ''}`;
       const body = [
-        `🔑 ${key ? `\`${key}\`` : '*no key yet*'} ${util}`.trim(),
+        `🔑 ${key ? `\`${key}\`${g.keyHolder ? ` (${g.keyHolder})` : ''}` : '*no key yet*'} ${util}`.trim(),
         g.tank ? `🛡️ ${playerLine(live(g.tank), { showRoles: false })}${out(g.tank)}` : '🛡️ *open*',
         g.healer ? `💚 ${playerLine(live(g.healer), { showRoles: false })}${out(g.healer)}` : '💚 *open*',
         ...(g.dps || []).map(d => (d ? `⚔️ ${playerLine(live(d), { showRoles: false })}${out(d)}` : '⚔️ *open*'))

@@ -1417,16 +1417,14 @@
         keyRangeStr = `+${Math.min(...minKeys)} to +${Math.max(...maxKeys)} (Compromise: +${targetKey})`;
       }
 
-      // Check if any member owns a key matching or close to target and not excluded
-      const validOwnedKeys = members.filter(m => {
-        if (!m.ownedKey || m.ownedKey.trim() === '') return false;
-        const dung = m.ownedKey.split('+')[0].trim();
-        return !(state.excludedDungeons || []).includes(dung);
-      });
+      // Prefer a key someone in the party really holds (from the addon or typed this week).
+      const lo = highestMin <= lowestMax ? highestMin : Math.min(...minKeys);
+      const hi = highestMin <= lowestMax ? lowestMax : Math.max(...maxKeys);
+      const held = pickHeldKey(members, { min: lo, max: hi, target: targetKey, excluded: state.excludedDungeons || [] });
 
       let assignedDungeon = '';
-      if (validOwnedKeys.length > 0) {
-        assignedDungeon = validOwnedKeys[0].ownedKey; // Fun perk: prioritize someone's actual key!
+      if (held) {
+        assignedDungeon = held.keystone;
       } else if (shuffledDungeons.length > 0) {
         const pickedDungeon = shuffledDungeons[idx % shuffledDungeons.length];
         assignedDungeon = `${pickedDungeon} +${targetKey}`;
@@ -1474,6 +1472,8 @@
         healer: grp.healer,
         dps: grp.dps,
         isLocked: false,
+        keystone: held ? held.keystone : '',
+        keyHolder: held ? held.holder : '',
         hasLust: !!lustMember,
         lustProvider: lustMember ? `${lustMember.name} (${lustMember.className})` : null,
         hasBrez: !!brezMember,
@@ -1926,7 +1926,7 @@
             ${partyStatusHtml}
           </div>
           <div class="party-sub-key-area">
-            ${hasRolledKey ? `<span class="party-dungeon-tag" title="Key rolled for this party">🔑 ${escapeHtml(rolledKey)}</span>` : ''}
+            ${hasRolledKey ? `<span class="party-dungeon-tag" title="${grp.keyHolder ? `${escapeHtml(grp.keyHolder)} holds this key` : 'Key for this party'}">🔑 ${escapeHtml(rolledKey)}${grp.keyHolder ? ` · ${escapeHtml(grp.keyHolder)}` : ''}</span>` : ''}
             ${hasLeftOut ? `<span class="party-left-out" title="Excluded from roll">Left out: ${escapeHtml(grp.excludedPlayers.join(', '))}</span>` : ''}
           </div>
         </div>
@@ -2202,6 +2202,36 @@
     renderGroups();
     renderRoster();
     showToast(`Moved ${person.name}.`);
+  }
+
+/** Start of the current WoW week (US reset: Tuesday 15:00 UTC). */
+  function lastWeeklyReset(now = new Date()) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 15));
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 2 + 7) % 7));
+    if (d > now) d.setUTCDate(d.getUTCDate() - 7);
+    return d.getTime();
+  }
+
+  /**
+   * Pick the best keystone someone in the group actually holds: one inside the group's key range,
+   * closest to the target level, not in an excluded dungeon, and not from before this week's reset.
+   * Returns { keystone, holder } or null.
+   */
+  function pickHeldKey(members, { min = 0, max = 99, target = 10, excluded = [], now = new Date() } = {}) {
+    const reset = lastWeeklyReset(now);
+    let best = null;
+    for (const m of members || []) {
+      const key = String(m?.ownedKey || '').trim();
+      const match = key.match(/^(.*?)\s*\+\s*(\d+)\s*$/);
+      if (!match) continue;
+      if (m.keyAt && Date.parse(m.keyAt) < reset) continue; // last week's key
+      const dungeon = match[1].trim();
+      const level = Number(match[2]);
+      if (excluded.includes(dungeon)) continue;
+      const score = (level >= min && level <= max ? 0 : 100) + Math.abs(level - target);
+      if (!best || score < best.score) best = { score, keystone: `${dungeon} +${level}`, holder: m.name };
+    }
+    return best && { keystone: best.keystone, holder: best.holder };
   }
 
   // --- Drag & drop between party spots, the bench and the "not in a group yet" list ---

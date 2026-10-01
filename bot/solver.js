@@ -282,10 +282,12 @@ function solveGroups(options = {}) {
       keyRangeStr = `+${Math.min(...minKeys)} to +${Math.max(...maxKeys)} (Compromise: +${targetKey})`;
     }
 
-    const ownedKeys = members.filter(m => m.ownedKey && m.ownedKey.trim() !== '');
+    const lo = highestMin <= lowestMax ? highestMin : Math.min(...minKeys);
+    const hi = highestMin <= lowestMax ? lowestMax : Math.max(...maxKeys);
+    const held = pickHeldKey(members, { min: lo, max: hi, target: targetKey, excluded: excludedDungeons });
     let assignedDungeon = '';
-    if (ownedKeys.length > 0) {
-      assignedDungeon = ownedKeys[0].ownedKey;
+    if (held) {
+      assignedDungeon = held.keystone;
     } else if (shuffledDungeons.length > 0) {
       const picked = shuffledDungeons[idx % shuffledDungeons.length];
       assignedDungeon = `${picked} +${targetKey}`;
@@ -327,6 +329,9 @@ function solveGroups(options = {}) {
       targetKey,
       keyRangeStr,
       assignedDungeon,
+      // A key someone really holds goes straight on the card; otherwise the officer rolls one.
+      keystone: held ? held.keystone : (grp.keystone || ''),
+      keyHolder: held ? held.holder : (grp.keyHolder || ''),
       hasLust: !!lustMember,
       lustProvider: lustMember ? `${lustMember.name} (${lustMember.className})` : null,
       hasBrez: !!brezMember,
@@ -398,7 +403,39 @@ function rollKeystone({
   };
 }
 
+/** Start of the current WoW week (US reset: Tuesday 15:00 UTC). */
+function lastWeeklyReset(now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 15));
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 2 + 7) % 7));
+  if (d > now) d.setUTCDate(d.getUTCDate() - 7);
+  return d.getTime();
+}
+
+/**
+ * Pick the best keystone someone in the group actually holds: one inside the group's key range,
+ * closest to the target level, not in an excluded dungeon, and not from before this week's reset.
+ * Returns { keystone, holder } or null.
+ */
+function pickHeldKey(members, { min = 0, max = 99, target = 10, excluded = [], now = new Date() } = {}) {
+  const reset = lastWeeklyReset(now);
+  let best = null;
+  for (const m of members || []) {
+    const key = String(m?.ownedKey || '').trim();
+    const match = key.match(/^(.*?)\s*\+\s*(\d+)\s*$/);
+    if (!match) continue;
+    if (m.keyAt && Date.parse(m.keyAt) < reset) continue; // last week's key
+    const dungeon = match[1].trim();
+    const level = Number(match[2]);
+    if (excluded.includes(dungeon)) continue;
+    const score = (level >= min && level <= max ? 0 : 100) + Math.abs(level - target);
+    if (!best || score < best.score) best = { score, keystone: `${dungeon} +${level}`, holder: m.name };
+  }
+  return best && { keystone: best.keystone, holder: best.holder };
+}
+
 module.exports = {
+  pickHeldKey,
+  lastWeeklyReset,
   WOW_CLASSES,
   DUNGEONS_MIDNIGHT_S2,
   PARTY_NAMES,
