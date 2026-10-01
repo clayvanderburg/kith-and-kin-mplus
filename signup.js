@@ -230,6 +230,7 @@
 
   function showSignedUp(signup) {
     currentSignup = signup;
+    window.currentSignup = signup; // lets the stats window show your own notes
     const summary = document.getElementById('signupSummary');
     const form = document.getElementById('signupForm');
     const card = document.getElementById('signupCard');
@@ -593,7 +594,7 @@
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || data.message || 'Save failed.');
-    showSignedUp(data.signup);
+    if ('signup' in data) showSignedUp(data.signup);
     renderGroups(data.groups);
     return data;
   }

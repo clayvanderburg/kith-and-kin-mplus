@@ -172,7 +172,7 @@
       if (contentBox) {
         contentBox.innerHTML = `
           <div class="recap-error">
-            <p>⚠️ Failed to draft the chronicle: <strong>${err.message}</strong></p>
+            <p>⚠️ Failed to draft the chronicle: <strong>${String(err.message || err).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))}</strong></p>
             <button type="button" class="btn btn-sm btn-secondary" onclick="window.generateRecap()">Try Again</button>
           </div>
         `;

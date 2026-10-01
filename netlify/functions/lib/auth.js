@@ -71,4 +71,4 @@ function publicState(state) {
   };
 }
 
-module.exports = { safeEqual, header, isOfficerRequest, sessionSecret, publicState };
+module.exports = { safeEqual, header, isOfficerRequest, sessionSecret, publicState, publicRun };

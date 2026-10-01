@@ -15,7 +15,11 @@ function readCookies(event) {
   String(raw).split(';').forEach(part => {
     const index = part.indexOf('=');
     if (index === -1) return;
-    cookies[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim());
+    try {
+      cookies[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim());
+    } catch (err) {
+      // ignore a malformed cookie instead of failing the whole request
+    }
   });
   return cookies;
 }

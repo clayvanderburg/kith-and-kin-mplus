@@ -62,9 +62,9 @@ exports.handler = async (event) => {
     changed.set(p.charKey, p);
   }
 
-  // Clear addon keys from before this week's reset so nobody rolls a key that no longer exists.
+  // Clear keys (addon or typed) from before this week's reset so nobody rolls a key that no longer exists.
   for (const p of players) {
-    if (p.keySource === 'addon' && (Date.parse(p.keyAt || '') || 0) < reset && p.ownedKey) {
+    if ((p.keySource === 'addon' || p.keySource === 'typed') && (Date.parse(p.keyAt || '') || 0) < reset && p.ownedKey) {
       p.ownedKey = '';
       p.keyManual = false;
       p.touchedAt = new Date().toISOString();

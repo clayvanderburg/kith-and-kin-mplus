@@ -37,7 +37,8 @@ function summarizeNight(state) {
     (p.runLog || []).forEach(r => {
       const at = Date.parse(r.at || '');
       if (!Number.isFinite(at) || at < cutoff) return;
-      const id = r.id || `${r.at}-${r.key}`;
+      // Each party member logs their own copy of a run; count it once.
+      const id = r.rioRunId || r.rioUrl || (r.groupName ? `${r.eventId || ''}|${r.groupName}|${r.key}` : (r.id || `${r.at}-${r.key}`));
       if (!seenRunIds.has(id)) {
         seenRunIds.add(id);
         allRuns.push({

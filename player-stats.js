@@ -402,7 +402,7 @@
       const currentScores = rioData.mythic_plus_scores_by_season?.[0]?.scores;
       if (currentScores && currentScores.all > 0 && subEl) {
         const ioCol = getIoColor(currentScores.all);
-        subEl.innerHTML = `${player.className || 'Hero'} • <span style="color:${ioCol}; font-weight:700;">${Math.round(currentScores.all)} IO</span> • ${player.realm || 'Perenolde'}`;
+        subEl.innerHTML = `${escapeHtml(player.className || 'Hero')} • <span style="color:${escapeHtml(ioCol)}; font-weight:700;">${Math.round(currentScores.all)} IO</span> • ${escapeHtml(player.realm || 'Perenolde')}`;
       }
 
       // Render season best & recent runs

@@ -1,5 +1,6 @@
 const path = require('path');
 const { readSession, bnetConfigured } = require('../player-session');
+const { publicRun } = require('../auth');
 const { readLiveState, writeMergedState, readBlob, SCORES_KEY, charKey, suggestSignup } = require('../live-state');
 
 function loadKeystone() {
@@ -50,6 +51,12 @@ function publicPlayer(player) {
     record: recordOf(player),
     runLog: (Array.isArray(player.runLog) ? player.runLog : []).slice(0, 40)
   };
+}
+
+function sameCharacter(a, b) {
+  if (a?.bnetId && b?.bnetId) return a.bnetId === b.bnetId;
+  const loose = r => fold(r).replace(/[^a-z0-9]/g, '');
+  return fold(a?.name) === fold(b?.name) && loose(a?.realm) === loose(b?.realm);
 }
 
 function recordOf(player) {
@@ -125,7 +132,8 @@ function publicGroups(state, myName) {
           carryPreference: live.carryPreference || 'none',
           nightStatus: live.nightStatus === 'in-key' ? 'in-key' : 'waiting',
           record: ((stats) => ({ runs: stats.runs, successes: stats.successes, rate: stats.rate }))(recordOf(live)),
-          runLog: Array.isArray(live.runLog) ? live.runLog.slice(0, 40) : []
+          // Other people's private notes/ratings never leave the server.
+          runLog: Array.isArray(live.runLog) ? live.runLog.slice(0, 40).map(publicRun) : []
         };
       }),
       heldKeys: mineHere ? members.map(member => {
@@ -346,7 +354,7 @@ async function saveOwnedKey(event, state, mine, body) {
   mine.keyAt = new Date().toISOString();
   mine.touchedAt = new Date().toISOString();
   const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
-  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  const savedMe = (saved.players || []).find(player => sameCharacter(player, mine)) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
 
@@ -357,7 +365,7 @@ async function saveNightStatus(event, state, mine, body) {
   mine.nightStatus = body.nightStatus === 'in-key' ? 'in-key' : 'waiting';
   mine.touchedAt = new Date().toISOString();
   const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
-  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  const savedMe = (saved.players || []).find(player => sameCharacter(player, mine)) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
 
@@ -379,7 +387,7 @@ async function editRunLog(event, state, mine, body) {
   entry.linkSource = 'manual';
   mine.touchedAt = new Date().toISOString();
   const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
-  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  const savedMe = (saved.players || []).find(player => sameCharacter(player, mine)) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
 
@@ -396,6 +404,11 @@ async function saveRunLog(event, state, mine, body) {
     groupMembers(group).some(member => fold(member.name) === fold(mine.name))
   );
   const match = matchRioRun(mine, key);
+  // Same Raider.IO run already logged (double click, or the automatic night sync got it first)?
+  const runUrl = cleanUrl(body.rioUrl) || match?.rioUrl || '';
+  if (runUrl && (mine.runLog || []).some(entry => entry.rioUrl === runUrl)) {
+    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify({ ...playerResponse(state, mine), duplicate: true }) };
+  }
   const slug = slugifyRealm(mine.realmSlug || mine.realm);
   const region = mine.region || 'us';
   const entry = {
@@ -415,7 +428,7 @@ async function saveRunLog(event, state, mine, body) {
   mine.runLog = [entry, ...(Array.isArray(mine.runLog) ? mine.runLog : [])].slice(0, 100);
   mine.touchedAt = entry.at;
   const saved = await writeMergedState(event, { players: [mine] }, 'Signup page');
-  const savedMe = (saved.players || []).find(player => player.bnetId === mine.bnetId) || mine;
+  const savedMe = (saved.players || []).find(player => sameCharacter(player, mine)) || mine;
   return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, savedMe)) };
 }
 

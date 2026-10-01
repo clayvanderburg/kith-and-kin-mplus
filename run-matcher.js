@@ -4,6 +4,10 @@
  */
 
 (function () {
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+
   function formatDuration(ms) {
     if (!ms) return '—';
     const totalSecs = Math.floor(ms / 1000);
@@ -51,7 +55,10 @@
    * Returns a match candidate with confidence score and matched roster.
    */
   async function findRecentRunsForParty(group, state) {
-    const members = [group.tank, group.healer, ...(group.dps || [])].filter(Boolean);
+    // Control Center groups have tank/healer/dps; the player page sends members[].
+    const members = (Array.isArray(group.members) && group.members.length)
+      ? group.members
+      : [group.tank, group.healer, ...(group.dps || [])].filter(Boolean);
     if (members.length === 0) return null;
 
     const memberNames = members.map(m => m.name.toLowerCase());
@@ -113,7 +120,8 @@
       }
     }
 
-    if (!best || highestScore < 10) return null;
+    // At least two of the party must be in the run, so one member's pug key isn't logged for everyone.
+    if (!best || highestScore < 10 || best.matches.size < 2) return null;
 
     // If we have a keystone_run_id, fetch full roster to check all 5 players
     let fullRoster = Array.from(best.matches);
