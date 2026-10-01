@@ -222,4 +222,47 @@ async function syncNight(event, { now = new Date(), force = false, budgetMs = 20
   return { night: window.dateKey, checked: targets.length, runsFound: runs.size, logged: added, showedUp: showed.size };
 }
 
-module.exports = { nightWindow, refreshScores, syncNight };
+/**
+ * After Friday night ends, start the next week clean: everyone who signed up before the night ended
+ * is un-marked, groups and "can't make it" flags are cleared. Runs once per night (state.weeklyResetFor).
+ * Sign-ups made AFTER the night ended are kept, so early birds for next Friday aren't wiped.
+ * A copy of the night's sign-ups and groups is saved first in blob `archive/<date>`.
+ * Turn off with env AUTO_WEEKLY_RESET=off.
+ */
+async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}) {
+  if (String(process.env.AUTO_WEEKLY_RESET || '').toLowerCase() === 'off') return { skipped: 'disabled' };
+  if (nightWindow(now)) return { skipped: 'night in progress' };
+  const last = nightWindow(now, { latest: true });
+  if (!last || now.getTime() < last.end + graceMs) return { skipped: 'too early' };
+  const state = await live.readLiveState(event, { overlays: false });
+  if (!state) return { skipped: 'no roster' };
+  if (state.weeklyResetFor === last.dateKey) return { skipped: 'already reset', night: last.dateKey };
+
+  const before = t => (Date.parse(t || '') || 0) <= last.end;
+  const stamp = now.toISOString();
+  const changed = [];
+  for (const p of state.players || []) {
+    const flagged = p.attending || p.absent || p.declinedAt;
+    if (!flagged || !before(p.touchedAt)) continue;
+    const { personId, charKey, ...rest } = p;
+    changed.push({ ...rest, attending: false, absent: false, declinedAt: null, touchedAt: stamp });
+  }
+  const clearGroups = (state.formedGroups || []).length > 0 && before(state.groupsTouchedAt);
+
+  await live.writeBlob(event, `archive/${last.dateKey}`, {
+    night: last.dateKey,
+    savedAt: stamp,
+    signedUp: (state.players || []).filter(p => p.attending).map(p => ({ name: p.name, realm: p.realm, roles: p.roles, keyMin: p.keyMin, keyMax: p.keyMax })),
+    cantMakeIt: (state.players || []).filter(p => p.declinedAt).map(p => p.name),
+    formedGroups: state.formedGroups || [],
+    benchedPlayers: state.benchedPlayers || []
+  });
+
+  const incoming = { players: changed, weeklyResetFor: last.dateKey };
+  if (clearGroups) Object.assign(incoming, { formedGroups: [], benchedPlayers: [], groupsTouchedAt: stamp });
+  const saved = await live.writeMergedState(event, incoming, 'Weekly reset (automatic)');
+  if (saved) await live.refreshDiscordCard(saved, 2500, 'weekly-reset');
+  return { reset: last.dateKey, unmarked: changed.length, groupsCleared: clearGroups };
+}
+
+module.exports = { nightWindow, refreshScores, syncNight, weeklyReset };
