@@ -4,7 +4,10 @@
  */
 
 let EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle;
+// Plain-JSON builders by default: loading discord.js adds seconds to a cold start, and Discord only
+// gives an interaction 3 seconds to answer. Set KK_USE_DISCORDJS=1 to use discord.js builders instead.
 try {
+  if (process.env.KK_USE_DISCORDJS !== '1') throw new Error('lightweight builders');
   const djs = require('discord.js');
   EmbedBuilder = djs.EmbedBuilder;
   ActionRowBuilder = djs.ActionRowBuilder;
