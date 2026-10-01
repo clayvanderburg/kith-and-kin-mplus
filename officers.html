@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kith and Kin — Officer Key Kit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="assets/favicon-64.png">
+  <link rel="stylesheet" href="styles.css?v=overnight-1">
+  <style>
+    .kit-card { max-width: 760px; margin: 1.25rem auto; padding: 1.25rem 1.4rem; }
+    .kit-card h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0 0 0.6rem; }
+    .kit-card ol, .kit-card ul { padding-left: 1.3rem; line-height: 1.6; }
+    .kit-card code { background: rgba(255,255,255,0.07); padding: 0.05rem 0.35rem; border-radius: 4px; overflow-wrap: anywhere; }
+    .kit-download { display: inline-flex; gap: 0.5rem; align-items: center; font-size: 1rem; padding: 0.7rem 1.2rem; margin: 0.4rem 0 0.8rem; text-decoration: none; }
+    .kit-muted { color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="site-wrapper">
+    <nav class="site-nav" aria-label="Site">
+      <a href="signup.html">Player View</a>
+      <a href="index.html">Control Center</a>
+      <a href="leaderboard.html">Leaderboard 🏆</a>
+    </nav>
+
+    <section class="card kit-card">
+      <h2>🔑 Officer key kit</h2>
+      <p>Raider.IO can't see the keystone in anyone's bags, so the site learns keys from officers' game clients.
+        This kit installs a tiny addon that listens for guildmates' keys (BigWigs, Details!, Astral Keys and keystone links in chat)
+        and a small uploader window that sends them here whenever WoW saves. <strong>The more officers run it, the more keys show up.</strong></p>
+      <a class="btn btn-primary kit-download" href="downloads/kithkin-officer-kit.zip" download>⬇️ Download the officer kit (.zip)</a>
+      <p class="kit-muted">Windows only · no admin rights · no Node.js · about 2 minutes.</p>
+
+      <h2>Install</h2>
+      <ol>
+        <li>Unzip it anywhere (your Desktop is fine).</li>
+        <li>Double-click <code>Install.cmd</code>. If Windows warns that it came from the internet: right-click <code>Install.cmd</code> → Properties → tick <em>Unblock</em> → OK, then run it again.</li>
+        <li>It finds World of Warcraft by itself and copies the addon in.</li>
+        <li>Type the <strong>officer passphrase</strong> (the one the Control Center asks for). It's checked with the site and saved encrypted for your Windows account only.</li>
+        <li>Say <strong>Y</strong> to "start automatically" on your gaming PC.</li>
+      </ol>
+
+      <h2>Use</h2>
+      <ul>
+        <li>Play normally. After logging in, do <code>/reload</code> once so the first batch uploads. Logging out or quitting also uploads.</li>
+        <li>The <em>Kith &amp; Kin Key Uploader</em> window shows what it sent. Minimize it; don't close it.</li>
+        <li>In game, <code>/kkkeys</code> shows how many keys the addon has heard this week.</li>
+        <li>Keys from before the Tuesday reset are ignored automatically.</li>
+      </ul>
+
+      <h2>Update, new passphrase, or remove</h2>
+      <ul>
+        <li>Update or change passphrase: download the kit again and run <code>Install.cmd</code>.</li>
+        <li>Remove: delete the <em>Kith &amp; Kin Key Uploader</em> shortcuts (Desktop, and Startup via <code>Win+R → shell:startup</code>),
+          the folder <code>%APPDATA%\KithKinKeys</code>, and <code>World of Warcraft\_retail_\Interface\AddOns\KithKinKeys</code>.</li>
+      </ul>
+      <p class="kit-muted">Everything in the kit is plain text you can open and read: <code>install.ps1</code> and <code>KithKinKeysUploader.ps1</code>.</p>
+    </section>
+  </div>
+</body>
+</html>
