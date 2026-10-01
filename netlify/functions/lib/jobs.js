@@ -263,8 +263,18 @@ async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}
   const incoming = { players: changed, weeklyResetFor: last.dateKey };
   if (clearGroups) Object.assign(incoming, { formedGroups: [], benchedPlayers: [], groupsTouchedAt: stamp });
   const saved = await live.writeMergedState(event, incoming, 'Weekly reset (automatic)');
-  if (saved) await live.refreshDiscordCard(saved, 2500, 'weekly-reset');
-  return { reset: last.dateKey, unmarked: changed.length, groupsCleared: clearGroups };
+  let posted = false;
+  if (saved && String(process.env.AUTO_POST_CARD || '').toLowerCase() === 'on') {
+    // Fresh card at the bottom of the channel for next week (the old one stays as history).
+    try {
+      const card = await live.postNewDiscordCard(saved);
+      if (card) { await live.writeMergedState(event, { discordCard: card }); posted = true; }
+    } catch (err) {
+      console.error('[weekly-reset] posting new card failed:', err.message);
+    }
+  }
+  if (saved && !posted) await live.refreshDiscordCard(saved, 2500, 'weekly-reset');
+  return { reset: last.dateKey, unmarked: changed.length, groupsCleared: clearGroups, newCardPosted: posted };
 }
 
 module.exports = { nightWindow, refreshScores, syncNight, weeklyReset };

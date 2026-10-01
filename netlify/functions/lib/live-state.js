@@ -418,15 +418,9 @@ function loadEmbeds() {
   return null;
 }
 
-async function updateDiscordCard(state) {
-  const token = process.env.DISCORD_TOKEN;
-  const card = state?.discordCard;
-  if (!token || !card?.channelId || !card?.messageId) {
-    return { updated: false };
-  }
-
+function cardPayload(state) {
   const embeds = loadEmbeds();
-  if (!embeds) return { updated: false };
+  if (!embeds) return null;
 
   const webUrl = process.env.WEB_URL || 'https://knkmplus.netlify.app';
   const embed = embeds.createRosterEmbed(
@@ -440,6 +434,25 @@ async function updateDiscordCard(state) {
   const attending = (state.players || []).filter(player => player.attending === true).length;
   const groupCount = (state.formedGroups || []).length;
 
+  return {
+    content: groupCount
+      ? `🏰 **${groupCount} Mythic+ group(s) formed.** ${attending} attending. The website and this card stay in sync.`
+      : `⚡ **Mythic+ Night sign-ups are open.** ${attending} attending. This card updates when the website or Discord changes.`,
+    embeds: [embed],
+    components,
+    allowed_mentions: { parse: [] }
+  };
+}
+
+async function updateDiscordCard(state) {
+  const token = process.env.DISCORD_TOKEN;
+  const card = state?.discordCard;
+  if (!token || !card?.channelId || !card?.messageId) {
+    return { updated: false };
+  }
+  const payload = cardPayload(state);
+  if (!payload) return { updated: false };
+
   const res = await fetch(`https://discord.com/api/v10/channels/${card.channelId}/messages/${card.messageId}`, {
     signal: AbortSignal.timeout(2500),
     method: 'PATCH',
@@ -447,13 +460,7 @@ async function updateDiscordCard(state) {
       Authorization: `Bot ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      content: groupCount
-        ? `🏰 **${groupCount} Mythic+ group(s) formed.** ${attending} attending. The website and this card stay in sync.`
-        : `⚡ **Mythic+ Night sign-ups are open.** ${attending} attending. This card updates when the website or Discord changes.`,
-      embeds: [embed],
-      components
-    })
+    body: JSON.stringify(payload)
   });
 
   if (!res.ok) {
@@ -462,6 +469,29 @@ async function updateDiscordCard(state) {
     return { updated: false, status: res.status };
   }
   return { updated: true };
+}
+
+/**
+ * Post a brand-new sign-up card in the same channel as the current one (used by the weekly reset
+ * when AUTO_POST_CARD=on). Returns the new { channelId, messageId } or null.
+ */
+async function postNewDiscordCard(state) {
+  const token = process.env.DISCORD_TOKEN;
+  const channelId = state?.discordCard?.channelId;
+  const payload = cardPayload(state);
+  if (!token || !channelId || !payload) return null;
+  const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    signal: AbortSignal.timeout(4000),
+    method: 'POST',
+    headers: { Authorization: `Bot ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    console.error('[live-state] posting new Discord card failed', res.status, (await res.text()).slice(0, 300));
+    return null;
+  }
+  const message = await res.json();
+  return { channelId, messageId: message.id, applicationId: state.discordCard.applicationId || null };
 }
 
 /**
@@ -485,6 +515,7 @@ async function refreshDiscordCard(state, maxMs = 2500, tag = 'live-state') {
 
 module.exports = {
   refreshDiscordCard,
+  postNewDiscordCard,
   suggestSignup,
   applySuggestion,
   bracketRange,
