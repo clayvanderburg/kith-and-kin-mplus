@@ -96,7 +96,7 @@
     benchedPlayers: [],
     excludedDungeons: [],
     dungeonPoolMode: 'midnight_s2',
-    soundEnabled: true,
+    soundEnabled: false, // off by default; the speaker button turns it on and is remembered
     sortField: 'io',
     searchQuery: '',
     roleFilter: 'all',

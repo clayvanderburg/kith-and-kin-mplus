@@ -7,7 +7,7 @@
 
   // Audio FX synthesizers via Web Audio API
   let audioCtx = null;
-  let audioEnabled = true;
+  let audioEnabled = false; // off until someone turns it on (sounds on page load are annoying)
 
   function initAudio() {
     if (!audioCtx) {
@@ -53,7 +53,7 @@
 
   // Application State
   const state = {
-    isDemoMode: true, // Default to rich demo showcase so fake stats are visible immediately
+    isDemoMode: false, // Live by default; falls back to the demo only until 10+ keys are logged (same rule as Discord)
     liveState: null,
     standings: [],
     activeFilter: 'all',
@@ -641,7 +641,11 @@
   // Initialize
   async function init() {
     bindEvents();
+    if (DOM.soundToggleBtn) DOM.soundToggleBtn.querySelector('.btn-text').textContent = 'Audio: OFF';
     await fetchLiveState();
+    const players = state.liveState?.players || [];
+    const loggedKeys = players.reduce((n, p) => n + (Array.isArray(p.runLog) ? p.runLog.length : 0), 0);
+    state.isDemoMode = loggedKeys < 10;
     updateStandings();
   }
 
