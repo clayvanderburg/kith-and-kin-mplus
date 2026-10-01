@@ -37,7 +37,9 @@ function publicPlayer(player) {
     keyBrackets: player.keyBrackets || [],
     keyMin: player.keyMin,
     keyMax: player.keyMax,
-    ownedKey: player.keyManual ? (player.ownedKey || '') : '',
+    // Typed by the player or heard by an officer's addon this week (old keys are cleared at the reset).
+    ownedKey: (player.keyManual || player.keySource === 'addon' || player.keySource === 'typed') ? (player.ownedKey || '') : '',
+    keySource: player.keySource || '',
 
     io: player.io || 0,
     ilvl: player.ilvl || 0,
@@ -122,7 +124,7 @@ function publicGroups(state, myName) {
           roles: live.roles || member.roles || [],
           io: live.io || 0,
           ilvl: live.ilvl || 0,
-          ownedKey: live.keyManual ? (live.ownedKey || '') : '',
+          ownedKey: (live.keyManual || live.keySource === 'addon' || live.keySource === 'typed') ? (live.ownedKey || '') : '',
           keyMin: live.keyMin || 10,
           keyMax: live.keyMax || 12,
           keyBrackets: live.keyBrackets || [],
@@ -138,7 +140,7 @@ function publicGroups(state, myName) {
       }),
       heldKeys: mineHere ? members.map(member => {
         const live = rosterPlayer(state, member);
-        return live.keyManual && live.ownedKey ? { name: live.name, ownedKey: live.ownedKey } : null;
+        return (live.keyManual || live.keySource === 'addon' || live.keySource === 'typed') && live.ownedKey ? { name: live.name, ownedKey: live.ownedKey } : null;
       }).filter(Boolean) : []
     };
   });

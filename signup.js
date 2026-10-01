@@ -254,7 +254,11 @@
     setDropdownsFromOwnedKey(signup.ownedKey || '');
     setDropdownsFromRunKey(signup.ownedKey || '');
     const lastRun = document.getElementById('lastRunNote');
-    if (lastRun) lastRun.textContent = 'Leave this blank until you select the keystone in your bags.';
+    if (lastRun) {
+      lastRun.textContent = signup.keySource === 'addon' && signup.ownedKey
+        ? '🔑 Picked up automatically from an officer\'s addon. Change it only if it\'s wrong.'
+        : 'Officers\' addons usually fill this in for you. Set it only if it\'s missing or wrong.';
+    }
     renderHistory(signup.runLog);
   }
 

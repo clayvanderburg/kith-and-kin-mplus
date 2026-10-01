@@ -127,7 +127,7 @@
 
       <section class="card player-card" id="nightCard" hidden>
         <h2>Your night</h2>
-        <p class="player-lead">Let the party know if you are waiting on a reroll or already in a key. Log the key when you finish so your record stays with you.</p>
+        <p class="player-lead">Let the party know if you are waiting on a reroll or already in a key. Keys you finish on M+ night are added to your record automatically from Raider.IO (usually within 15&ndash;30 minutes).</p>
         <div class="face-row" id="statusRow">
           <button type="button" class="status-btn" data-status="waiting">⏳ Waiting</button>
           <button type="button" class="status-btn" data-status="in-key">🗝️ In key</button>
@@ -181,8 +181,10 @@
           </div>
           <input type="hidden" id="ownedKeyInput" />
         </div>
-        <p class="player-lead" id="lastRunNote" style="margin-top:0.4rem;">Leave this blank until you select the keystone in your bags. Nothing is filled in from Raider.IO.</p>
+        <p class="player-lead" id="lastRunNote" style="margin-top:0.4rem;">Officers' addons usually fill this in for you. Set it only if it's missing or wrong.</p>
         <button type="button" class="btn btn-sm" id="saveKeyBtn">Save my key</button>
+        <details class="manual-log" style="margin-top: 0.9rem;">
+        <summary>Key missing from your history? Log it by hand</summary>
         <div class="form-group" style="margin-top: 0.9rem;">
           <label style="display:block; margin-bottom:0.35rem; font-weight:600;">Key you ran</label>
           <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 0.5rem; margin-bottom: 0.65rem;">
@@ -252,6 +254,7 @@
         </div>
         <p class="player-lead">Only you and officers can see this rating.</p>
         <button type="button" class="btn btn-primary" id="logRunBtn" style="margin-top: 0.8rem;">Add to my record</button>
+        </details>
         <p class="status-line" id="nightStatus"></p>
         <h3>Your history</h3>
         <div id="historyList"></div>
