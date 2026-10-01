@@ -1045,6 +1045,7 @@
           player.touchedAt = new Date().toISOString();
           savePlayers();
           renderRoster();
+          if (state.formedGroups.length) renderGroups(); // updates the "not in a group yet" list
           playSound('click');
         }
       });
@@ -1744,6 +1745,8 @@
 
   // --- Render Groups UI ---
   function renderGroups() {
+    // Don't redraw under someone's finger mid-drag (the 4s sync poll would cancel the drag).
+    if (groupDrag) { groupDrag.renderPending = true; return; }
     const grid = document.getElementById('groupsGrid');
     const actions = document.getElementById('groupsActions');
     const benchContainer = document.getElementById('benchContainer');
@@ -1810,8 +1813,17 @@
       return h;
     }
 
-    function renderMemberSlot(roleSlot, member) {
-      if (!member) return '';
+    function renderEmptySlot(roleSlot, dest) {
+      const roleIcon = roleSlot === 'Tank' ? '🛡️' : (roleSlot === 'Healer' ? '💚' : '⚔️');
+      const roleCss = roleSlot === 'Tank' ? 'role-tank' : (roleSlot === 'Healer' ? 'role-healer' : 'role-dps');
+      return `<div class="party-member-row empty-slot ${roleCss}" data-dest="${dest}">
+          <span class="slot-role-tag" title="${roleSlot}">${roleIcon}</span>
+          <span class="empty-slot-text">Open ${roleSlot} spot — drag someone here</span>
+        </div>`;
+    }
+
+    function renderMemberSlot(roleSlot, member, dest) {
+      if (!member) return renderEmptySlot(roleSlot, dest);
       const memberClass = WOW_CLASSES[member.className] || { color: '#fff' };
       const roleIcon = roleSlot === 'Tank' ? '🛡️' : (roleSlot === 'Healer' ? '💚' : '⚔️');
       const roleCss = roleSlot === 'Tank' ? 'role-tank' : (roleSlot === 'Healer' ? 'role-healer' : 'role-dps');
@@ -1819,7 +1831,8 @@
       const key = typedKeyFor(member);
 
       return `
-        <div class="party-member-row is-collapsed ${roleCss}">
+        <div class="party-member-row is-collapsed ${roleCss}" data-dest="${dest}" data-player="${escapeHtml(member.name)}">
+          <span class="drag-handle" data-drag="${escapeHtml(member.name)}" title="Drag ${escapeHtml(member.name)} to another spot or the bench" aria-hidden="true">⠿</span>
           <span class="slot-role-tag" title="${roleSlot}">${roleIcon}</span>
           <div class="slot-player-details">
             <div class="slot-top-row slot-toggle-trigger" title="Click to expand or collapse details">
@@ -1853,7 +1866,6 @@
 
     // Render Each 5-man Party Card
     state.formedGroups.forEach((grp, index) => {
-      if (!grp.tank || !grp.healer) return;
       const card = document.createElement('div');
       card.className = `party-card ${grp.isLocked ? 'is-locked' : ''}`;
       card.style.animationDelay = `${index * 0.08}s`;
@@ -1920,9 +1932,10 @@
         </div>
 
         <div class="party-members">
-          ${renderMemberSlot('Tank', grp.tank)}
-          ${renderMemberSlot('Healer', grp.healer)}
-          ${(grp.dps || []).map(dps => renderMemberSlot('DPS', dps)).join('')}
+          ${renderMemberSlot('Tank', grp.tank, `g${index}:tank`)}
+          ${renderMemberSlot('Healer', grp.healer, `g${index}:healer`)}
+          ${[0, 1, 2].map(di => renderMemberSlot('DPS', (grp.dps || [])[di], `g${index}:dps:${di}`)).join('')}
+          ${(grp.dps || []).slice(3).map((dps, i) => renderMemberSlot('DPS', dps, `g${index}:dps:${i + 3}`)).join('')}
         </div>
 
         <div class="party-footer" style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">
@@ -2032,8 +2045,21 @@
     // Update Keystone Roulette Target Group Dropdown Options
     updateRouletteTargetGroups();
 
-    // Render Bench / Tavern Reserves
-    if (state.benchedPlayers && state.benchedPlayers.length > 0) {
+    // Render Bench / Tavern Reserves (always shown with groups: it's also the drop zone)
+    benchContainer.dataset.dest = 'bench';
+    const waiting = state.players.filter(player => player.attending && !isPlaced(player.name));
+    let waitingBox = document.getElementById('waitingList');
+    if (!waitingBox) {
+      waitingBox = document.createElement('div');
+      waitingBox.id = 'waitingList';
+      waitingBox.className = 'waiting-list';
+      benchContainer.appendChild(waitingBox);
+    }
+    waitingBox.innerHTML = waiting.length
+      ? `<div class="waiting-title">🆕 Signed up, not in a group yet (${waiting.length}) — drag into a party</div>` +
+        waiting.map(p => `<span class="waiting-chip" data-player="${escapeHtml(p.name)}"><span class="drag-handle" data-drag="${escapeHtml(p.name)}" aria-hidden="true">⠿</span><strong style="color:${(WOW_CLASSES[p.className] || { color: '#fff' }).color};">${escapeHtml(p.name)}</strong> <small>${escapeHtml((p.roles || []).join('/'))}</small></span>`).join('')
+      : '';
+    if ((state.benchedPlayers && state.benchedPlayers.length > 0) || waiting.length) {
       benchContainer.style.display = 'block';
       benchCountBadge.textContent = `${state.benchedPlayers.length} Guildies`;
       benchList.innerHTML = '';
@@ -2047,13 +2073,14 @@
         const pClass = WOW_CLASSES[p.className] || { color: '#fff' };
         const pill = document.createElement('div');
         pill.className = 'bench-pill';
+        pill.dataset.player = p.name;
         pill.innerHTML = `
+          <span class="drag-handle" data-drag="${escapeHtml(p.name)}" title="Drag ${escapeHtml(p.name)} into a group" aria-hidden="true">⠿</span>
           <strong style="color: ${pClass.color};">${escapeHtml(p.name)}</strong>
           <span style="color: var(--text-muted); font-size: 0.75rem;">(${p.roles.join('/')})</span>
           <span class="slot-stat-badge ilvl">${p.ilvl || 620} iLvl</span>
           <span class="slot-stat-badge io" style="color: ${getIoColor(p.io)};">${(p.io || 0).toLocaleString()} IO</span>
           <span class="key-range-pill">+${p.keyMin}-+${p.keyMax}</span>
-          ${moveMenu(p.name)}
         `;
         benchList.appendChild(pill);
       });
@@ -2063,9 +2090,12 @@
       let adviceText = `Need ${neededForNextGroup > 0 ? neededForNextGroup + ' more member(s)' : 'role redistribution'} to form another party.`;
       if (benchedTanks === 0) adviceText += ' (Missing 1 Tank)';
       if (benchedHealers === 0) adviceText += ' (Missing 1 Healer)';
-      benchAdvice.textContent = adviceText;
+      benchAdvice.textContent = (state.benchedPlayers || []).length ? adviceText : 'Drop a player here to bench them.';
     } else {
-      benchContainer.style.display = 'none';
+      benchContainer.style.display = 'block';
+      benchCountBadge.textContent = '0 Guildies';
+      benchList.innerHTML = '';
+      benchAdvice.textContent = 'Drop a player here to bench them.';
     }
 
     document.querySelectorAll('.move-player').forEach(sel => {
@@ -2117,24 +2147,14 @@
       state.benchedPlayers = state.benchedPlayers || [];
       state.benchedPlayers.push(person);
     } else if (dest === 'bench') {
-      if (origin?.kind === 'slot' && (origin.slot === 'tank' || origin.slot === 'healer') && !(state.benchedPlayers || []).length) {
-        showToast('Move a bench player into that slot first so the party still has a tank and healer.');
-        renderGroups();
-        return;
-      }
+      if (origin?.kind === 'bench') return;
+      // The spot stays open (shown as "Open Tank spot") until someone is dragged in.
       clearRosterPerson(name);
       state.benchedPlayers = state.benchedPlayers || [];
       state.benchedPlayers.push(person);
-      if (origin?.kind === 'slot' && (origin.slot === 'tank' || origin.slot === 'healer')) {
-        const replacement = state.benchedPlayers.find(player => player.name !== person.name);
-        if (replacement) {
-          state.benchedPlayers = state.benchedPlayers.filter(player => player.name !== replacement.name);
-          putRosterPerson(origin, replacement);
-        }
-      }
     } else {
       const match = dest.match(/^g(\d+):(tank|healer|dps)(?::(\d+))?$/);
-      if (!match || !origin) return;
+      if (!match) return;
       const gi = Number(match[1]);
       const slot = match[2];
       const di = match[3] === undefined ? null : Number(match[3]);
@@ -2145,17 +2165,132 @@
       if (occupant) clearRosterPerson(occupant.name);
       putRosterPerson({ kind: 'slot', gi, slot, di }, person);
       if (occupant) {
-        if (origin.kind === 'slot') putRosterPerson(origin, occupant);
+        if (origin && origin.kind === 'slot') putRosterPerson(origin, occupant);
         else {
           state.benchedPlayers = state.benchedPlayers || [];
           state.benchedPlayers.push(occupant);
         }
       }
     }
+    // Close gaps left in DPS lists (clearRosterPerson leaves nulls so indexes stay valid during a swap).
+    state.formedGroups.forEach(group => { group.dps = (group.dps || []).filter(Boolean); refreshGroupMeta(group); });
+    const placed = findRosterSlot(person.name);
+    const roleNeeded = placed?.kind === 'slot' ? { tank: 'Tank', healer: 'Healer', dps: 'DPS' }[placed.slot] : null;
+    const live = state.players.find(player => player.name === person.name) || person;
+    if (roleNeeded && !(live.roles || []).includes(roleNeeded)) {
+      setTimeout(() => showToast(`Heads up: ${person.name} isn't signed up as ${roleNeeded}.`), 1600);
+    }
     state.groupsTouchedAt = new Date().toISOString();
     saveGroups();
     renderGroups();
+    renderRoster();
     showToast(`Moved ${person.name}.`);
+  }
+
+  // --- Drag & drop between party spots, the bench and the "not in a group yet" list ---
+  // Pointer events (not the HTML5 drag API) so it works the same with a mouse and on phones.
+  let groupDrag = null;
+  function setupGroupDragAndDrop() {
+    const DROP_SELECTOR = '[data-dest]';
+    const clearHover = () => document.querySelectorAll('.drop-hover').forEach(el => el.classList.remove('drop-hover'));
+    const targetAt = (x, y) => {
+      const el = document.elementFromPoint(x, y);
+      return el ? el.closest(DROP_SELECTOR) : null;
+    };
+    function finish(drop) {
+      const drag = groupDrag;
+      groupDrag = null;
+      if (!drag) return;
+      cancelAnimationFrame(drag.scrollFrame);
+      drag.ghost?.remove();
+      drag.source?.classList.remove('is-drag-source');
+      document.body.classList.remove('is-dragging-player');
+      clearHover();
+      const dest = drop?.dataset.dest;
+      const fromDest = drag.source?.dataset?.dest;
+      if (drag.started && dest && dest !== fromDest) moveFormedPlayer(drag.name, dest);
+      else if (drag.renderPending) renderGroups();
+    }
+    // Highlight what's under the pointer; the highlighted spot is exactly where the drop lands.
+    function updateOver() {
+      const drag = groupDrag;
+      if (!drag?.started) return;
+      const over = targetAt(drag.x, drag.y);
+      if (over === drag.over) return;
+      clearHover();
+      drag.over = over && over !== drag.source ? over : null;
+      if (drag.over) drag.over.classList.add('drop-hover');
+    }
+    function autoScroll() {
+      if (!groupDrag?.started) return;
+      const edge = 70;
+      const y = groupDrag.y;
+      const speed = y < edge ? -(edge - y) / 3 : (y > window.innerHeight - edge ? (y - (window.innerHeight - edge)) / 3 : 0);
+      if (speed) { window.scrollBy(0, speed); updateOver(); }
+      groupDrag.scrollFrame = requestAnimationFrame(autoScroll);
+    }
+    document.addEventListener('pointerdown', e => {
+      const handle = e.target.closest('.drag-handle');
+      if (!handle || e.button > 0) return;
+      e.preventDefault();
+      const source = handle.closest('[data-player]');
+      groupDrag = { name: handle.dataset.drag, source, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, started: false, pointerId: e.pointerId };
+      try { handle.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
+    });
+    document.addEventListener('pointermove', e => {
+      const drag = groupDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      drag.x = e.clientX;
+      drag.y = e.clientY;
+      if (!drag.started) {
+        if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;
+        drag.started = true;
+        drag.ghost = document.createElement('div');
+        drag.ghost.className = 'drag-ghost';
+        drag.ghost.textContent = drag.name;
+        document.body.appendChild(drag.ghost);
+        drag.source?.classList.add('is-drag-source');
+        document.body.classList.add('is-dragging-player');
+        drag.scrollFrame = requestAnimationFrame(autoScroll);
+      }
+      drag.ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 12}px)`;
+      updateOver();
+    });
+    document.addEventListener('pointerup', e => {
+      if (!groupDrag || e.pointerId !== groupDrag.pointerId) return;
+      groupDrag.x = e.clientX;
+      groupDrag.y = e.clientY;
+      updateOver();
+      finish(groupDrag.over);
+    });
+    document.addEventListener('pointercancel', () => finish(null));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && groupDrag) finish(null); });
+  }
+
+  // Re-check lust / brez / leader / averages after a manual move.
+  function refreshGroupMeta(group) {
+    const members = [group.tank, group.healer, ...(group.dps || [])].filter(Boolean);
+    if (!members.length) return;
+    const lust = members.find(m => WOW_CLASSES[m.className]?.lust);
+    const brez = members.find(m => WOW_CLASSES[m.className]?.brez);
+    const leader = members.find(m => m.isLeader);
+    const need = members.filter(m => m.carryPreference === 'need_carry');
+    const willing = members.filter(m => m.carryPreference === 'willing_carry');
+    Object.assign(group, {
+      avgIo: Math.round(members.reduce((sum, m) => sum + (m.io || 0), 0) / members.length),
+      avgIlvl: Math.round((members.reduce((sum, m) => sum + (m.ilvl || 0), 0) / members.length) * 10) / 10,
+      hasLust: !!lust,
+      lustProvider: lust ? `${lust.name} (${lust.className})` : null,
+      hasBrez: !!brez,
+      brezProvider: brez ? `${brez.name} (${brez.className})` : null,
+      hasLeader: !!leader,
+      leaderName: leader ? leader.name : null,
+      shitterCount: members.filter(m => m.isShitter).length,
+      hasCarryMatch: need.length > 0 && willing.length > 0,
+      needCarryNames: need.map(m => m.name),
+      willingCarryNames: willing.map(m => m.name)
+    });
+    group.isShitterGroup = group.shitterCount >= 2;
   }
 
   function findRosterPerson(name) {
@@ -2186,7 +2321,7 @@
     state.formedGroups.forEach(group => {
       if (group.tank?.name?.toLowerCase() === key) group.tank = null;
       if (group.healer?.name?.toLowerCase() === key) group.healer = null;
-      group.dps = (group.dps || []).filter(member => member?.name?.toLowerCase() !== key);
+      group.dps = (group.dps || []).map(member => (member?.name?.toLowerCase() === key ? null : member));
     });
     state.benchedPlayers = (state.benchedPlayers || []).filter(member => member.name.toLowerCase() !== key);
   }
@@ -2195,8 +2330,10 @@
     const group = state.formedGroups[slot.gi];
     if (!group || !person) return;
     if (slot.slot === 'dps') {
-      if (slot.di === null || slot.di === undefined || !group.dps[slot.di]) group.dps.push(person);
+      group.dps = group.dps || [];
+      if (slot.di === null || slot.di === undefined) group.dps.push(person);
       else group.dps[slot.di] = person;
+      for (let i = 0; i < group.dps.length; i++) if (group.dps[i] === undefined) group.dps[i] = null;
     } else {
       group[slot.slot] = person;
     }
@@ -2230,9 +2367,9 @@
       if (grp.hasCarryMatch) {
         text += `🎒 **Carry Match:** ${grp.willingCarryNames.join(', ')} carrying ${grp.needCarryNames.join(', ')}\n`;
       }
-      text += formatDiscordMember(grp.tank, '🛡️', 'Tank');
-      text += formatDiscordMember(grp.healer, '💚', 'Healer');
-      grp.dps.forEach(d => {
+      text += grp.tank ? formatDiscordMember(grp.tank, '🛡️', 'Tank') : '• 🛡️ Tank: *open spot*\n';
+      text += grp.healer ? formatDiscordMember(grp.healer, '💚', 'Healer') : '• 💚 Healer: *open spot*\n';
+      (grp.dps || []).filter(Boolean).forEach(d => {
         text += formatDiscordMember(d, '⚔️', 'DPS');
       });
     });
@@ -2817,6 +2954,7 @@
   }
 
   function init() {
+    setupGroupDragAndDrop();
     loadState();
     renderRoster();
     renderGroups();

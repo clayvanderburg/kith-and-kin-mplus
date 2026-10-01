@@ -4263,3 +4263,62 @@ button {
   font-size: 0.72rem;
   color: var(--text-muted);
 }
+
+/* ==========================================================================
+   Drag & drop in formed groups
+   ========================================================================== */
+.drag-handle {
+  cursor: grab;
+  touch-action: none; /* lets a finger drag the handle instead of scrolling */
+  user-select: none;
+  color: var(--text-muted, #94a3b8);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.35rem 0.2rem;
+  flex-shrink: 0;
+}
+.drag-handle:hover { color: var(--text-gold, #f5d061); }
+body.is-dragging-player, body.is-dragging-player * { cursor: grabbing !important; user-select: none; }
+.is-drag-source { opacity: 0.4; }
+.drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9999;
+  pointer-events: none;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  background: #1c1419;
+  border: 1px solid var(--text-gold, #f5d061);
+  color: var(--text-gold, #f5d061);
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+.party-member-row.empty-slot {
+  border-style: dashed;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.8rem;
+  min-height: 2.6rem;
+}
+.empty-slot .slot-role-tag { margin-bottom: 0; opacity: 0.6; }
+.drop-hover {
+  outline: 2px solid var(--text-gold, #f5d061);
+  outline-offset: 1px;
+  background: rgba(245, 208, 97, 0.08) !important;
+}
+.bench-container.drop-hover { outline-offset: 3px; }
+.waiting-list { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.75rem; }
+.waiting-title { width: 100%; font-size: 0.8rem; color: var(--text-muted, #94a3b8); }
+.waiting-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 0.82rem;
+}
+@media (pointer: coarse) {
+  .drag-handle { font-size: 1.35rem; padding: 0.45rem 0.35rem; }
+}
