@@ -9,3 +9,4 @@ node_modules/
 bot/node_modules/
 
 tools/key-uploader.log
+.overnight/
