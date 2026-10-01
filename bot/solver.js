@@ -421,6 +421,7 @@ function pickHeldKey(members, { min = 0, max = 99, target = 10, excluded = [], n
   let best = null;
   for (const m of members || []) {
     const key = String(m?.ownedKey || '').trim();
+    if (!m.keyManual) continue; // only keys someone typed or an addon saw (not old guesses)
     const match = key.match(/^(.*?)\s*\+\s*(\d+)\s*$/);
     if (!match) continue;
     if (m.keyAt && Date.parse(m.keyAt) < reset) continue; // last week's key
