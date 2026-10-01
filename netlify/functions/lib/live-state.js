@@ -147,8 +147,12 @@ function mergeStates(latest, incoming) {
   const benchedPlayers = useNextGroups
     ? (next.benchedPlayers || [])
     : (Array.isArray(base.benchedPlayers) && base.benchedPlayers.length ? base.benchedPlayers : (next.benchedPlayers || base.benchedPlayers || []));
+  // Deleted events stay deleted even if an old copy of the page sends them again.
+  const deletedEvents = { ...(base.deletedEvents || {}), ...(next.deletedEvents || {}) };
   const events = mergeEventMaps(base.events, next.events);
-  const currentEventId = next.currentEventId || base.currentEventId || null;
+  for (const id of Object.keys(deletedEvents)) delete events[id];
+  let currentEventId = next.currentEventId || base.currentEventId || null;
+  if (currentEventId && deletedEvents[currentEventId]) currentEventId = Object.keys(events)[0] || null;
 
   const merged = {
     ...base,
@@ -158,6 +162,7 @@ function mergeStates(latest, incoming) {
     benchedPlayers,
     excludedDungeons: Array.isArray(next.excludedDungeons) ? next.excludedDungeons : (base.excludedDungeons || []),
     events,
+    deletedEvents,
     currentEventId,
     groupsTouchedAt: useNextGroups ? next.groupsTouchedAt : (base.groupsTouchedAt || null),
     discordCard: next.discordCard || base.discordCard || null,
@@ -386,7 +391,7 @@ async function writeMergedState(event, incoming, source = null) {
   const merged = mergeStates(latest, incoming);
   const rosterChange = Boolean(
     incoming && (incoming.players || incoming.formedGroups || incoming.events || incoming.groupsTouchedAt ||
-      incoming.deleted || incoming.excludedDungeons || incoming.currentEventId)
+      incoming.deleted || incoming.deletedEvents || incoming.excludedDungeons || incoming.currentEventId)
   );
   if (!rosterChange && latest?.lastUpdated) merged.lastUpdated = latest.lastUpdated;
   // Overlays and computed ids live elsewhere; don't copy them into the main document.

@@ -463,7 +463,7 @@ async function refreshAttendeeScores(state) {
 
 function refreshScoresMessage(result) {
   const more = result.attendees > result.tried ? ` (first ${result.tried} of ${result.attendees}; refresh the rest on the website)` : '';
-  return `📈 **Refreshed Raider.IO score and item level for ${result.updated} member(s)**${more}.\nKeystones can't be read from Raider.IO — type yours on the [signup page](${WEB_URL}/signup.html).`;
+  return `📈 **Refreshed Raider.IO score and item level for ${result.updated} member(s)**${more}.\n-# Scores also refresh on their own every 15 minutes. Keystones come in from officers running the [key kit](${WEB_URL}/officers.html).`;
 }
 
 function leaderboardMessage(state, viewMode = 'auto') {

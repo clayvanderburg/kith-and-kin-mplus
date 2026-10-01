@@ -179,6 +179,11 @@ async function applyOps(event, ops) {
   if (meta) {
     if (Array.isArray(meta.excludedDungeons)) incoming.excludedDungeons = meta.excludedDungeons;
     if (meta.currentEventId) incoming.currentEventId = meta.currentEventId;
+    if (Array.isArray(meta.deleteEvents) && meta.deleteEvents.length) {
+      const stamp = new Date().toISOString();
+      incoming.deletedEvents = {};
+      for (const id of meta.deleteEvents.slice(0, 50)) if (typeof id === 'string' && id) incoming.deletedEvents[id] = stamp;
+    }
     if (meta.events && typeof meta.events === 'object') {
       // Event names/dates only. Player lists are kept server-side so a stale copy can't resurrect anyone.
       incoming.events = {};

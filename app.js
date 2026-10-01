@@ -408,6 +408,7 @@
       return;
     }
 
+    pendingEventDeletes.add(state.currentEventId);
     delete state.events[state.currentEventId];
     const remainingIds = Object.keys(state.events);
     state.currentEventId = remainingIds[0];
@@ -522,6 +523,7 @@
   let syncedPlayers = new Map();
   let syncedGroupsJson = null;
   let syncedMetaJson = null;
+  const pendingEventDeletes = new Set(); // events deleted here, sent to the server with the next save
   let lastChangeInfo = null;
   let viewOnlyDeclined = false;
   const VOLATILE_FIELDS = new Set(['personId', 'charKey', 'scoreAt', 'ioColor', 'spec', 'touchedAt']);
@@ -569,7 +571,7 @@
     if (syncedMetaJson !== null && metaJson() !== syncedMetaJson) {
       const events = {};
       Object.values(state.events || {}).filter(Boolean).forEach(e => { events[e.id] = { id: e.id, name: e.name, date: e.date }; });
-      ops.push({ op: 'meta', excludedDungeons: state.excludedDungeons || [], currentEventId: state.currentEventId || null, events });
+      ops.push({ op: 'meta', excludedDungeons: state.excludedDungeons || [], currentEventId: state.currentEventId || null, events, deleteEvents: [...pendingEventDeletes] });
     }
     return ops;
   }
@@ -719,7 +721,7 @@
             if (o.op === 'upsert') syncedPlayers.set(nameKey(o.player.name), stablePlayerJson(o.player));
             if (o.op === 'delete') syncedPlayers.delete(o.name);
             if (o.op === 'groups') syncedGroupsJson = JSON.stringify(o.formedGroups) + '|' + JSON.stringify(o.benchedPlayers);
-            if (o.op === 'meta') syncedMetaJson = metaJson();
+            if (o.op === 'meta') { syncedMetaJson = metaJson(); (o.deleteEvents || []).forEach(id => pendingEventDeletes.delete(id)); }
           }
           if (info.groupsTouchedAt !== undefined) groupsBase = info.groupsTouchedAt;
           if (info.lastChange) lastChangeInfo = info.lastChange;
