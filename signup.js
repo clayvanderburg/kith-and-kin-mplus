@@ -247,7 +247,7 @@
     night.hidden = false;
     document.getElementById('summaryName').textContent = signup.name;
     const goals = (signup.keyBrackets || []).join(', ') || `+${signup.keyMin}–${signup.keyMax}`;
-    document.getElementById('summaryDetail').textContent = `${signup.className} · ${(signup.roles || []).join('/')} · ${goals} · ${signup.io || 0} IO`;
+    document.getElementById('summaryDetail').textContent = `${signup.attending === false ? '💤 Not signed up for tonight' : '✅ Signed up for tonight'} · ${signup.className} · ${(signup.roles || []).join('/')} · ${goals} · ${signup.io || 0} IO`;
     document.querySelectorAll('#statusRow .status-btn').forEach(button => {
       button.classList.toggle('is-on', button.dataset.status === (signup.nightStatus || 'waiting'));
     });
@@ -745,7 +745,26 @@
     });
   }
 
-  boot().catch(() => {
+  // Keep this page in step with changes made elsewhere (an officer removing you, Discord sign-ups,
+  // groups being formed). Skipped while you're typing or editing so nothing jumps under you.
+  async function refreshFromServer() {
+    if (document.hidden || !currentSignup) return;
+    const editing = !document.getElementById('signupCard').classList.contains('is-collapsed') ||
+      (document.activeElement && document.activeElement.closest && document.activeElement.closest('#signupCard, #nightCard') && document.activeElement !== document.body);
+    if (editing) return;
+    try {
+      const res = await fetch('/api/me', { credentials: 'include', headers: sessionHeaders() });
+      const data = await res.json();
+      if (!data.authenticated) return;
+      showSignedUp(data.signup);
+      renderGroups(data.groups);
+    } catch (err) { /* try again next time */ }
+  }
+
+  boot().then(() => {
+    setInterval(refreshFromServer, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshFromServer(); });
+  }).catch(() => {
     document.getElementById('loginNote').textContent = 'Could not reach the signup service.';
   });
 })();

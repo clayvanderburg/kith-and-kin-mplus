@@ -1560,9 +1560,14 @@
     const key = String(name || '').toLowerCase();
     return state.players.find(p => p.name.toLowerCase() === key) || findRosterPerson(name);
   }
+  // Roles this person can be placed in: the roles they signed up for (or that Raider.IO shows they
+  // play), limited to what their class can do. To place someone off-role, tick that role on them
+  // in the guild list first.
   function classRoles(name) {
-    const cls = livePlayer(name)?.className;
-    return WOW_CLASSES[cls]?.roles || ['Tank', 'Healer', 'DPS'];
+    const live = livePlayer(name);
+    const classAllowed = WOW_CLASSES[live?.className]?.roles || ['Tank', 'Healer', 'DPS'];
+    const chosen = (live?.roles || []).filter(r => classAllowed.includes(r));
+    return chosen.length ? chosen : classAllowed;
   }
   const SLOT_ROLE = { tank: 'Tank', healer: 'Healer', dps: 'DPS' };
   function slotRoleOf(dest) {
@@ -1575,18 +1580,18 @@
     if (String(dest).startsWith('swapin:')) {
       const incoming = decodeURIComponent(dest.slice('swapin:'.length));
       const role = origin?.kind === 'slot' ? SLOT_ROLE[origin.slot] : null;
-      if (role && !classRoles(incoming).includes(role)) return `${incoming} (${livePlayer(incoming)?.className}) can't play ${role}.`;
+      if (role && !classRoles(incoming).includes(role)) return `${incoming} isn't signed up as ${role} (${classRoles(incoming).join('/')} only).`;
       return '';
     }
     const role = slotRoleOf(dest);
     if (!role) return '';
-    if (!classRoles(name).includes(role)) return `${name} (${livePlayer(name)?.className}) can't play ${role}.`;
+    if (!classRoles(name).includes(role)) return `${name} isn't signed up as ${role} (${classRoles(name).join('/')} only). Tick ${role} on them in the guild list to allow it.`;
     const m = dest.match(/^g(\d+):(tank|healer|dps)(?::(\d+))?$/);
     const group = state.formedGroups[Number(m[1])];
     const occupant = !group ? null : (m[2] === 'dps' ? (group.dps || [])[Number(m[3])] : group[m[2]]);
     if (occupant && origin?.kind === 'slot' && occupant.name.toLowerCase() !== name.toLowerCase()) {
       const back = SLOT_ROLE[origin.slot];
-      if (!classRoles(occupant.name).includes(back)) return `Can't swap: ${occupant.name} (${livePlayer(occupant.name)?.className}) can't play ${back}.`;
+      if (!classRoles(occupant.name).includes(back)) return `Can't swap: ${occupant.name} isn't signed up as ${back} (${classRoles(occupant.name).join('/')} only).`;
     }
     return '';
   }

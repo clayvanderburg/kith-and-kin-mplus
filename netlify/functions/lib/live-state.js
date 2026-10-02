@@ -187,6 +187,11 @@ function mergeStates(latest, incoming) {
     }
   }
 
+  // One rule for every path (Control Center, Discord, website): someone marked out for tonight
+  // is never left sitting in a party or on the bench.
+  const outNames = new Set(merged.players.filter(p => p.absent === true).map(playerKey));
+  if (outNames.size) stripFromGroups(merged, outNames);
+
   return reconcileState(merged);
 }
 
@@ -309,6 +314,18 @@ function assignPeople(state) {
   return state;
 }
 
+const CLASS_ROLES = {
+  'Death Knight': ['Tank', 'DPS'], 'Demon Hunter': ['Tank', 'DPS'], Druid: ['Tank', 'Healer', 'DPS'],
+  Evoker: ['Healer', 'DPS'], Hunter: ['DPS'], Mage: ['DPS'], Monk: ['Tank', 'Healer', 'DPS'],
+  Paladin: ['Tank', 'Healer', 'DPS'], Priest: ['Healer', 'DPS'], Rogue: ['DPS'], Shaman: ['Healer', 'DPS'],
+  Warlock: ['DPS'], Warrior: ['Tank', 'DPS']
+};
+
+/** Nobody has ever picked roles for this entry (not via Discord, website or the Control Center). */
+function rolesUntouched(player) {
+  return !player.rolesChosenAt && !player.discordId && !player.bnetId && !player.activeAt;
+}
+
 function applyScores(state, scores) {
   if (!scores || typeof scores !== 'object') return state;
   for (const player of state.players || []) {
@@ -321,6 +338,13 @@ function applyScores(state, scores) {
     if (hit.roleScores) player.roleScores = hit.roleScores;
     if (hit.role) player.activeRole = hit.role;
     player.scoreAt = hit.at || null;
+    // Default roles = the roles they've actually run keys in this season (until someone picks roles).
+    if (rolesUntouched(player)) {
+      const tip = suggestSignup(hit);
+      const allowed = CLASS_ROLES[player.className] || ['Tank', 'Healer', 'DPS'];
+      const roles = (tip?.roles || []).filter(r => allowed.includes(r));
+      if (roles.length) player.roles = roles;
+    }
   }
   return state;
 }
@@ -336,9 +360,9 @@ function suggestSignup(hit) {
   const top = Math.max(scores.tank || 0, scores.healer || 0, scores.dps || 0);
   let roles = [];
   if (top > 0) {
-    // A role counts if it has at least 40% of their best role's score.
+    // A role counts if they've done a key in it this season (any Raider.IO score for that role).
     roles = [['Tank', scores.tank], ['Healer', scores.healer], ['DPS', scores.dps]]
-      .filter(([, score]) => (score || 0) > 0 && score >= top * 0.4)
+      .filter(([, score]) => (score || 0) > 0)
       .map(([role]) => role);
   }
   if (!roles.length) {

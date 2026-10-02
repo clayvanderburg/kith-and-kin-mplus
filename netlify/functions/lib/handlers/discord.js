@@ -880,12 +880,14 @@ exports.handler = async (event, context) => {
         // Guild characters stay on the roster; they're just no longer yours.
         player.discordId = null;
         player.attending = false;
+        player.absent = true;
+        player.attendingAt = null;
         player.isMain = false;
         player.activeAt = null;
         player.touchedAt = now;
       } else {
         state.players = (state.players || []).filter(p => !sameChar(p, player));
-        state.deleted = { ...(state.deleted || {}), [foldName(player.name)]: now };
+        state.deleted = { ...(state.deleted || {}), [String(player.name).trim().toLowerCase()]: now };
       }
       await saveState(state);
       const next = activeCharacter(state, userId);
