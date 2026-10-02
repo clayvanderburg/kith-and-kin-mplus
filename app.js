@@ -2101,10 +2101,10 @@
         <div class="empty-state">
           <div class="empty-icon">🍺🛡️💚⚔️</div>
           <h4>No parties yet</h4>
-          <p>Everyone’s still drinking at the Lion’s Pride Inn. Get five bodies in (a tank and a healer, ideally sober), then hit <strong>Form Groups</strong>.</p>
+          <p>Everyone’s still drinking at the Tavern. Get five bodies in (a tank and a healer, ideally sober), then hit <strong>Form Groups</strong>.</p>
         </div>
       `;
-      // Before groups exist, everyone signed up hangs out at the Inn so it's easy to see who's coming.
+      // Before groups exist, everyone signed up hangs out at the Tavern so it's easy to see who's coming.
       const atInn = state.players.filter(p => p.attending);
       const roleOrder = p => ((p.roles || []).includes('Tank') ? 0 : (p.roles || []).includes('Healer') ? 1 : 2);
       atInn.sort((a, b) => roleOrder(a) - roleOrder(b) || (b.io || 0) - (a.io || 0));
@@ -2116,7 +2116,7 @@
       benchCountBadge.textContent = `${atInn.length} chillin’`;
       benchAdvice.textContent = atInn.length
         ? `🛡️ ${count('Tank')} · 💚 ${count('Healer')} · ⚔️ ${count('DPS')} signed up${atInn.length >= 5 ? '' : ` · need ${5 - atInn.length} more for a party`}`
-        : 'Nobody’s at the Inn yet. Sign-ups from Discord and the Player View show up here.';
+        : 'Nobody’s at the Tavern yet. Sign-ups from Discord and the Player View show up here.';
       benchList.innerHTML = atInn.map(p => {
         const color = (WOW_CLASSES[p.className] || { color: '#fff' }).color;
         const icons = (p.roles || []).map(r => (r === 'Tank' ? '🛡️' : r === 'Healer' ? '💚' : '⚔️')).join('');
@@ -2467,12 +2467,12 @@
       let adviceText = `Need ${neededForNextGroup > 0 ? neededForNextGroup + ' more member(s)' : 'role redistribution'} to form another party.`;
       if (benchedTanks === 0) adviceText += ' (Missing 1 Tank)';
       if (benchedHealers === 0) adviceText += ' (Missing 1 Healer)';
-      benchAdvice.textContent = (state.benchedPlayers || []).length ? adviceText : 'Drop someone here to send them back to the Inn.';
+      benchAdvice.textContent = (state.benchedPlayers || []).length ? adviceText : 'Drop someone here to send them back to the Tavern.';
     } else {
       benchContainer.style.display = 'block';
       benchCountBadge.textContent = '0 chillin’';
       benchList.innerHTML = '';
-      benchAdvice.textContent = 'Drop someone here to send them back to the Inn.';
+      benchAdvice.textContent = 'Drop someone here to send them back to the Tavern.';
     }
 
     document.querySelectorAll('.move-player').forEach(sel => {

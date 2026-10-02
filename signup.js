@@ -357,7 +357,7 @@
     }
 
     if (!ordered.length) {
-      list.innerHTML = '<p class="player-lead">No parties yet — everyone’s still knocking back drinks at the Lion’s Pride Inn. Your sign-up is saved; groups show up here the moment an officer forms them.</p>';
+      list.innerHTML = '<p class="player-lead">No parties yet — everyone’s still knocking back drinks at the Tavern. Your sign-up is saved; groups show up here the moment an officer forms them.</p>';
       return;
     }
 
