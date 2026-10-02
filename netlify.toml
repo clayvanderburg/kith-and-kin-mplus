@@ -50,6 +50,34 @@
   status = 404
   force = true
 
+# These endpoints run as Netlify v2 functions (strongly consistent Blobs reads, so a save is never
+# merged against a stale copy and groups don't "pop back"). To roll back, delete these five
+# rules: the classic functions of the same name are still deployed and take over via /api/*.
+[[redirects]]
+  from = "/api/state"
+  to = "/.netlify/functions/state-v2"
+  status = 200
+
+[[redirects]]
+  from = "/api/discord"
+  to = "/.netlify/functions/discord-v2"
+  status = 200
+
+[[redirects]]
+  from = "/api/me"
+  to = "/.netlify/functions/me-v2"
+  status = 200
+
+[[redirects]]
+  from = "/api/keys"
+  to = "/.netlify/functions/keys-v2"
+  status = 200
+
+[[redirects]]
+  from = "/api/refresh-now"
+  to = "/.netlify/functions/refresh-now-v2"
+  status = 200
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
@@ -93,9 +121,5 @@
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
     Cache-Control = "no-cache, no-store, must-revalidate"
 
-# Background jobs (times are UTC)
-[functions."refresh-scores"]
-  schedule = "*/15 * * * *"
-
-[functions."sync-night"]
-  schedule = "*/15 * * * 5,6"
+# Background jobs (times are UTC) are scheduled in netlify/functions/refresh-scores-v2.mjs and
+# sync-night-v2.mjs (export const config = { schedule }).

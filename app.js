@@ -520,6 +520,7 @@
   // group change made from a stale screen is refused instead of wiping someone else's groups.
   let serverVersion = null;
   let groupsBase = null;
+  let newestSavedAt = 0; // lastUpdated of our latest save; never let an older copy replace it
   let syncedPlayers = new Map();
   let syncedGroupsJson = null;
   let syncedMetaJson = null;
@@ -657,6 +658,9 @@
       if (data && data.unchanged) {
         updateSyncStatus('synced', officerKey() ? 'Discord Synced' : 'Synced (view only)');
         renderLastChange();
+      } else if (data && !data.empty && (Date.parse(data.lastUpdated || '') || 0) < newestSavedAt) {
+        // An older copy than the one we just saved (storage still catching up). Ignore it and ask again.
+        serverVersion = null;
       } else if (data && !data.empty) {
         hasPendingEdits = false;
         viewOnlyDeclined = false;
@@ -724,6 +728,8 @@
             if (o.op === 'meta') { syncedMetaJson = metaJson(); (o.deleteEvents || []).forEach(id => pendingEventDeletes.delete(id)); }
           }
           if (info.groupsTouchedAt !== undefined) groupsBase = info.groupsTouchedAt;
+          const savedAt = Date.parse(String(info.version || '').split('|')[0]) || 0;
+          if (savedAt > newestSavedAt) newestSavedAt = savedAt;
           if (info.lastChange) lastChangeInfo = info.lastChange;
           serverVersion = null; // pull the merged result on the next poll
           hasPendingEdits = buildOps().length > 0; // edits made while saving go out next

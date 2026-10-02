@@ -6,7 +6,13 @@
 
 const path = require('path');
 const crypto = require('crypto');
-const { getStore, connectLambda } = require('@netlify/blobs');
+// Netlify Blobs. The v2 entry files (*-v2.mjs) import it themselves and hand it over through a
+// global, because the bundler can't ship a package that's only reached via require().
+function blobsLib() {
+  return globalThis.__kkNetlifyBlobs || require('@netlify/blobs');
+}
+const getStore = (...args) => blobsLib().getStore(...args);
+const connectLambda = (...args) => blobsLib().connectLambda(...args);
 
 const STORE_NAME = 'mplus-state';
 const STATE_KEY = 'current_state';
