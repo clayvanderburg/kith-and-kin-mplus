@@ -31,21 +31,36 @@ const DUNGEONS_MIDNIGHT_S2 = [
 ];
 
 const PARTY_NAMES = [
-  'Keystone Crushers',
-  'The Floor Inspectors',
-  'Wipe on 1% Survivors',
-  'Bloodlust on Pull',
-  'Mana Sponge Brigade',
-  'Brann’s Wild Caravan',
-  'Kinfolk Vanguard',
-  'The Route Improvisers',
-  'Crit Happens',
-  'Cooldown Hoarders',
-  'Affix Evaders',
-  'One-Shot Wonders',
-  'Timer Breakers',
-  'The Repair Bill Crew',
-  'Out of Line of Sight'
+  'Stood in the Fire Again',
+  'Leeroy’s Last Pull',
+  'Brez Pending',
+  'Depleted & Delighted',
+  'Pull Timer? Never Heard of Her',
+  'Kicks Are Optional',
+  'Pumpers, Not Kickers',
+  'Line of Sight Is a Suggestion',
+  'Report Healer',
+  'Ten Seconds Over',
+  'Big Pull Energy',
+  'Grievous Mistakes',
+  'Pug Rejects',
+  'Vault Farmers',
+  'One More Key, Then Bed',
+  'Mechanics Are Optional',
+  'Feign Death Enjoyers',
+  'Durability 0%',
+  'Chain Pull & Pray',
+  'Xal’atath’s Chew Toys',
+  'Void-Touched & Unbothered',
+  'Silvermoon Sweats',
+  'Lust on Trash Again',
+  'The Wipe Recovery Program',
+  'Tank Is Pulling? Tank Is Pulling.',
+  'Afflicted, Not Dispelled',
+  'Combat Res Is My Love Language',
+  'Thirty Pulls Later',
+  'Repair Bot Enjoyers',
+  'Hearthstone on Cooldown'
 ];
 
 function shuffleArray(arr) {
@@ -64,7 +79,7 @@ function solveGroups(options = {}) {
     strategy = 'balanced',
     dungeonPool = DUNGEONS_MIDNIGHT_S2,
     excludedDungeons = [],
-    avoidClassDupes = true,
+    avoidClassDupes = false,
     ensureLust = true,
     ensureBrez = true,
     balanceIo = true,
@@ -190,11 +205,10 @@ function solveGroups(options = {}) {
         score += hasBrez ? 180 : -280;
       }
 
-      // Class duplicate penalty
+      // Duplicate spec penalty (two Frost Mages). Unknown spec -> class stands in for it.
       if (avoidClassDupes) {
-        const classNames = members.map(m => m.className);
-        const uniqueClasses = new Set(classNames);
-        const dupes = classNames.length - uniqueClasses.size;
+        const specs = members.map(m => `${m.className}|${m.spec || ''}`);
+        const dupes = specs.length - new Set(specs).size;
         score -= dupes * 120;
       }
 
@@ -318,11 +332,12 @@ function solveGroups(options = {}) {
     let groupName = shuffledNames[idx % shuffledNames.length];
     if (isShitterGroup) {
       const shitterNames = [
-        'The Shitter Squad',
-        'Shitter Alt Syndicate',
-        'Certified Scuffed 5-Man',
-        'Scrapheap Heroes'
-      ];
+          'Ilvl Is Just a Number',
+          'Raider.IO Grey Squad',
+          'Alts Anonymous',
+          'Heirloom Hooligans',
+          'Fresh 90s, Zero Shame'
+        ];
       groupName = shitterNames[idx % shitterNames.length];
     }
 

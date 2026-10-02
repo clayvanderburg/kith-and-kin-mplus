@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kith and Kin — Guild Armory (Merch)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="assets/favicon-64.png">
+  <link rel="stylesheet" href="styles.css?v=inn-1">
+  <style>
+    .merch-wrap { max-width: 920px; margin: 1.25rem auto; padding: 1.25rem 1.4rem; }
+    .merch-hero { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; }
+    .merch-hero img { width: 120px; height: 120px; border-radius: 14px; border: 2px solid rgba(245, 208, 97, 0.5); box-shadow: 0 0 24px rgba(220, 38, 38, 0.35); }
+    .merch-hero h2 { font-family: Cinzel, serif; color: var(--text-gold); margin: 0 0 0.35rem; }
+    .merch-hero p { margin: 0; color: var(--text-muted); }
+    .merch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.8rem; margin: 1.25rem 0; }
+    .merch-tile { display: flex; flex-direction: column; gap: 0.35rem; padding: 1rem; border-radius: 12px; text-decoration: none; color: inherit;
+      background: linear-gradient(160deg, rgba(128, 0, 32, 0.25), rgba(10, 10, 12, 0.9)); border: 1px solid rgba(245, 208, 97, 0.25); transition: transform 0.15s ease, border-color 0.15s ease; }
+    .merch-tile:hover { transform: translateY(-2px); border-color: rgba(245, 208, 97, 0.7); }
+    .merch-icon { font-size: 2rem; }
+    .merch-tile strong { font-family: Cinzel, serif; color: var(--text-gold); }
+    .merch-tile small { color: var(--text-muted); }
+    .merch-shop { display: inline-flex; padding: 0.7rem 1.2rem; text-decoration: none; }
+    .merch-note { color: var(--text-muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="site-wrapper">
+    <nav class="site-nav" aria-label="Site">
+      <a href="signup.html">Player View</a>
+      <a href="index.html">Control Center</a>
+      <a href="leaderboard.html">Leaderboard 🏆</a>
+    </nav>
+    <section class="card merch-wrap">
+      <div class="merch-hero">
+        <img src="assets/kith-and-kin-logo-320.jpg" alt="Kith & Kin crest" width="120" height="120">
+        <div>
+          <h2>🛡️ The Guild Armory</h2>
+          <p>Rep Kith &amp; Kin outside of Azeroth. No transmog required, no gold cap, and it won’t drop in the next tier.</p>
+        </div>
+      </div>
+      <div class="merch-grid">
+        <a class="merch-tile" href="https://www.redbubble.com/i/sticker/Kith-and-Kin-Pride-Month-Guild-logo-by-frivolousclay/171361466/7sgk" target="_blank" rel="noopener">
+          <span class="merch-icon">🏷️</span><strong>Stickers</strong><small>Slap the crest on your gaming rig. +5% haste (not guaranteed).</small>
+        </a>
+        <a class="merch-tile" href="https://www.redbubble.com/people/frivolousclay/shop" target="_blank" rel="noopener">
+          <span class="merch-icon">☕</span><strong>Mugs</strong><small>Mana potion for the 2 AM key that “will definitely time.”</small>
+        </a>
+        <a class="merch-tile" href="https://www.redbubble.com/people/frivolousclay/shop" target="_blank" rel="noopener">
+          <span class="merch-icon">🧦</span><strong>Socks</strong><small>Movement speed enchant for running back from the graveyard.</small>
+        </a>
+        <a class="merch-tile" href="https://www.redbubble.com/people/frivolousclay/shop" target="_blank" rel="noopener">
+          <span class="merch-icon">🛏️</span><strong>Blankets</strong><small>Rested XP, but for you.</small>
+        </a>
+      </div>
+      <a class="btn btn-primary merch-shop" href="https://www.redbubble.com/people/frivolousclay/shop" target="_blank" rel="noopener">Browse the whole shop on Redbubble ↗</a>
+      <p class="merch-note">Opens Redbubble in a new tab. Redbubble handles checkout and shipping.</p>
+    </section>
+  </div>
+  <script src="account.js?v=2"></script>
+</body>
+</html>

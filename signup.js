@@ -357,7 +357,7 @@
     }
 
     if (!ordered.length) {
-      list.innerHTML = '<p class="player-lead">Parties have not been formed yet. Your signup is saved, and you can still set Waiting or In key.</p>';
+      list.innerHTML = '<p class="player-lead">No parties yet — everyone’s still knocking back drinks at the Lion’s Pride Inn. Your sign-up is saved; groups show up here the moment an officer forms them.</p>';
       return;
     }
 
@@ -441,6 +441,7 @@
             <div class="party-badge-title">
               <span class="party-num">Party ${group.index + 1}${group.mine ? ' · ⭐ Your Party' : ''} ·</span>
               <span class="party-name">${escapeHtml(group.name)}</span>
+              ${group.mine ? `<button type="button" class="party-rename-btn" title="Rename your party (everyone sees it, Discord too)">✏️ Rename</button>` : ''}
             </div>
             <div class="party-card-controls">
               ${group.isLocked ? '<span style="font-size:0.75rem; color:#fde047;">🔒 Locked</span>' : ''}
@@ -485,6 +486,18 @@
         </article>
       `;
     }).join('');
+
+    // Rename your own party
+    list.querySelector('.party-rename-btn')?.addEventListener('click', async () => {
+      const current = myGroup?.name || '';
+      const name = (window.prompt('New name for your party (2–40 characters). Everyone sees it, on Discord too:', current) || '').trim();
+      if (!name || name === current) return;
+      try {
+        await postMe({ action: 'rename-group', name });
+      } catch (err) {
+        alert(err.message || 'Could not rename the party.');
+      }
+    });
 
     // Attach click toggle on each member row in the party
     list.querySelectorAll('.slot-toggle-trigger').forEach(trigger => {

@@ -61,6 +61,23 @@ function sameCharacter(a, b) {
   return fold(a?.name) === fold(b?.name) && loose(a?.realm) === loose(b?.realm);
 }
 
+// Every roster entry that belongs to this Battle.net login: linked to the account, one of its
+// characters, or claimed in Discord by the same Discord member.
+function myEntries(state, session) {
+  const players = state.players || [];
+  const loose = r => fold(r).replace(/[^a-z0-9]/g, '');
+  const owned = session?.characters || [];
+  const isOwned = p => owned.some(c => fold(c.name) === fold(p.name) && loose(c.realm) === loose(p.realm));
+  const direct = players.filter(p => (p.bnetId && p.bnetId === session.bnetId) || (!p.bnetId && isOwned(p)));
+  const discordIds = new Set(direct.map(p => p.discordId).filter(Boolean));
+  return players.filter(p => direct.includes(p) || (p.discordId && discordIds.has(p.discordId) && (!p.bnetId || p.bnetId === session.bnetId)));
+}
+
+function activeEntry(list) {
+  const time = p => Date.parse(p.activeAt || p.attendingAt || p.touchedAt || '') || 0;
+  return [...(list || [])].sort((a, b) => (b.attending ? 1 : 0) - (a.attending ? 1 : 0) || time(b) - time(a))[0] || null;
+}
+
 function recordOf(player) {
   const log = Array.isArray(player?.runLog) ? player.runLog : [];
   const runs = log.length;
@@ -213,7 +230,17 @@ function findOwnedCharacter(session, body) {
   return byName.length === 1 ? byName[0] : null;
 }
 
-exports.handler = async (event) => {
+// Any save on the player page also updates the Discord card (after the reply is sent).
+exports.handler = async (event, context) => {
+  const result = await handleMe(event);
+  if (event.httpMethod === 'POST' && result && result.statusCode === 200) {
+    const { refreshCardSoon } = require('../live-state');
+    await refreshCardSoon(context, () => readLiveState(event), 'me');
+  }
+  return result;
+};
+
+async function handleMe(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: JSON_HEADERS, body: '' };
   }
@@ -233,16 +260,9 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error('[me] roster read failed:', err.message);
   }
-  let mine = (state.players || []).find(player => player.bnetId && player.bnetId === session.bnetId);
-  if (!mine) {
-    // Signed up through Discord first? Battle.net proves they own the character, so pick that entry up.
-    const loose = r => fold(r).replace(/[^a-z0-9]/g, '');
-    const owned = (session.characters || []);
-    const time = p => Date.parse(p.activeAt || p.touchedAt || '') || 0;
-    mine = (state.players || [])
-      .filter(player => !player.bnetId && owned.some(c => fold(c.name) === fold(player.name) && loose(c.realm) === loose(player.realm)))
-      .sort((a, b) => (b.attending ? 1 : 0) - (a.attending ? 1 : 0) || time(b) - time(a))[0];
-  }
+  // The character they're on tonight: signed up first, then the one used most recently. Includes
+  // characters claimed in Discord, so Discord, the Control Center and this page always agree.
+  let mine = activeEntry(myEntries(state, session));
 
   if (event.httpMethod === 'GET' && mine) {
     // Quietly link this Battle.net account to the entry (and remember all its characters) so alts'
@@ -305,6 +325,9 @@ exports.handler = async (event) => {
     if (body.action === 'roll') {
       return rollOwnGroup(event, state, mine, body);
     }
+    if (body.action === 'rename-group') {
+      return renameMyGroup(event, state, mine, body);
+    }
     if (body.action === 'exclude-player') {
       return saveGroupExclusions(event, state, mine, body);
     }
@@ -320,9 +343,7 @@ exports.handler = async (event) => {
     if (body.action === 'edit-run') {
       return editRunLog(event, state, mine, body);
     }
-    // A Discord-only entry is reused only when they pick that same character; otherwise it stays as their alt.
-    const base = mine && !mine.bnetId && fold(mine.name) !== fold(body.name) ? null : mine;
-    return await saveSignup(event, state, session, body, base);
+    return await saveSignup(event, state, session, body, mine);
   } catch (err) {
     console.error('[me] save failed:', err);
     return {
@@ -483,16 +504,21 @@ async function saveSignup(event, state, session, body, existing) {
   const range = bracketsToRange(brackets);
   const rio = await lookupRaider(character);
   const now = new Date().toISOString();
-  const previousName = existing?.name;
+  const loose = r => fold(r).replace(/[^a-z0-9]/g, '');
+  // One roster entry per character (same as Discord). `existing` is the character they were on.
+  const target = (state.players || []).find(p => fold(p.name) === fold(character.name) && loose(p.realm) === loose(character.realm)) || null;
+  const attending = body.attending !== false;
+  const discordId = target?.discordId || myEntries(state, session).map(p => p.discordId).find(Boolean) || null;
 
   const record = {
-    ...(existing || {}),
-    id: existing?.id || `bnet-${session.bnetId}`,
+    ...(target || {}),
+    id: target?.id || `bnet-${session.bnetId}-${fold(character.name).replace(/[^a-z0-9]/g, '')}`,
     bnetId: session.bnetId,
     battleTag: session.battleTag,
+    discordId,
     name: character.name,
     realm: character.realm,
-    realmSlug: character.realmSlug || existing?.realmSlug || '',
+    realmSlug: character.realmSlug || target?.realmSlug || '',
     region: character.region || 'us',
     className: character.className,
     roles,
@@ -505,41 +531,46 @@ async function saveSignup(event, state, session, body, existing) {
     isReserve: !!body.isReserve,
     isShitter: !!body.isShitter,
     carryPreference: body.carryPreference === 'need_carry' || body.carryPreference === 'willing_carry' ? body.carryPreference : 'none',
-    attending: body.attending !== false,
-    attendingAt: body.attending !== false ? (existing?.attending ? (existing.attendingAt || now) : now) : null,
-    absent: body.attending === false,
+    attending,
+    attendingAt: attending ? (target?.attending ? (target.attendingAt || now) : now) : null,
+    absent: !attending,
+    activeAt: now,
     touchedAt: now,
-    io: rio?.io || existing?.io || 0,
-    ilvl: rio?.ilvl || existing?.ilvl || 0,
-    ownedKey: existing?.keyManual ? (existing.ownedKey || '') : '',
-    rioRuns: rio?.recentRuns || existing?.rioRuns || [],
+    io: rio?.io || target?.io || 0,
+    ilvl: rio?.ilvl || target?.ilvl || 0,
+    rioRuns: rio?.recentRuns || target?.rioRuns || [],
     // Every character on this Battle.net account, so alts' runs count for the same person.
     accountChars: (session.characters || []).map(c => ({ name: c.name, realm: c.realm })).slice(0, 80),
     eventId: ''
   };
+  delete record.personId;
+  delete record.charKey;
 
-  // One weekly night: the sign-up is simply on the roster.
-  const isCurrent = true;
   const incoming = { players: [record] };
-  if (record.attending === false && existing?.attending) {
+  const { stripFromGroups } = require('../live-state');
+  if (attending) {
+    // Switching characters: the old one steps out and the new one takes its party spot.
+    for (const other of myEntries(state, session)) {
+      if (fold(other.name) === fold(record.name) && loose(other.realm) === loose(record.realm)) continue;
+      if (!other.attending) continue;
+      const { personId, charKey, ...rest } = other;
+      incoming.players.push({ ...rest, attending: false, attendingAt: null, touchedAt: now });
+      renameInGroups(state, other.name, record.name);
+      incoming.formedGroups = state.formedGroups;
+      incoming.benchedPlayers = state.benchedPlayers || [];
+      incoming.groupsTouchedAt = now;
+    }
+  } else if (target?.attending) {
     // Opted out on the website: free their party spot everywhere.
-    const { stripFromGroups } = require('../live-state');
     if (stripFromGroups(state, new Set([String(record.name).trim().toLowerCase()]))) {
       incoming.formedGroups = state.formedGroups;
       incoming.benchedPlayers = state.benchedPlayers || [];
       incoming.groupsTouchedAt = now;
     }
   }
-  if (previousName && fold(previousName) !== fold(record.name)) {
-    renameInGroups(state, previousName, record.name);
-    if (isCurrent) incoming.removedNames = [previousName];
-    incoming.formedGroups = state.formedGroups;
-    incoming.benchedPlayers = state.benchedPlayers || [];
-    incoming.groupsTouchedAt = now;
-  }
 
   const saved = await writeMergedState(event, incoming, 'Signup page');
-  const savedMe = (saved.players || []).find(player => player.bnetId === session.bnetId);
+  const savedMe = (saved.players || []).find(p => fold(p.name) === fold(record.name) && loose(p.realm) === loose(record.realm)) || record;
 
   return {
     statusCode: 200,
@@ -563,6 +594,24 @@ function renameInGroups(state, fromName, toName) {
     (group.dps || []).forEach(rename);
     if (fold(group.leaderName) === from) group.leaderName = toName;
   }
+}
+
+// Anyone in a party can rename it (auto names are the default). Shows everywhere: site + Discord card.
+async function renameMyGroup(event, state, mine, body) {
+  const group = mine && (state.formedGroups || []).find(g => groupMembers(g).some(m => fold(m.name) === fold(mine.name)));
+  if (!group) {
+    return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'You need to be in a party to rename it.' }) };
+  }
+  const name = String(body.name || '').replace(/[\u0000-\u001f<>`*_~|@#]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (name.length < 2) {
+    return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Give it at least 2 characters.' }) };
+  }
+  const now = new Date().toISOString();
+  group.name = name;
+  group.namedBy = mine.name;
+  group.customName = true;
+  const saved = await writeMergedState(event, { formedGroups: state.formedGroups, benchedPlayers: state.benchedPlayers || [], groupsTouchedAt: now }, `${mine.name} (party name)`);
+  return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(playerResponse(saved, mine)) };
 }
 
 async function saveGroupExclusions(event, state, mine, body) {

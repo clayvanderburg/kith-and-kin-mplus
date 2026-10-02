@@ -84,7 +84,7 @@ const commands = [
         .addBooleanOption(opt =>
           opt
             .setName('avoid_dupes')
-            .setDescription('Avoid duplicate classes in the same party (default: true)')
+            .setDescription('Avoid two of the same spec in a party (default: off)')
         )
     )
     .addSubcommand(sub =>

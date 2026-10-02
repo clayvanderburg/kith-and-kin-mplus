@@ -481,8 +481,8 @@ function cardPayload(state) {
 
   return {
     content: groupCount
-      ? `🏰 **${groupCount} Mythic+ group(s) formed.** ${attending} attending. The website and this card stay in sync.`
-      : `⚡ **Mythic+ Night sign-ups are open.** ${attending} attending. This card updates when the website or Discord changes.`,
+      ? `🏰 **${groupCount} ${groupCount === 1 ? 'party' : 'parties'} formed** · ${attending} heroes answered the call. Don’t stand in bad.`
+      : `⚔️ **Sign-ups are open.** ${attending} ${attending === 1 ? 'hero has' : 'heroes have'} answered the call. Everyone else is AFK in Silvermoon.`,
     embeds: [embed],
     components,
     allowed_mentions: { parse: [] }
@@ -558,7 +558,28 @@ async function refreshDiscordCard(state, maxMs = 2500, tag = 'live-state') {
   }
 }
 
+/**
+ * Update the Discord card without making the person wait. On Netlify v2 functions,
+ * context.waitUntil lets the update finish after the reply is sent (docs: Functions API,
+ * "context.waitUntil"). Without it, fall back to a short capped wait.
+ * `stateOrLoader` is a saved state, or an async function that reads one.
+ */
+function refreshCardSoon(context, stateOrLoader, tag = 'live-state', fallbackMs = 2500) {
+  const run = async () => {
+    const state = typeof stateOrLoader === 'function' ? await stateOrLoader() : stateOrLoader;
+    if (state) return refreshDiscordCard(state, 8000, tag);
+    return null;
+  };
+  if (context && typeof context.waitUntil === 'function') {
+    context.waitUntil(run().catch(err => console.error(`[${tag}] card refresh failed:`, err.message)));
+    return Promise.resolve({ deferred: true });
+  }
+  if (typeof stateOrLoader === 'function') return Promise.resolve({ skipped: true });
+  return refreshDiscordCard(stateOrLoader, fallbackMs, tag);
+}
+
 module.exports = {
+  refreshCardSoon,
   stripFromGroups,
   refreshDiscordCard,
   postNewDiscordCard,

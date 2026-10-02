@@ -69,9 +69,15 @@ function sameChar(a, b) {
   return foldName(a?.name) === foldName(b?.name) && foldName(a?.realm) === foldName(b?.realm);
 }
 
+// Every character that belongs to this Discord member: ones claimed in Discord, plus ones on the
+// same Battle.net account (so the Discord card, website and player page agree on who you are).
 function myCharacters(state, userId) {
   if (!userId) return [];
-  return (state.players || []).filter(p => p.discordId === userId);
+  const players = state.players || [];
+  const direct = players.filter(p => p.discordId === userId);
+  const bnets = new Set(direct.map(p => p.bnetId).filter(Boolean));
+  if (!bnets.size) return direct;
+  return players.filter(p => p.discordId === userId || (p.bnetId && bnets.has(p.bnetId) && (!p.discordId || p.discordId === userId)));
 }
 
 function activeCharacter(state, userId) {
@@ -131,13 +137,31 @@ function removeFromGroups(state, player) {
   return changed;
 }
 
-// Make `target` the character this member is playing tonight.
+// Tie a character to the member's Battle.net account when we can tell it's theirs: either one of
+// their Discord characters is already linked, or a linked Battle.net entry lists it as an alt.
+function linkToBattleNet(state, userId, target) {
+  if (target.bnetId) return;
+  const owner = myCharacters(state, userId).find(p => p.bnetId && !sameChar(p, target)) ||
+    (state.players || []).find(p => p.bnetId && Array.isArray(p.accountChars) &&
+      p.accountChars.some(c => sameChar(c, target)) && (!p.discordId || p.discordId === userId));
+  if (!owner) return;
+  target.bnetId = owner.bnetId;
+  if (owner.battleTag) target.battleTag = owner.battleTag;
+  if (Array.isArray(owner.accountChars)) target.accountChars = owner.accountChars;
+}
+
+// Make `target` the character this member is playing tonight. Their other characters (Discord
+// or Battle.net linked) step out, and a party spot passes to the new one.
 function activateCharacter(state, userId, target) {
   const now = new Date().toISOString();
-  const previous = activeCharacter(state, userId);
+  target.discordId = userId;
+  linkToBattleNet(state, userId, target);
+  for (const p of myCharacters(state, userId)) if (!p.discordId) { p.discordId = userId; p.touchedAt = now; }
   let note = '';
-  if (previous && !sameChar(previous, target) && previous.attending) {
+  for (const previous of myCharacters(state, userId)) {
+    if (sameChar(previous, target) || !previous.attending) continue;
     previous.attending = false;
+    previous.attendingAt = null;
     previous.touchedAt = now;
     const slot = groupSlotOf(state, previous);
     if (slot && swapInGroups(state, previous, target)) {
@@ -145,9 +169,8 @@ function activateCharacter(state, userId, target) {
       note = `\n🔁 Took **${previous.name}**'s spot in **Group ${slot.index + 1}** (${slot.role}).`;
     }
   }
-  target.discordId = userId;
   target.attending = true;
-  target.attendingAt = new Date().toISOString();
+  target.attendingAt = now;
   target.absent = false;
   target.declinedAt = null;
   target.activeAt = now;
@@ -373,7 +396,7 @@ async function resolveCharacterChoice(raw) {
  * because people keep arriving and swapping characters through the night.
  * `reshuffle: true` rebuilds every group from scratch.
  */
-function formGroups(state, { reshuffle = false, avoidClassDupes = true } = {}) {
+function formGroups(state, { reshuffle = false, avoidClassDupes = false } = {}) {
   const attending = (state.players || []).filter(p => p.attending);
   const existing = reshuffle ? [] : (state.formedGroups || []).filter(Boolean);
   const grouped = new Set();
@@ -418,6 +441,7 @@ const WEB_URL = process.env.WEB_URL || 'https://knkmplus.netlify.app';
 
 // The lambda event for this invocation. Strong blob reads must not use a warm cache.
 let activeLambdaEvent = null;
+let activeContext = null;
 let requestStartedAt = Date.now();
 
 function touchPlayer(player) {
@@ -448,6 +472,11 @@ async function loadState() {
 
 async function saveState(data) {
   const saved = await liveState.writeMergedState(activeLambdaEvent, data, 'Discord');
+  // Best: update the card right after we've answered Discord (v2 waitUntil), so it always happens.
+  if (activeContext && typeof activeContext.waitUntil === 'function') {
+    await liveState.refreshCardSoon(activeContext, saved, 'Discord');
+    return saved;
+  }
   // Discord gives us 3s to answer. Spend only what's left (keep ~0.7s for the reply); otherwise
   // skip it and let the next save or the Refresh button update the card.
   const budget = Math.min(1200, 2300 - (Date.now() - requestStartedAt));
@@ -558,6 +587,7 @@ function leaderboardMessage(state, viewMode = 'auto') {
 
 exports.handler = async (event, context) => {
   activeLambdaEvent = event;
+  activeContext = context || null;
   requestStartedAt = Date.now();
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, body: '' };
@@ -751,7 +781,7 @@ exports.handler = async (event, context) => {
         const formOpts = options?.[0]?.options || [];
         const reshuffle = formOpts.find(o => o.name === 'reshuffle')?.value === true;
         const avoidDupes = formOpts.find(o => o.name === 'avoid_dupes')?.value;
-        const r = formGroups(state, { reshuffle, avoidClassDupes: avoidDupes !== false });
+        const r = formGroups(state, { reshuffle, avoidClassDupes: avoidDupes === true });
         if (r.error) return ephemeral(`⚠️ ${r.error}`);
         await saveState(state);
         return jsonResponse({

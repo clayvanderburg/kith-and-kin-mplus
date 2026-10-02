@@ -35,21 +35,36 @@
   ];
 
   const PARTY_NAMES = [
-    'Keystone Crushers',
-    'The Floor Inspectors',
-    'Wipe on 1% Survivors',
-    'Bloodlust on Pull',
-    'Mana Sponge Brigade',
-    'Brann’s Wild Caravan',
-    'Kinfolk Vanguard',
-    'The Route Improvisers',
-    'Crit Happens',
-    'Cooldown Hoarders',
-    'Affix Evaders',
-    'One-Shot Wonders',
-    'Timer Breakers',
-    'The Repair Bill Crew',
-    'Out of Line of Sight'
+    'Stood in the Fire Again',
+    'Leeroy’s Last Pull',
+    'Brez Pending',
+    'Depleted & Delighted',
+    'Pull Timer? Never Heard of Her',
+    'Kicks Are Optional',
+    'Pumpers, Not Kickers',
+    'Line of Sight Is a Suggestion',
+    'Report Healer',
+    'Ten Seconds Over',
+    'Big Pull Energy',
+    'Grievous Mistakes',
+    'Pug Rejects',
+    'Vault Farmers',
+    'One More Key, Then Bed',
+    'Mechanics Are Optional',
+    'Feign Death Enjoyers',
+    'Durability 0%',
+    'Chain Pull & Pray',
+    'Xal’atath’s Chew Toys',
+    'Void-Touched & Unbothered',
+    'Silvermoon Sweats',
+    'Lust on Trash Again',
+    'The Wipe Recovery Program',
+    'Tank Is Pulling? Tank Is Pulling.',
+    'Afflicted, Not Dispelled',
+    'Combat Res Is My Love Language',
+    'Thirty Pulls Later',
+    'Repair Bot Enjoyers',
+    'Hearthstone on Cooldown'
   ];
 
   // Default sample guild roster for Kith and Kin (Midnight Season 2)
@@ -842,7 +857,7 @@
         viewOnlyDeclined = false;
         applyServerState(data);
         updateSyncStatus('synced', officerKey() ? 'Discord Synced' : 'Synced (view only)');
-        if (!silent) showToast('✨ Synced roster with Discord bot & cloud!');
+        if (!silent) showToast('✨ Roster synced. Everyone’s accounted for (mostly).');
       } else {
         updateSyncStatus('synced', 'Discord Ready');
         if (syncedGroupsJson === null) rememberSynced();
@@ -1470,10 +1485,11 @@
         }
 
         // Avoid class duplicate penalty if enabled
+        // Avoid two of the same spec (e.g. two Frost Mages). Uses the spec Raider.IO last saw;
+        // if we don't know someone's spec, their class stands in for it.
         if (avoidClassDupes) {
-          const classes = members.map(m => m.className);
-          const uniqueClasses = new Set(classes);
-          const duplicates = classes.length - uniqueClasses.size;
+          const specs = members.map(m => `${m.className}|${(state.players.find(p => p.name === m.name)?.spec || m.spec || '')}`);
+          const duplicates = specs.length - new Set(specs).size;
           score -= duplicates * 15;
         }
 
@@ -1645,11 +1661,11 @@
       let groupName = shuffledNames[idx % shuffledNames.length];
       if (isShitterGroup) {
         const shitterNames = [
-          'The Shitter Squad',
-          'Shitter Alt Syndicate',
-          'Floor Inspectors Deluxe',
-          'Grey Parse All-Stars',
-          'Dungeon Floor Warmers'
+          'Ilvl Is Just a Number',
+          'Raider.IO Grey Squad',
+          'Alts Anonymous',
+          'Heirloom Hooligans',
+          'Fresh 90s, Zero Shame'
         ];
         groupName = shitterNames[idx % shitterNames.length];
       }
@@ -2061,7 +2077,7 @@
     }
 
     renderGroups();
-    showToast(`Formed ${result.groups.length} dungeon ${result.groups.length === 1 ? 'group' : 'groups'}!`);
+    showToast(`${result.groups.length} ${result.groups.length === 1 ? 'party' : 'parties'} formed. Don’t stand in bad.`);
   }
 
   // --- Render Groups UI ---
@@ -2080,15 +2096,38 @@
 
     if (state.formedGroups.length === 0) {
       actions.style.display = 'none';
-      benchContainer.style.display = 'none';
       renderOfficerNotes();
       grid.innerHTML = `
         <div class="empty-state">
-          <div class="empty-icon">🛡️⚔️💚</div>
-          <h4>No groups formed yet</h4>
-          <p>Make sure at least 5 guild members (including at least 1 Tank &amp; 1 Healer) are marked attending, then click <strong>Form Groups</strong>.</p>
+          <div class="empty-icon">🍺🛡️💚⚔️</div>
+          <h4>No parties yet</h4>
+          <p>Everyone’s still drinking at the Lion’s Pride Inn. Get five bodies in (a tank and a healer, ideally sober), then hit <strong>Form Groups</strong>.</p>
         </div>
       `;
+      // Before groups exist, everyone signed up hangs out at the Inn so it's easy to see who's coming.
+      const atInn = state.players.filter(p => p.attending);
+      const roleOrder = p => ((p.roles || []).includes('Tank') ? 0 : (p.roles || []).includes('Healer') ? 1 : 2);
+      atInn.sort((a, b) => roleOrder(a) - roleOrder(b) || (b.io || 0) - (a.io || 0));
+      const count = r => atInn.filter(p => (p.roles || []).includes(r)).length;
+      const waitingBox = document.getElementById('waitingList');
+      if (waitingBox) waitingBox.innerHTML = '';
+      benchContainer.dataset.dest = 'bench';
+      benchContainer.style.display = 'block';
+      benchCountBadge.textContent = `${atInn.length} chillin’`;
+      benchAdvice.textContent = atInn.length
+        ? `🛡️ ${count('Tank')} · 💚 ${count('Healer')} · ⚔️ ${count('DPS')} signed up${atInn.length >= 5 ? '' : ` · need ${5 - atInn.length} more for a party`}`
+        : 'Nobody’s at the Inn yet. Sign-ups from Discord and the Player View show up here.';
+      benchList.innerHTML = atInn.map(p => {
+        const color = (WOW_CLASSES[p.className] || { color: '#fff' }).color;
+        const icons = (p.roles || []).map(r => (r === 'Tank' ? '🛡️' : r === 'Healer' ? '💚' : '⚔️')).join('');
+        return `<div class="bench-pill" data-player="${escapeHtml(p.name)}">
+          <span title="${escapeHtml((p.roles || []).join(' / '))}">${icons}</span>
+          <strong style="color:${color};" title="${escapeHtml(p.className || '')}">${escapeHtml(p.name)}</strong>
+          <span class="slot-stat-badge io" style="color:${getIoColor(p.io)};">${(p.io || 0).toLocaleString()}</span>
+          ${typedKeyFor(p) ? `<span class="slot-key-mini">🔑 ${escapeHtml(shortKey(typedKeyFor(p)))}</span>` : ''}
+          <button type="button" class="slot-remove-btn" data-remove="${escapeHtml(p.name)}" title="Remove ${escapeHtml(p.name)} from tonight">✕</button>
+        </div>`;
+      }).join('');
       return;
     }
 
@@ -2220,6 +2259,7 @@
           <div class="party-badge-title">
             <span class="party-num">Party ${index + 1} ·</span>
             <span class="party-name">${escapeHtml(grp.name)}</span>
+            <button type="button" class="party-rename-btn" data-rename="${index}" title="Rename this party">✏️</button>
           </div>
           <div class="party-card-controls">
             <button class="btn-icon lock-party-btn" data-id="${grp.id}" title="${grp.isLocked ? 'Unlock Group' : 'Lock Group (Prevent Rerolls)'}">
@@ -2297,6 +2337,19 @@
     });
 
     // Attach Party Card Button Events
+    document.querySelectorAll('.party-rename-btn[data-rename]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const grp = state.formedGroups[Number(btn.dataset.rename)];
+        if (!grp) return;
+        const name = (window.prompt('Party name (2–40 characters):', grp.name || '') || '').replace(/[<>`*_~|@#]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (name.length < 2 || name === grp.name) return;
+        grp.name = name;
+        grp.customName = true;
+        saveGroups();
+        renderGroups();
+      });
+    });
+
     document.querySelectorAll('.lock-party-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
@@ -2378,12 +2431,12 @@
       benchContainer.appendChild(waitingBox);
     }
     waitingBox.innerHTML = waiting.length
-      ? `<div class="waiting-title">🆕 Signed up, not in a group yet (${waiting.length}) — drag into a party</div>` +
+      ? `<div class="waiting-title">🆕 Just walked in — signed up, not in a party yet (${waiting.length}). Drag them into a party.</div>` +
         waiting.map(p => `<span class="waiting-chip" data-player="${escapeHtml(p.name)}"><span class="drag-handle" data-drag="${escapeHtml(p.name)}" aria-hidden="true">⠿</span><strong style="color:${(WOW_CLASSES[p.className] || { color: '#fff' }).color};">${escapeHtml(p.name)}</strong> <small>${escapeHtml((p.roles || []).join('/'))}</small><button type="button" class="slot-remove-btn" data-remove="${escapeHtml(p.name)}" title="Remove ${escapeHtml(p.name)} from tonight">✕</button></span>`).join('')
       : '';
     if ((state.benchedPlayers && state.benchedPlayers.length > 0) || waiting.length) {
       benchContainer.style.display = 'block';
-      benchCountBadge.textContent = `${state.benchedPlayers.length} Guildies`;
+      benchCountBadge.textContent = `${state.benchedPlayers.length + waiting.length} chillin’`;
       benchList.innerHTML = '';
 
       let benchedTanks = 0, benchedHealers = 0, benchedDps = 0;
@@ -2414,12 +2467,12 @@
       let adviceText = `Need ${neededForNextGroup > 0 ? neededForNextGroup + ' more member(s)' : 'role redistribution'} to form another party.`;
       if (benchedTanks === 0) adviceText += ' (Missing 1 Tank)';
       if (benchedHealers === 0) adviceText += ' (Missing 1 Healer)';
-      benchAdvice.textContent = (state.benchedPlayers || []).length ? adviceText : 'Drop a player here to bench them.';
+      benchAdvice.textContent = (state.benchedPlayers || []).length ? adviceText : 'Drop someone here to send them back to the Inn.';
     } else {
       benchContainer.style.display = 'block';
-      benchCountBadge.textContent = '0 Guildies';
+      benchCountBadge.textContent = '0 chillin’';
       benchList.innerHTML = '';
-      benchAdvice.textContent = 'Drop a player here to bench them.';
+      benchAdvice.textContent = 'Drop someone here to send them back to the Inn.';
     }
 
     document.querySelectorAll('.move-player').forEach(sel => {

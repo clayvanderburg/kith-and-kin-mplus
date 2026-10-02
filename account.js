@@ -27,6 +27,14 @@
   async function render() {
     const nav = document.querySelector('.site-nav');
     if (!nav) return;
+    // Guild merch link on every page
+    if (!nav.querySelector('a[href="merch.html"]')) {
+      const merch = document.createElement('a');
+      merch.href = 'merch.html';
+      merch.textContent = 'Merch 🛡️';
+      if (/merch\.html$/.test(location.pathname)) merch.className = 'is-current';
+      nav.appendChild(merch);
+    }
     let btn = document.getElementById('navAccountBtn');
     if (!btn) {
       btn = document.createElement('button');

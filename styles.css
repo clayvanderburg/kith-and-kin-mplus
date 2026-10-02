@@ -4423,3 +4423,5 @@ body.kk-viewer #generateGroupsBtn::after { content: ' 🔒'; }
   .nav-account-btn { margin-left: 0; }
   .nav-account-btn .nav-account-name { max-width: 6rem; }
 }
+.party-rename-btn { margin-left: 0.4rem; background: transparent; border: 1px solid rgba(245, 208, 97, 0.4); color: var(--text-gold, #f5d061); border-radius: 6px; font-size: 0.72rem; padding: 0.1rem 0.45rem; cursor: pointer; }
+.party-rename-btn:hover { background: rgba(245, 208, 97, 0.12); }
