@@ -4364,3 +4364,4 @@ body.is-dragging-player, body.is-dragging-player * { cursor: grabbing !important
 .slot-remove-btn:hover { color: #fff; background: rgba(220, 38, 38, 0.5); border-color: rgba(220, 38, 38, 0.8); }
 .drop-invalid { opacity: 0.3; filter: grayscale(1); }
 .slot-top-right { display: flex; align-items: center; gap: 0.4rem; }
+.drop-invalid { opacity: 0.25; filter: grayscale(1); outline: 1px dashed rgba(220, 38, 38, 0.6); outline-offset: -2px; cursor: not-allowed; }

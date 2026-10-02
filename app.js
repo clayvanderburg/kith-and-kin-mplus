@@ -2397,9 +2397,13 @@
         document.body.appendChild(drag.ghost);
         drag.source?.classList.add('is-drag-source');
         // Grey out spots this class can't fill (e.g. a Hunter can only go in DPS spots).
+        let blocked = 0;
         document.querySelectorAll('[data-dest]').forEach(el => {
-          if (el.dataset.dest && moveProblem(drag.name, el.dataset.dest)) el.classList.add('drop-invalid');
+          if (el.dataset.dest && moveProblem(drag.name, el.dataset.dest)) { el.classList.add('drop-invalid'); blocked++; }
         });
+        // Say what this character can play, so it's clear why some spots are greyed out.
+        const live = livePlayer(drag.name);
+        if (blocked && live?.className) drag.ghost.textContent = `${drag.name} · ${classRoles(drag.name).join(' / ')} only`;
         document.body.classList.add('is-dragging-player');
         drag.scrollFrame = requestAnimationFrame(autoScroll);
       }
