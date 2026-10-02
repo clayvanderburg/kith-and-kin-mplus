@@ -218,21 +218,91 @@ async function signupCommandMention(interaction) {
   return signupCommandId ? `</mplus signup:${signupCommandId}>` : '`/mplus signup`';
 }
 
-async function addCharacterMessage(interaction, intro = '') {
-  const mention = await signupCommandMention(interaction);
+// Characters this member most likely owns, so adding a character is usually one click:
+// their linked alts (same Battle.net account / person), then guild characters whose names
+// look like their Discord name. Discord can't do live type-ahead from a button, so this
+// short list (which you can type to filter) plus "Search by name" is the fastest path.
+function likelyCharacters(state, interaction, userId) {
+  const mine = myCharacters(state, userId);
+  const taken = c => {
+    const p = findCharacter(state, c.name, c.realm);
+    return p && p.discordId && p.discordId !== userId;
+  };
+  const isMine = c => mine.some(m => sameChar(m, c));
+  const out = [];
+  const seen = new Set();
+  const add = (c, why) => {
+    if (!c?.name) return;
+    const key = `${foldName(c.name)}|${foldName(c.realm || '')}`;
+    if (seen.has(key) || isMine(c) || taken(c)) return;
+    seen.add(key);
+    out.push({ name: c.name, realm: c.realm || 'Perenolde', className: c.className || '', why });
+  };
+  // 1) Alts tied to the same person (Battle.net login or earlier links)
+  const people = new Set(mine.map(m => m.personId).filter(Boolean));
+  const bnets = new Set(mine.map(m => m.bnetId).filter(Boolean));
+  for (const p of state.players || []) {
+    if ((p.personId && people.has(p.personId)) || (p.bnetId && bnets.has(p.bnetId))) add(p, 'your alt');
+  }
+  for (const m of mine) {
+    for (const c of m.accountChars || []) {
+      const known = findCharacter(state, c.name, c.realm) || (rosterSearch && rosterSearch.findRosterEntry(c.name)) || c;
+      add({ ...c, className: known.className }, 'your Battle.net account');
+    }
+  }
+  // 2) Guild characters that look like their Discord name or their other characters' names
+  const user = interaction.member?.user || interaction.user || {};
+  const words = [interaction.member?.nick, user.global_name, user.username, ...mine.map(m => m.name)]
+    .filter(Boolean)
+    .flatMap(n => foldName(n).split(/[^a-z]+/))
+    .filter(w => w.length >= 3);
+  if (rosterSearch) {
+    for (const w of [...new Set(words)]) {
+      for (const e of rosterSearch.searchGuildRoster(w.slice(0, 5), 25).matches) add(e, 'name match');
+      if (out.length >= 24) break;
+    }
+  }
+  return out.slice(0, 24);
+}
+
+async function addCharacterMessage(interaction, intro = '', state = null) {
+  const userId = (interaction.member?.user || interaction.user)?.id;
+  const picks = state ? likelyCharacters(state, interaction, userId) : [];
+  const rows = [];
+  if (picks.length) {
+    rows.push({
+      type: 1,
+      components: [{
+        type: 3,
+        custom_id: 'select_character',
+        placeholder: 'Pick your character (type to filter)',
+        min_values: 1,
+        max_values: 1,
+        options: [
+          ...picks.map(c => ({
+            label: `${c.name}${c.className ? ` — ${c.className}` : ''}`.slice(0, 100),
+            value: `${c.name}|${c.realm}`.slice(0, 100),
+            description: `${c.realm}${c.why ? ` · ${c.why}` : ''}`.slice(0, 100)
+          })),
+          { label: 'Not listed? Search the guild by name…', value: '__search__', emoji: { name: '🔍' } }
+        ]
+      }]
+    });
+  }
+  rows.push({
+    type: 1,
+    components: [
+      { type: 2, style: picks.length ? 2 : 1, custom_id: 'btn_search_modal', label: 'Search by name 🔍' },
+      { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
+    ]
+  });
   return {
     content: `${intro}### ➕ Add a character\n` +
-      `**1.** Click 👉 ${mention}\n` +
-      `**2.** Start typing the name in the **character** box — guild characters pop up as you type.\n` +
-      `**3.** Pick yours and press Enter.\n` +
-      `-# Discord only does live type-ahead inside slash commands, so the link above opens one for you. Not in the guild? Type \`Name-Realm\` and pick the 🔎 option. On a phone, **Search by name** below works too.`,
-    components: [{
-      type: 1,
-      components: [
-        { type: 2, style: 2, custom_id: 'btn_search_modal', label: 'Search by name 🔍' },
-        { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
-      ]
-    }],
+      (picks.length
+        ? 'Pick it from the list below (you can type in the list to filter). Not there? **Search by name** — type a few letters and pick from the matches.'
+        : '**Search by name** — type a few letters of your character and pick it from the matches.') +
+      '\n-# Outside the guild? Search `Name-Realm` (e.g. `Noxxicc-Korgath`).',
+    components: rows,
     flags: 64
   };
 }
@@ -331,7 +401,7 @@ function formGroups(state, { reshuffle = false, avoidClassDupes = true } = {}) {
 function cardMessage(state, content) {
   return {
     content,
-    embeds: embeds ? [embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || []).toJSON()] : [],
+    embeds: embeds ? [embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || [], state.eventSettings).toJSON()] : [],
     components: embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : []
   };
 }
@@ -608,7 +678,7 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'roster') {
-        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
+        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || [], state.eventSettings).toJSON() : { title: 'Roster' };
         return jsonResponse({
           type: 4,
           data: { embeds: [embed] }
@@ -616,7 +686,7 @@ exports.handler = async (event, context) => {
       }
 
       if (subcommand === 'post-signup') {
-        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || []).toJSON() : { title: 'Roster' };
+        const embed = embeds ? embeds.createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || [], state.eventSettings).toJSON() : { title: 'Roster' };
         const buttons = embeds ? embeds.createSignupButtons().map(r => r.toJSON()) : [];
         return jsonResponse({
           type: 4,
@@ -801,7 +871,7 @@ exports.handler = async (event, context) => {
     // Sign Up / Edit: straight to your entry if you have one, otherwise pick a character.
     if (customId === 'btn_open_signup') {
       if (player) return jsonResponse({ type: 4, data: signupPanel(state, userId, player) });
-      return jsonResponse({ type: 4, data: await addCharacterMessage(interaction) });
+      return jsonResponse({ type: 4, data: await addCharacterMessage(interaction, '', state) });
     }
 
     // Fallback search (mobile): a text box, then a list of guild matches. Never creates unknown characters.
@@ -810,6 +880,7 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'select_character') {
+      if (interaction.data.values?.[0] === '__search__') return jsonResponse({ type: 9, data: rosterSearch.characterSearchModal('') });
       const picked = await resolveCharacterChoice(interaction.data.values?.[0]);
       if (picked.error) return ephemeral(`⚠️ ${picked.error}`);
       const claimed = claimCharacter(state, userId, picked.info);
@@ -821,7 +892,7 @@ exports.handler = async (event, context) => {
     // Switch which of your characters you're on tonight, or add another.
     if (customId === 'select_my_char') {
       const value = interaction.data.values?.[0] || '';
-      if (value === '__add__') return jsonResponse({ type: 7, data: await addCharacterMessage(interaction) });
+      if (value === '__add__') return jsonResponse({ type: 7, data: await addCharacterMessage(interaction, '', state) });
       const [name, realm] = value.split('|');
       const target = findCharacter(state, name, realm);
       if (!target || target.discordId !== userId) return ephemeral('⚠️ That character isn’t one of yours anymore. Click **Sign Up / Edit** again.');
@@ -831,7 +902,7 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'select_roles' || customId === 'select_key_range' || customId === 'select_vibes') {
-      if (!player) return jsonResponse({ type: 7, data: await addCharacterMessage(interaction) });
+      if (!player) return jsonResponse({ type: 7, data: await addCharacterMessage(interaction, '', state) });
       const values = interaction.data.values || [];
       if (customId === 'select_roles') {
         player.roles = values.length ? values : ['DPS'];
@@ -898,7 +969,7 @@ exports.handler = async (event, context) => {
     }
 
     if (customId === 'btn_confirm_rsvp') {
-      if (!player) return jsonResponse({ type: 7, data: await addCharacterMessage(interaction) });
+      if (!player) return jsonResponse({ type: 7, data: await addCharacterMessage(interaction, '', state) });
       if (!player.attending) {
         player.attending = true;
         player.attendingAt = new Date().toISOString();
@@ -1018,7 +1089,7 @@ exports.handler = async (event, context) => {
       const live = await liveState.readLiveState(activeLambdaEvent);
       const view = liveState.reconcileState(live || { players: [], formedGroups: [], benchedPlayers: [] });
       // The response below (type 7) already redraws the card that was clicked.
-      const embed = embeds ? embeds.createRosterEmbed(view.players || [], WEB_URL, undefined, view.formedGroups || [], view.benchedPlayers || []).toJSON() : { title: 'Roster' };
+      const embed = embeds ? embeds.createRosterEmbed(view.players || [], WEB_URL, undefined, view.formedGroups || [], view.benchedPlayers || [], view.eventSettings).toJSON() : { title: 'Roster' };
       const buttons = embeds ? embeds.createSignupButtons(WEB_URL).map(r => r.toJSON()) : [];
       return jsonResponse({
         type: 7, // UPDATE_MESSAGE

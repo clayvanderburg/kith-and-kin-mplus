@@ -8,6 +8,9 @@ const path = require('path');
 const crypto = require('crypto');
 // Netlify Blobs. The v2 entry files (*-v2.mjs) import it themselves and hand it over through a
 // global, because the bundler can't ship a package that's only reached via require().
+let normalizeSettings;
+try { ({ normalizeSettings } = require('../../../bot/schedule')); } catch (err) { ({ normalizeSettings } = require(require('path').join(process.cwd(), 'bot', 'schedule'))); }
+
 function blobsLib() {
   return globalThis.__kkNetlifyBlobs || require('@netlify/blobs');
 }
@@ -99,27 +102,14 @@ function markGroupedPlayersAttending(players, groups) {
   });
 }
 
+// There is one weekly night now. Old "event lineup" copies of the roster (state.events) are
+// ignored and dropped on the next save; the top-level roster is the only one.
 function reconcileState(state) {
   if (!state || typeof state !== 'object') return state;
-  const event = state.currentEventId && state.events ? state.events[state.currentEventId] : null;
-  if (!event) return state;
-
-  const topScore = rosterScore(state.players, state.formedGroups, state.groupsTouchedAt);
-  const eventScore = rosterScore(event.players, event.formedGroups, event.groupsTouchedAt || event.rosterUpdatedAt);
-  const useEvent = eventScore > topScore || (eventScore === topScore && hasGroups(event.formedGroups) && !hasGroups(state.formedGroups));
-
-  if (useEvent) {
-    state.players = markGroupedPlayersAttending(applyTombstones(event.players || state.players || [], state.deleted), event.formedGroups || []);
-    state.formedGroups = event.formedGroups || [];
-    state.benchedPlayers = event.benchedPlayers || [];
-    if (event.groupsTouchedAt) state.groupsTouchedAt = event.groupsTouchedAt;
-  } else {
-    state.players = markGroupedPlayersAttending(state.players || [], state.formedGroups || []);
-    event.players = state.players;
-    event.formedGroups = state.formedGroups || [];
-    event.benchedPlayers = state.benchedPlayers || [];
-    if (state.groupsTouchedAt) event.groupsTouchedAt = state.groupsTouchedAt;
-  }
+  state.players = markGroupedPlayersAttending(state.players || [], state.formedGroups || []);
+  delete state.events;
+  delete state.currentEventId;
+  delete state.deletedEvents;
   return state;
 }
 
@@ -153,12 +143,7 @@ function mergeStates(latest, incoming) {
   const benchedPlayers = useNextGroups
     ? (next.benchedPlayers || [])
     : (Array.isArray(base.benchedPlayers) && base.benchedPlayers.length ? base.benchedPlayers : (next.benchedPlayers || base.benchedPlayers || []));
-  // Deleted events stay deleted even if an old copy of the page sends them again.
-  const deletedEvents = { ...(base.deletedEvents || {}), ...(next.deletedEvents || {}) };
-  const events = mergeEventMaps(base.events, next.events);
-  for (const id of Object.keys(deletedEvents)) delete events[id];
-  let currentEventId = next.currentEventId || base.currentEventId || null;
-  if (currentEventId && deletedEvents[currentEventId]) currentEventId = Object.keys(events)[0] || null;
+  const eventSettings = next.eventSettings ? normalizeSettings(next.eventSettings) : (base.eventSettings || null);
 
   const merged = {
     ...base,
@@ -167,15 +152,16 @@ function mergeStates(latest, incoming) {
     formedGroups,
     benchedPlayers,
     excludedDungeons: Array.isArray(next.excludedDungeons) ? next.excludedDungeons : (base.excludedDungeons || []),
-    events,
-    deletedEvents,
-    currentEventId,
+    eventSettings,
     groupsTouchedAt: useNextGroups ? next.groupsTouchedAt : (base.groupsTouchedAt || null),
     discordCard: next.discordCard || base.discordCard || null,
     deleted: mergeTombstones(base.deleted, next.deleted),
     lastChange: next.lastChange || base.lastChange || null,
     lastUpdated: new Date().toISOString()
   };
+  delete merged.events;
+  delete merged.currentEventId;
+  delete merged.deletedEvents;
   merged.players = applyTombstones(merged.players, merged.deleted);
   // A deleted character is gone everywhere: parties, bench and every event's lineup.
   const deletedNames = new Set(Object.keys(merged.deleted || {}).filter(k => !merged.players.some(p => playerKey(p) === k)));
@@ -186,11 +172,6 @@ function mergeStates(latest, incoming) {
       if (!Array.isArray(p.runLog) || !p.runLog.some(r => (r?.members || []).some(n => deletedNames.has(String(n).trim().toLowerCase())))) return p;
       return { ...p, runLog: p.runLog.map(r => (Array.isArray(r?.members) ? { ...r, members: r.members.filter(n => !deletedNames.has(String(n).trim().toLowerCase())) } : r)) };
     });
-    for (const evt of Object.values(merged.events || {})) {
-      if (!evt) continue;
-      if (Array.isArray(evt.players)) evt.players = evt.players.filter(p => !deletedNames.has(playerKey(p)));
-      stripFromGroups(evt, deletedNames);
-    }
   }
 
   // One rule for every path (Control Center, Discord, website): someone marked out for tonight
@@ -444,7 +425,7 @@ async function readLiveState(event, { overlays = true } = {}) {
 
 async function writeMergedState(event, incoming, source = null) {
   const latest = await readLiveState(event);
-  if (!latest && incoming && !incoming.players && !incoming.formedGroups && !incoming.events) {
+  if (!latest && incoming && !incoming.players && !incoming.formedGroups) {
     return null;
   }
   if (source && incoming && typeof incoming === 'object') {
@@ -453,7 +434,7 @@ async function writeMergedState(event, incoming, source = null) {
   const merged = mergeStates(latest, incoming);
   const rosterChange = Boolean(
     incoming && (incoming.players || incoming.formedGroups || incoming.events || incoming.groupsTouchedAt ||
-      incoming.deleted || incoming.deletedEvents || incoming.excludedDungeons || incoming.currentEventId)
+      incoming.deleted || incoming.eventSettings || incoming.excludedDungeons)
   );
   if (!rosterChange && latest?.lastUpdated) merged.lastUpdated = latest.lastUpdated;
   // Overlays and computed ids live elsewhere; don't copy them into the main document.
@@ -490,7 +471,8 @@ function cardPayload(state) {
     webUrl,
     undefined,
     state.formedGroups || [],
-    state.benchedPlayers || []
+    state.benchedPlayers || [],
+    state.eventSettings
   ).toJSON();
   const components = embeds.createSignupButtons(webUrl).map(row => row.toJSON());
   const attending = (state.players || []).filter(player => player.attending === true).length;

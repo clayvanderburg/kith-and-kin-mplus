@@ -48,19 +48,41 @@
       </div>
     </header>
 
-    <!-- Event Selector & Management Bar -->
+    <!-- Weekly night: when it is and who hosts. One night every week; sign-ups reset automatically after it. -->
     <div class="event-bar-wrapper">
-      <div class="event-bar card">
-        <div class="event-bar-left">
-          <label for="eventSelect" class="event-label">📅 Event Lineup:</label>
-          <select id="eventSelect" class="form-select event-select">
-            <!-- Dynamically populated -->
-          </select>
+      <div class="event-bar card night-bar">
+        <div class="event-bar-left night-summary">
+          <span class="event-label">📅 Next night</span>
+          <strong id="nightNext">…</strong>
+          <span id="nightMeta" class="night-meta"></span>
         </div>
         <div class="event-bar-actions">
-          <button type="button" id="newEventBtn" class="btn btn-sm btn-primary" title="Create a new Mythic+ Night event lineup">➕ New Event</button>
-          <button type="button" id="deleteEventBtn" class="btn btn-sm btn-danger" title="Delete current event lineup">🗑️ Delete Event</button>
+          <button type="button" id="editNightBtn" class="btn btn-sm btn-secondary">✏️ Edit weekly night</button>
         </div>
+        <form id="nightForm" class="night-form" hidden>
+          <label>Day
+            <select id="nightDay" class="form-select">
+              <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+              <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option>
+            </select>
+          </label>
+          <label>Start time <input type="time" id="nightTime" class="form-input" step="900"></label>
+          <label>Time zone
+            <select id="nightZone" class="form-select">
+              <option value="America/New_York">Eastern</option><option value="America/Chicago">Central</option>
+              <option value="America/Denver">Mountain</option><option value="America/Phoenix">Arizona</option>
+              <option value="America/Los_Angeles">Pacific</option><option value="America/Anchorage">Alaska</option>
+              <option value="Pacific/Honolulu">Hawaii</option>
+            </select>
+          </label>
+          <label>Host <input type="text" id="nightHost" class="form-input" maxlength="40" placeholder="Optional, e.g. your main's name"></label>
+          <label>Name <input type="text" id="nightTitle" class="form-input" maxlength="60" placeholder="Friday Mythic+ Night"></label>
+          <p class="night-help">Repeats every week. Sign-ups and groups clear automatically about 9½ hours after the start time. Shown on the Discord card and the player page.</p>
+          <div class="night-actions">
+            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            <button type="button" id="nightCancel" class="btn btn-sm btn-ghost">Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -697,6 +719,7 @@
   <script src="player-stats.js?v=chronicler-1"></script>
   <script src="run-matcher.js?v=chronicler-1"></script>
   <script src="chronicler.js?v=chronicler-1"></script>
-  <script src="app.js?v=sync-7"></script>
+  <script src="bot/schedule.js?v=night-1"></script>
+  <script src="app.js?v=night-1"></script>
 </body>
 </html>

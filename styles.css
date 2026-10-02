@@ -4376,3 +4376,12 @@ body.is-dragging-player, body.is-dragging-player * { cursor: grabbing !important
 .kk-choice .btn { flex-direction: column; align-items: flex-start; text-align: left; width: 100%; }
 .kk-choice .btn small { font-weight: 400; opacity: 0.75; font-size: 0.75rem; }
 .kk-choice .btn-ghost { align-items: center; }
+
+/* Weekly night bar */
+.night-bar { flex-wrap: wrap; }
+.night-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+.night-meta { color: var(--text-muted, #94a3b8); font-size: 0.85rem; }
+.night-form { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; margin-top: 0.75rem; }
+.night-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; color: var(--text-gold, #f5d061); font-weight: 600; }
+.night-help { grid-column: 1 / -1; margin: 0; font-size: 0.78rem; color: var(--text-muted, #94a3b8); }
+.night-actions { grid-column: 1 / -1; display: flex; gap: 0.5rem; }

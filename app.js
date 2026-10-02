@@ -102,7 +102,8 @@
     roleFilter: 'all',
     attendFilter: 'all',
     events: {},
-    currentEventId: 'event-default'
+    currentEventId: 'event-default',
+    eventSettings: null
   };
 
   // --- Sound Synthesizer (Web Audio API) ---
@@ -295,6 +296,49 @@
       state.currentEventId = defaultId;
     }
     renderEventDropdown();
+  }
+
+  // ---- Weekly night (replaces the old "event lineup") ----
+  function renderNightBar() {
+    const S = window.KKSchedule;
+    const next = document.getElementById('nightNext');
+    if (!S || !next) return;
+    const s = S.normalizeSettings(state.eventSettings);
+    const when = new Date(S.nextKickoff(s));
+    const opts = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: s.timeZone, timeZoneName: 'short' };
+    next.textContent = when.toLocaleString('en-US', opts);
+    document.getElementById('nightMeta').textContent = `${s.title} · every ${S.describe(s)}${s.host ? ` · Host: ${s.host}` : ''}`;
+  }
+
+  function setupNightBar() {
+    const form = document.getElementById('nightForm');
+    if (!form || !window.KKSchedule) return;
+    const fill = () => {
+      const s = window.KKSchedule.normalizeSettings(state.eventSettings);
+      document.getElementById('nightDay').value = String(s.weekday);
+      document.getElementById('nightTime').value = s.time;
+      document.getElementById('nightZone').value = s.timeZone;
+      document.getElementById('nightHost').value = s.host;
+      document.getElementById('nightTitle').value = s.title;
+    };
+    document.getElementById('editNightBtn').addEventListener('click', () => { fill(); form.hidden = !form.hidden; });
+    document.getElementById('nightCancel').addEventListener('click', () => { form.hidden = true; });
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      state.eventSettings = window.KKSchedule.normalizeSettings({
+        weekday: Number(document.getElementById('nightDay').value),
+        time: document.getElementById('nightTime').value,
+        timeZone: document.getElementById('nightZone').value,
+        host: document.getElementById('nightHost').value,
+        title: document.getElementById('nightTitle').value
+      });
+      form.hidden = true;
+      renderNightBar();
+      pushRemoteState();
+      showToast('Weekly night saved. The Discord card updates too.');
+    });
+    renderNightBar();
+    setInterval(renderNightBar, 60000);
   }
 
   function renderEventDropdown() {
@@ -545,7 +589,7 @@
 
   function metaJson() {
     const events = Object.values(state.events || {}).filter(Boolean).map(e => ({ id: e.id, name: e.name, date: e.date }));
-    return JSON.stringify({ x: state.excludedDungeons || [], c: state.currentEventId || null, e: events });
+    return JSON.stringify({ x: state.excludedDungeons || [], s: state.eventSettings || null });
   }
 
   function rememberSynced() {
@@ -572,7 +616,7 @@
     if (syncedMetaJson !== null && metaJson() !== syncedMetaJson) {
       const events = {};
       Object.values(state.events || {}).filter(Boolean).forEach(e => { events[e.id] = { id: e.id, name: e.name, date: e.date }; });
-      ops.push({ op: 'meta', excludedDungeons: state.excludedDungeons || [], currentEventId: state.currentEventId || null, events, deleteEvents: [...pendingEventDeletes] });
+      ops.push({ op: 'meta', excludedDungeons: state.excludedDungeons || [], ...(state.eventSettings ? { eventSettings: state.eventSettings } : {}) });
     }
     return ops;
   }
@@ -618,6 +662,8 @@
     state.formedGroups = Array.isArray(data.formedGroups) ? data.formedGroups : [];
     state.benchedPlayers = Array.isArray(data.benchedPlayers) ? data.benchedPlayers : [];
     if (Array.isArray(data.excludedDungeons)) state.excludedDungeons = data.excludedDungeons;
+    state.eventSettings = data.eventSettings || null;
+    renderNightBar();
     state.groupsTouchedAt = data.groupsTouchedAt || null;
     state.nights = data.nights || {};
 
@@ -3165,6 +3211,7 @@
 
   function init() {
     setupGroupDragAndDrop();
+    setupNightBar();
     loadState();
     renderRoster();
     renderGroups();

@@ -106,7 +106,7 @@ function characterSearchModal(prefill = '') {
     style: 1,
     min_length: 1,
     max_length: 32,
-    placeholder: 'MadKing, Shock, or a guest name',
+    placeholder: 'First few letters, or Name-Realm',
     required: true
   };
   const value = String(prefill || '').trim().slice(0, 32);

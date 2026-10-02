@@ -10,46 +10,12 @@ const rio = require('./rio');
 let guildRoster = [];
 try { guildRoster = require('../../../bot/guild-roster.json'); } catch (err) { guildRoster = []; }
 
-const EVENT_TIME_ZONE = process.env.EVENT_TIME_ZONE || 'America/New_York';
-const EVENT_HOUR = Number(process.env.EVENT_HOUR || 20);
+let schedule;
+try { schedule = require('../../../bot/schedule'); } catch (err) { schedule = require(require('path').join(process.cwd(), 'bot', 'schedule')); }
 
-function zonedParts(date) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: EVENT_TIME_ZONE, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short'
-  }).formatToParts(date).reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
-  return {
-    year: +parts.year, month: +parts.month, day: +parts.day, hour: +parts.hour, minute: +parts.minute, second: +parts.second,
-    weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday)
-  };
-}
-
-function zonedToUtc(year, month, day, hour) {
-  const guess = Date.UTC(year, month - 1, day, hour);
-  const p = zonedParts(new Date(guess));
-  return guess - (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - guess);
-}
-
-/**
- * The Friday night that `now` belongs to: from 2 hours before kickoff until 9 hours after.
- * Returns { start, end, kickoff, dateKey } or null when it's not M+ night.
- * With `latest: true`, returns the most recent Friday night even if it's over (for manual pulls).
- */
-function nightWindow(now = new Date(), { latest = false } = {}) {
-  const today = zonedParts(now);
-  const daysSinceFriday = (today.weekday - 5 + 7) % 7;
-  for (const back of [daysSinceFriday, daysSinceFriday + 7]) {
-    const kickoff = zonedToUtc(today.year, today.month, today.day - back, EVENT_HOUR);
-    const start = kickoff - 2 * 3600e3;
-    const end = kickoff + 9 * 3600e3;
-    const t = now.getTime();
-    if ((t >= start && t <= end) || (latest && t > end)) {
-      const k = zonedParts(new Date(kickoff));
-      const dateKey = `${k.year}-${String(k.month).padStart(2, '0')}-${String(k.day).padStart(2, '0')}`;
-      return { start, end, kickoff, dateKey };
-    }
-  }
-  return null;
+/** The night `now` belongs to, using the officers' Weekly night settings (state.eventSettings). */
+function nightWindow(now = new Date(), { latest = false } = {}, settings = null) {
+  return schedule.nightWindow(settings, now, { latest });
 }
 
 function allCharacters(state) {
@@ -122,12 +88,11 @@ function keyText(run) {
  * Pull tonight's finished keys for everyone who is attending or grouped, plus their alts.
  */
 async function syncNight(event, { now = new Date(), force = false, budgetMs = 20000 } = {}) {
-  const window = nightWindow(now, { latest: force });
-  if (!window) return { skipped: 'not M+ night' };
   const deadline = Date.now() + budgetMs;
-
   const state = await live.readLiveState(event);
   if (!state) return { skipped: 'no roster' };
+  const window = nightWindow(now, { latest: force }, state.eventSettings);
+  if (!window) return { skipped: 'not M+ night' };
   const players = state.players || [];
   const byChar = new Map(players.map(p => [p.charKey, p]));
 
@@ -233,11 +198,11 @@ async function syncNight(event, { now = new Date(), force = false, budgetMs = 20
  */
 async function weeklyReset(event, { now = new Date(), graceMs = 30 * 60e3 } = {}) {
   if (String(process.env.AUTO_WEEKLY_RESET || '').toLowerCase() === 'off') return { skipped: 'disabled' };
-  if (nightWindow(now)) return { skipped: 'night in progress' };
-  const last = nightWindow(now, { latest: true });
-  if (!last || now.getTime() < last.end + graceMs) return { skipped: 'too early' };
   const state = await live.readLiveState(event, { overlays: false });
   if (!state) return { skipped: 'no roster' };
+  if (nightWindow(now, {}, state.eventSettings)) return { skipped: 'night in progress' };
+  const last = nightWindow(now, { latest: true }, state.eventSettings);
+  if (!last || now.getTime() < last.end + graceMs) return { skipped: 'too early' };
   if (state.weeklyResetFor === last.dateKey) return { skipped: 'already reset', night: last.dateKey };
 
   const before = t => (Date.parse(t || '') || 0) <= last.end;

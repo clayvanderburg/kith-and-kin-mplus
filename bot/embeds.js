@@ -70,44 +70,11 @@ const ROLE_ICONS = {
   'DPS': '⚔️'
 };
 
-const EVENT_TIME_ZONE = process.env.EVENT_TIME_ZONE || 'America/New_York';
-const EVENT_HOUR = Number(process.env.EVENT_HOUR || 20); // 8 PM in EVENT_TIME_ZONE
-const EVENT_LENGTH_HOURS = 4; // keep showing tonight's kickoff until the night is over
-const HOST_NAME = process.env.HOST_NAME || 'MadKing';
+const schedule = require('./schedule');
 
-// Wall-clock parts of `date` in the event time zone.
-function zonedParts(date) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: EVENT_TIME_ZONE, hourCycle: 'h23',
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short'
-  }).formatToParts(date).reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
-  return {
-    year: +parts.year, month: +parts.month, day: +parts.day,
-    hour: +parts.hour, minute: +parts.minute, second: +parts.second,
-    weekday: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday)
-  };
-}
-
-// UTC milliseconds for a wall-clock time in the event time zone (handles daylight saving).
-function zonedToUtc(year, month, day, hour) {
-  const guess = Date.UTC(year, month - 1, day, hour);
-  const p = zonedParts(new Date(guess));
-  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
-  return guess - (asUtc - guess);
-}
-
-/**
- * Unix timestamp for the next Friday kickoff (8:00 PM Eastern by default).
- * Netlify runs in UTC, so the time zone must be explicit.
- */
-function getNextFridayTimestamp(now = new Date()) {
-  const today = zonedParts(now);
-  let days = (5 - today.weekday + 7) % 7;
-  let target = zonedToUtc(today.year, today.month, today.day + days, EVENT_HOUR);
-  if (now.getTime() > target + EVENT_LENGTH_HOURS * 3600 * 1000) {
-    target = zonedToUtc(today.year, today.month, today.day + days + 7, EVENT_HOUR);
-  }
-  return Math.floor(target / 1000);
+/** Unix timestamp (seconds) of the next M+ night kickoff, from the Weekly night settings. */
+function getNextFridayTimestamp(now = new Date(), settings = null) {
+  return Math.floor(schedule.nextKickoff(settings, now) / 1000);
 }
 
 // Discord limits: title 256, description 4096, 25 fields, name 256, value 1024, 6000 characters in total.
@@ -186,7 +153,9 @@ function declinedThisWeek(players) {
  * The sign-up card. Always open for sign-ups: people join through the night and switch characters,
  * so formed groups and the waiting list are shown together.
  */
-function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = HOST_NAME, formedGroups = [], benchedPlayers = []) {
+function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hostName = undefined, formedGroups = [], benchedPlayers = [], eventSettings = null) {
+  const settings = schedule.normalizeSettings(eventSettings);
+  const host = (hostName ?? settings.host ?? '').trim();
   const all = players || [];
   const attending = all.filter(p => p.attending === true);
   const byName = new Map(all.map(p => [String(p.name || '').toLowerCase(), p]));
@@ -195,19 +164,19 @@ function createRosterEmbed(players, webUrl = 'https://knkmplus.netlify.app', hos
   const healers = count('Healer');
   const dps = count('DPS');
   const possible = Math.min(tanks, healers, Math.floor(attending.length / 5));
-  const kickoff = getNextFridayTimestamp();
+  const kickoff = getNextFridayTimestamp(new Date(), settings);
   const groups = Array.isArray(formedGroups) ? formedGroups.filter(Boolean) : [];
   const grouped = inGroupNames(groups);
   const waiting = attending.filter(p => !grouped.has(String(p.name || '').toLowerCase()));
 
   const lines = [
-    `⏰ <t:${kickoff}:F> · <t:${kickoff}:R> · Host: **${hostName}**`,
+    `⏰ <t:${kickoff}:F> · <t:${kickoff}:R>${host ? ` · Host: **${host}**` : ''}`,
     `**${attending.length} signed up** · 🛡️ ${tanks} · 💚 ${healers} · ⚔️ ${dps} · room for **${possible}** group${possible === 1 ? '' : 's'}`
   ];
   if (groups.length) lines.push(`🏰 **${groups.length} group${groups.length === 1 ? '' : 's'} formed** · ${waiting.length} waiting · sign-ups stay open all night`);
 
   const embed = new EmbedBuilder()
-    .setTitle('⚔️ Kith & Kin — Friday Mythic+ Night')
+    .setTitle(`⚔️ Kith & Kin — ${settings.title}`)
     .setColor(groups.length ? 0x10B981 : 0xDC2626)
     .setDescription(lines.join('\n'));
 

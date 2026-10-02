@@ -332,7 +332,7 @@ async function handleButtonInteraction(interaction) {
   if (customId === 'btn_refresh_roster') {
     await interaction.deferUpdate();
     const state = await fetchRemoteState();
-    const embed = createRosterEmbed(state.players || [], WEB_URL, 'MadKing', state.formedGroups || [], state.benchedPlayers || []);
+    const embed = createRosterEmbed(state.players || [], WEB_URL, undefined, state.formedGroups || [], state.benchedPlayers || []);
     return interaction.editReply({
       embeds: [embed],
       components: createSignupButtons(WEB_URL)
@@ -468,7 +468,7 @@ async function handleButtonInteraction(interaction) {
     state.benchedPlayers = result.benched;
     await pushRemoteState(state);
 
-    const embed = createRosterEmbed(state.players || [], WEB_URL, 'MadKing', result.groups, result.benched);
+    const embed = createRosterEmbed(state.players || [], WEB_URL, undefined, result.groups, result.benched);
     return interaction.editReply({
       content: `🏰 **Formed ${result.groups.length} Mythic+ group(s).** Parties are on this card. Roll each party's key on the website.`,
       embeds: [embed],

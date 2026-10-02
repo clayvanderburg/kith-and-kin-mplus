@@ -90,8 +90,6 @@ exports.handler = async (event, context) => {
         formedGroups: body.formedGroups || [],
         benchedPlayers: body.benchedPlayers || [],
         excludedDungeons: body.excludedDungeons || [],
-        events: body.events || {},
-        currentEventId: body.currentEventId || null,
         groupsTouchedAt: body.groupsTouchedAt || null,
         lastUpdated: body.lastUpdated || new Date().toISOString()
       };
@@ -178,21 +176,8 @@ async function applyOps(event, ops) {
   const meta = ops.find(o => o && o.op === 'meta');
   if (meta) {
     if (Array.isArray(meta.excludedDungeons)) incoming.excludedDungeons = meta.excludedDungeons;
-    if (meta.currentEventId) incoming.currentEventId = meta.currentEventId;
-    if (Array.isArray(meta.deleteEvents) && meta.deleteEvents.length) {
-      const stamp = new Date().toISOString();
-      incoming.deletedEvents = {};
-      for (const id of meta.deleteEvents.slice(0, 50)) if (typeof id === 'string' && id) incoming.deletedEvents[id] = stamp;
-    }
-    if (meta.events && typeof meta.events === 'object') {
-      // Event names/dates only. Player lists are kept server-side so a stale copy can't resurrect anyone.
-      incoming.events = {};
-      for (const [id, evt] of Object.entries(meta.events)) {
-        if (!evt) continue;
-        const { players, formedGroups, benchedPlayers, ...info } = evt;
-        incoming.events[id] = { ...(latest.events?.[id] || {}), ...info };
-      }
-    }
+    // Weekly night settings (day, time, time zone, host, name). Cleaned up in live-state.
+    if (meta.eventSettings && typeof meta.eventSettings === 'object') incoming.eventSettings = meta.eventSettings;
   }
 
   if (!Object.keys(incoming).length) {

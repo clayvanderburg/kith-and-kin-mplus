@@ -11,4 +11,4 @@ export default async () => {
   return new Response(result?.body || '{}', { status: result?.statusCode || 200, headers: { 'Content-Type': 'application/json' } });
 };
 
-export const config = { schedule: '*/15 * * * 5,6' };
+export const config = { schedule: '*/15 * * * *' }; // every day: the night's weekday is set in the Control Center

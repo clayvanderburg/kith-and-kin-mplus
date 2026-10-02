@@ -177,21 +177,18 @@ async function lookupRaider(character) {
   }
 }
 
+// The weekly night, described for the player page ("Friday 7:30 PM Central").
 function listEvents(state) {
-  const events = state?.events && typeof state.events === 'object' ? state.events : {};
-  const entries = Object.values(events).filter(item => item && item.id);
-  if (!entries.length) {
-    return [{ id: 'event-default', name: 'Friday M+ Night', current: true }];
-  }
-  const current = state.currentEventId && events[state.currentEventId]
-    ? state.currentEventId
-    : entries[0].id;
-  return entries.map(item => ({
-    id: item.id,
-    name: item.name || 'Mythic+ Night',
-    current: item.id === current
-  }));
+  let label = 'Friday M+ Night';
+  try {
+    let schedule;
+    try { schedule = require('../../../../bot/schedule'); } catch (e) { schedule = require(path.join(process.cwd(), 'bot', 'schedule')); }
+    const s = schedule.normalizeSettings(state?.eventSettings);
+    label = `${s.title} · ${schedule.describe(s)}`;
+  } catch (err) { /* keep the plain label */ }
+  return [{ id: 'event-default', name: label, current: true }];
 }
+
 
 function upsertPlayer(list, record, previousName) {
   const players = [...(list || [])];
@@ -521,32 +518,9 @@ async function saveSignup(event, state, session, body, existing) {
     eventId: ''
   };
 
-  const events = { ...(state.events || {}) };
-  let eventId = body.eventId && events[body.eventId] ? body.eventId : '';
-  if (!eventId) {
-    eventId = state.currentEventId && events[state.currentEventId]
-      ? state.currentEventId
-      : (Object.keys(events)[0] || 'event-default');
-  }
-  if (!events[eventId]) {
-    events[eventId] = {
-      id: eventId,
-      name: eventId === 'event-default' ? 'Friday M+ Night' : 'Mythic+ Night',
-      date: now,
-      players: [],
-      formedGroups: [],
-      benchedPlayers: []
-    };
-  }
-  record.eventId = eventId;
-  events[eventId].players = upsertPlayer(events[eventId].players, record, previousName);
-  const isCurrent = !state.currentEventId || state.currentEventId === eventId;
-
-  const incoming = {
-    events,
-    currentEventId: isCurrent ? eventId : state.currentEventId
-  };
-  if (isCurrent) incoming.players = [record];
+  // One weekly night: the sign-up is simply on the roster.
+  const isCurrent = true;
+  const incoming = { players: [record] };
   if (record.attending === false && existing?.attending) {
     // Opted out on the website: free their party spot everywhere.
     const { stripFromGroups } = require('../live-state');
