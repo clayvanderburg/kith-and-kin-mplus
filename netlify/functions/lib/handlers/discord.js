@@ -787,10 +787,13 @@ exports.handler = async (event, context) => {
       player.attending = false;
       player.absent = true;
       player.declinedAt = new Date().toISOString();
+      player.attendingAt = null;
       touchPlayer(player);
-      await saveState(state);
       const slot = groupSlotOf(state, player);
-      return ephemeral(`💤 **${player.name}** is marked as can’t make it tonight.${slot ? ` You’re still listed in Group ${slot.index + 1} — let an officer know so they can fill your spot.` : ''} Click **Sign Up / Edit** any time to come back.`);
+      // Out of every party and the bench, so officers see an open spot right away.
+      if (liveState.stripFromGroups(state, new Set([String(player.name).trim().toLowerCase()]))) state.groupsTouchedAt = new Date().toISOString();
+      await saveState(state);
+      return ephemeral(`💤 **${player.name}** is marked as can’t make it tonight.${slot ? ` Your spot in Group ${slot.index + 1} is open for someone else.` : ''} Click **Sign Up / Edit** any time to come back.`);
     }
 
     // Sign Up / Edit: straight to your entry if you have one, otherwise pick a character.
@@ -916,11 +919,64 @@ exports.handler = async (event, context) => {
       });
     }
 
-    if (customId === 'btn_form_groups') {
+    // Officer panel: private (ephemeral), only for Captains / High Council.
+    const officerPanel = (note = '') => ({
+      content: `### 🔒 Officer tools${note ? `\n${note}` : ''}\n-# Only you can see this. Changes show on the sign-up card for everyone.`,
+      components: [{
+        type: 1,
+        components: [
+          { type: 2, style: 1, custom_id: 'btn_form_groups', label: 'Form groups 🏰' },
+          { type: 2, style: 2, custom_id: 'btn_reform_groups', label: 'Reform all groups 🔀' },
+          { type: 2, style: 4, custom_id: 'btn_dismiss_form', label: 'Close ✖️' }
+        ]
+      }],
+      flags: 64
+    });
+    const fromPanel = ((interaction.message?.flags || 0) & 64) === 64;
+
+    if (customId === 'btn_officer_tools' || customId === 'btn_form_groups' || customId === 'btn_reform_groups' || customId === 'btn_reform_confirm') {
       if (!rollUi?.isLeader(interaction.member)) {
-        return ephemeral('Only Captains and High Council can form groups.');
+        return ephemeral('🔒 Group controls are only for **Captains** and **High Council**.');
       }
+    }
+
+    if (customId === 'btn_officer_tools') {
+      const waiting = (state.players || []).filter(p => p.attending && !groupSlotOf(state, p)).length;
+      return jsonResponse({ type: 4, data: officerPanel(`**${(state.formedGroups || []).length}** group(s) formed · **${waiting}** signed up and waiting.\n• **Form groups** keeps current groups and groups the people waiting.\n• **Reform all groups** rebuilds every group from scratch.`) });
+    }
+
+    if (customId === 'btn_reform_groups') {
+      return jsonResponse({
+        type: 7,
+        data: {
+          content: `### 🔀 Reform all groups?\nEvery current group is broken up and rebuilt from everyone signed up. Keys already assigned to groups are re-picked.`,
+          components: [{ type: 1, components: [
+            { type: 2, style: 4, custom_id: 'btn_reform_confirm', label: 'Yes, reform all' },
+            { type: 2, style: 2, custom_id: 'btn_officer_tools_back', label: 'Cancel' }
+          ] }],
+          flags: 64
+        }
+      });
+    }
+
+    if (customId === 'btn_officer_tools_back') {
+      return jsonResponse({ type: 7, data: officerPanel() });
+    }
+
+    if (customId === 'btn_reform_confirm') {
+      const r = formGroups(state, { reshuffle: true });
+      if (r.error) return jsonResponse({ type: 7, data: officerPanel(`⚠️ ${r.error}`) });
+      await saveState(state);
+      return jsonResponse({ type: 7, data: officerPanel(`✅ Rebuilt all groups: **${r.total}** group(s), ${r.waiting} waiting.`) });
+    }
+
+    if (customId === 'btn_form_groups') {
       const r = formGroups(state);
+      if (fromPanel) {
+        if (r.error) return jsonResponse({ type: 7, data: officerPanel(`⚠️ ${r.error}`) });
+        await saveState(state);
+        return jsonResponse({ type: 7, data: officerPanel(`✅ Formed **${r.added}** new group${r.added === 1 ? '' : 's'} (${r.total} total). ${r.waiting} still waiting.`) });
+      }
       if (r.error) return ephemeral(`⚠️ ${r.error}`);
       await saveState(state);
       return jsonResponse({

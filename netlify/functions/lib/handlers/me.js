@@ -547,6 +547,15 @@ async function saveSignup(event, state, session, body, existing) {
     currentEventId: isCurrent ? eventId : state.currentEventId
   };
   if (isCurrent) incoming.players = [record];
+  if (record.attending === false && existing?.attending) {
+    // Opted out on the website: free their party spot everywhere.
+    const { stripFromGroups } = require('../live-state');
+    if (stripFromGroups(state, new Set([String(record.name).trim().toLowerCase()]))) {
+      incoming.formedGroups = state.formedGroups;
+      incoming.benchedPlayers = state.benchedPlayers || [];
+      incoming.groupsTouchedAt = now;
+    }
+  }
   if (previousName && fold(previousName) !== fold(record.name)) {
     renameInGroups(state, previousName, record.name);
     if (isCurrent) incoming.removedNames = [previousName];

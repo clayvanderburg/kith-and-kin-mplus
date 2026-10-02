@@ -338,8 +338,10 @@ function createSignupButtons(webUrl = 'https://knkmplus.netlify.app') {
   );
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('btn_roll_key').setLabel('Roll Key 🎲').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('btn_form_groups').setLabel('Form Groups 🏰').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('btn_refresh_roster').setLabel('Refresh 🔄').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('btn_refresh_roster').setLabel('Refresh 🔄').setStyle(ButtonStyle.Secondary),
+    // Discord shows the same buttons to everyone, so group controls live behind this:
+    // only Captains / High Council get the private officer panel.
+    new ButtonBuilder().setCustomId('btn_officer_tools').setLabel('Officers 🔒').setStyle(ButtonStyle.Secondary)
   );
   return [row1, row2];
 }

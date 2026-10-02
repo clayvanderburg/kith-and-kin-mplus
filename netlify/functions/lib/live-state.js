@@ -171,6 +171,21 @@ function mergeStates(latest, incoming) {
     lastUpdated: new Date().toISOString()
   };
   merged.players = applyTombstones(merged.players, merged.deleted);
+  // A deleted character is gone everywhere: parties, bench and every event's lineup.
+  const deletedNames = new Set(Object.keys(merged.deleted || {}).filter(k => !merged.players.some(p => playerKey(p) === k)));
+  if (deletedNames.size) {
+    stripFromGroups(merged, deletedNames);
+    // ...and from the "who was in this key" lists on everyone's run history.
+    merged.players = merged.players.map(p => {
+      if (!Array.isArray(p.runLog) || !p.runLog.some(r => (r?.members || []).some(n => deletedNames.has(String(n).trim().toLowerCase())))) return p;
+      return { ...p, runLog: p.runLog.map(r => (Array.isArray(r?.members) ? { ...r, members: r.members.filter(n => !deletedNames.has(String(n).trim().toLowerCase())) } : r)) };
+    });
+    for (const evt of Object.values(merged.events || {})) {
+      if (!evt) continue;
+      if (Array.isArray(evt.players)) evt.players = evt.players.filter(p => !deletedNames.has(playerKey(p)));
+      stripFromGroups(evt, deletedNames);
+    }
+  }
 
   return reconcileState(merged);
 }
@@ -185,6 +200,23 @@ function mergeTombstones(a, b) {
   const cutoff = Date.now() - 60 * 24 * 3600e3;
   for (const [key, when] of Object.entries(out)) if (timeOf(when) < cutoff) delete out[key];
   return out;
+}
+
+/** Take these names (lowercase) out of every party and the bench. Returns true if anything changed. */
+function stripFromGroups(holder, names) {
+  if (!holder || !names || !names.size) return false;
+  let changed = false;
+  const gone = m => m && names.has(playerKey(m));
+  for (const g of holder.formedGroups || []) {
+    if (!g) continue;
+    if (gone(g.tank)) { g.tank = null; changed = true; }
+    if (gone(g.healer)) { g.healer = null; changed = true; }
+    const dps = (g.dps || []).filter(m => m && !gone(m));
+    if (dps.length !== (g.dps || []).length) { g.dps = dps; changed = true; }
+  }
+  const bench = (holder.benchedPlayers || []).filter(m => !gone(m));
+  if (bench.length !== (holder.benchedPlayers || []).length) { holder.benchedPlayers = bench; changed = true; }
+  return changed;
 }
 
 function applyTombstones(players, deleted) {
@@ -514,6 +546,7 @@ async function refreshDiscordCard(state, maxMs = 2500, tag = 'live-state') {
 }
 
 module.exports = {
+  stripFromGroups,
   refreshDiscordCard,
   postNewDiscordCard,
   suggestSignup,

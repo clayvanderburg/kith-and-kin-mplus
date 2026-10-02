@@ -71,7 +71,12 @@ function solveGroups(options = {}) {
     lockedGroups = []
   } = opts;
   const attendees = players.filter(p => p.attending !== false)
-    .map(p => ({ ...p, keyMin: Number(p.keyMin) || 9, keyMax: Number(p.keyMax) || 12 }));
+    .map(p => {
+      // Never place someone in a role their class can't play (e.g. a Hunter marked as Tank by mistake).
+      const allowed = WOW_CLASSES[p.className]?.roles;
+      const roles = allowed ? (p.roles || []).filter(r => allowed.includes(r)) : (p.roles || []);
+      return { ...p, roles: roles.length ? roles : ['DPS'], keyMin: Number(p.keyMin) || 9, keyMax: Number(p.keyMax) || 12 };
+    });
 
   // Exclude players already locked into existing preserved groups
   const lockedPlayerIds = new Set();

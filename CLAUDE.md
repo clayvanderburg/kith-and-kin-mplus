@@ -139,6 +139,7 @@ The bot operates **100% serverlessly** via `netlify/functions/discord.js`. Disco
 - `/mplus post-signup`: Posts an interactive signup card into the channel with buttons.
 - `/mplus signup [character] [role] [min_key] [max_key]`: Self-service signup command.
 - `/mplus form [strategy]`: Form groups (Captains/High Council only).
+- Card button **Officers 🔒**: Discord can't hide a button per person, so group controls live behind it. Captains/High Council (role IDs in `bot/roll-ui.js`) get a private panel with Form groups / Reform all groups (confirm); everyone else gets a private "officers only" note.
 - `/mplus roll-key`: Interactive UI to roll an optimal keystone for a group.
 - `/mplus sync-keys`: Refreshes iLvl and IO from Raider.IO.
 - `/mplus web`: Posts a direct link to the web app.

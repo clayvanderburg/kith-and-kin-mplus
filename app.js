@@ -1062,6 +1062,7 @@
           player.attending = e.target.checked;
           player.absent = !e.target.checked;
           player.attendingAt = e.target.checked ? new Date().toISOString() : null;
+          if (!e.target.checked) unplacePlayers([player.name]);
           player.touchedAt = new Date().toISOString();
           savePlayers();
           renderRoster();
@@ -1114,6 +1115,7 @@
         const id = btn.getAttribute('data-id');
         const player = state.players.find(p => p.id === id);
         if (player && confirm(`Remove ${player.name} from the guild list?`)) {
+          unplacePlayers([player.name]);
           state.players = state.players.filter(p => p.id !== id);
           savePlayers();
           renderRoster();
@@ -1155,7 +1157,13 @@
    * Handles multi-role flex players and balances key levels or class variety.
    */
   function solveGroups({ strategy, dungeonPoolMode, avoidClassDupes, ensureLust = true, ensureBrez = true, balanceIo = true, lockedGroups = [] }) {
-    const attendees = state.players.filter(p => p.attending);
+    // Never place someone in a role their class can't play (e.g. a Hunter marked as Tank by mistake).
+    const attendees = state.players.filter(p => p.attending).map(p => {
+      const allowed = WOW_CLASSES[p.className]?.roles;
+      if (!allowed) return p;
+      const roles = (p.roles || []).filter(r => allowed.includes(r));
+      return { ...p, roles: roles.length ? roles : ['DPS'] };
+    });
 
     // Identify players already locked into existing preserved groups
     const lockedPlayerIds = new Set();
@@ -1534,6 +1542,69 @@
   }
 
   // --- Keystone Roulette & Party Key Actions ---
+  // Short dungeon names everyone uses in chat (Temple of Sethraliss +11 -> ToS +11).
+  const DUNGEON_ABBR = {
+    'Altar of Fangs': 'AoF', 'Murder Row': 'MR', 'Den of Nalorakk': 'DoN', 'The Blinding Vale': 'BV',
+    'Voidscar Arena': 'VA', "Kings' Rest": 'KR', 'Temple of Sethraliss': 'ToS', 'Ruby Life Pools': 'RLP'
+  };
+  function shortKey(key) {
+    const m = String(key || '').trim().match(/^(.*?)\s*\+\s*(\d+)$/);
+    if (!m) return String(key || '').trim();
+    const name = m[1].trim();
+    const abbr = DUNGEON_ABBR[name] || name.split(/\s+/).filter(w => !/^(of|the)$/i.test(w)).map(w => w[0].toUpperCase()).join('');
+    return `${abbr} +${m[2]}`;
+  }
+
+  // Roles a character's class can actually play (unknown class: anything).
+  function livePlayer(name) {
+    const key = String(name || '').toLowerCase();
+    return state.players.find(p => p.name.toLowerCase() === key) || findRosterPerson(name);
+  }
+  function classRoles(name) {
+    const cls = livePlayer(name)?.className;
+    return WOW_CLASSES[cls]?.roles || ['Tank', 'Healer', 'DPS'];
+  }
+  const SLOT_ROLE = { tank: 'Tank', healer: 'Healer', dps: 'DPS' };
+  function slotRoleOf(dest) {
+    const m = String(dest || '').match(/^g\d+:(tank|healer|dps)/);
+    return m ? SLOT_ROLE[m[1]] : null;
+  }
+  // '' if allowed, otherwise the reason. Checks the mover and, for a swap, whoever gets swapped back.
+  function moveProblem(name, dest) {
+    const origin = findRosterSlot(name);
+    if (String(dest).startsWith('swapin:')) {
+      const incoming = decodeURIComponent(dest.slice('swapin:'.length));
+      const role = origin?.kind === 'slot' ? SLOT_ROLE[origin.slot] : null;
+      if (role && !classRoles(incoming).includes(role)) return `${incoming} (${livePlayer(incoming)?.className}) can't play ${role}.`;
+      return '';
+    }
+    const role = slotRoleOf(dest);
+    if (!role) return '';
+    if (!classRoles(name).includes(role)) return `${name} (${livePlayer(name)?.className}) can't play ${role}.`;
+    const m = dest.match(/^g(\d+):(tank|healer|dps)(?::(\d+))?$/);
+    const group = state.formedGroups[Number(m[1])];
+    const occupant = !group ? null : (m[2] === 'dps' ? (group.dps || [])[Number(m[3])] : group[m[2]]);
+    if (occupant && origin?.kind === 'slot' && occupant.name.toLowerCase() !== name.toLowerCase()) {
+      const back = SLOT_ROLE[origin.slot];
+      if (!classRoles(occupant.name).includes(back)) return `Can't swap: ${occupant.name} (${livePlayer(occupant.name)?.className}) can't play ${back}.`;
+    }
+    return '';
+  }
+
+  // Take people out of every party and the bench (used when they're un-marked or removed).
+  function unplacePlayers(names) {
+    let changed = false;
+    for (const name of names) {
+      if (findRosterSlot(name)) { clearRosterPerson(name); changed = true; }
+    }
+    if (changed) {
+      state.formedGroups.forEach(group => { group.dps = (group.dps || []).filter(Boolean); refreshGroupMeta(group); });
+      saveGroups();
+      renderGroups();
+    }
+    return changed;
+  }
+
   function typedKeyFor(member) {
     if (!member?.name) return '';
     const live = state.players.find(player => player.name.toLowerCase() === member.name.toLowerCase()) || member;
@@ -1803,13 +1874,14 @@
 
     function moveMenu(name) {
       const options = ['<option value="">Move...</option>', '<option value="bench">Send to bench</option>'];
+      const add = (value, label) => { if (!moveProblem(name, value)) options.push(`<option value="${value}">${label}</option>`); };
       state.formedGroups.forEach((group, gi) => {
-        options.push(`<option value="g${gi}:tank">Party ${gi + 1} tank</option>`);
-        options.push(`<option value="g${gi}:healer">Party ${gi + 1} healer</option>`);
-        (group.dps || []).forEach((member, di) => options.push(`<option value="g${gi}:dps:${di}">Party ${gi + 1} DPS ${di + 1}</option>`));
+        add(`g${gi}:tank`, `Party ${gi + 1} tank`);
+        add(`g${gi}:healer`, `Party ${gi + 1} healer`);
+        [0, 1, 2].forEach(di => add(`g${gi}:dps:${di}`, `Party ${gi + 1} DPS ${di + 1}`));
       });
       state.players.filter(player => player.attending && !isPlaced(player.name)).forEach(player => {
-        options.push(`<option value="swapin:${encodeURIComponent(player.name)}">Replace with ${escapeHtml(player.name)}</option>`);
+        add(`swapin:${encodeURIComponent(player.name)}`, `Replace with ${escapeHtml(player.name)}`);
       });
       return `<select class="form-select move-player" data-player="${escapeHtml(name)}" title="Move ${escapeHtml(name)}" style="margin-top:0.35rem; max-width: 220px;">${options.join('')}</select>`;
     }
@@ -1845,10 +1917,12 @@
 
     function renderMemberSlot(roleSlot, member, dest) {
       if (!member) return renderEmptySlot(roleSlot, dest);
-      const memberClass = WOW_CLASSES[member.className] || { color: '#fff' };
+      const live = livePlayer(member.name) || member;
+      const memberClass = WOW_CLASSES[live.className] || { color: '#fff' };
       const roleIcon = roleSlot === 'Tank' ? '🛡️' : (roleSlot === 'Healer' ? '💚' : '⚔️');
       const roleCss = roleSlot === 'Tank' ? 'role-tank' : (roleSlot === 'Healer' ? 'role-healer' : 'role-dps');
-      const ioColor = getIoColor(member.io);
+      const io = live.io || member.io || 0;
+      const ioColor = getIoColor(io);
       const key = typedKeyFor(member);
 
       return `
@@ -1858,12 +1932,12 @@
           <div class="slot-player-details">
             <div class="slot-top-row slot-toggle-trigger" title="Click to expand or collapse details">
               <div class="slot-top-left">
-                <span class="slot-player-name" style="color: ${memberClass.color};">${escapeHtml(member.name)}</span>
-                <span class="class-tag" style="color: ${memberClass.color}; border: 1px solid ${memberClass.color}44;">${escapeHtml(member.className)}</span>
-                ${key ? `<span class="slot-key-mini" title="Key: ${escapeHtml(key)}">🔑 ${escapeHtml(key)}</span>` : ''}
+                <span class="slot-player-name" style="color: ${memberClass.color};" title="${escapeHtml(live.className || '')}">${escapeHtml(member.name)}</span>
+                ${key ? `<span class="slot-key-mini" title="Key: ${escapeHtml(key)}">🔑 ${escapeHtml(shortKey(key))}</span>` : ''}
               </div>
               <div class="slot-top-right">
-                <span class="slot-stat-badge io" style="color: ${ioColor}; border: 1px solid ${ioColor}77;">${(member.io || 0).toLocaleString()} IO</span>
+                <span class="slot-stat-badge io" style="color: ${ioColor}; border: 1px solid ${ioColor}77;">${io.toLocaleString()}</span>
+                <button type="button" class="slot-remove-btn" data-remove="${escapeHtml(member.name)}" title="Remove ${escapeHtml(member.name)} from this party" aria-label="Remove ${escapeHtml(member.name)} from this party">✕</button>
                 <span class="slot-expand-chevron">▸</span>
               </div>
             </div>
@@ -1984,6 +2058,17 @@
 
     document.querySelectorAll('.move-player').forEach(select => {
       select.addEventListener('click', (e) => e.stopPropagation());
+    });
+
+    document.querySelectorAll('.slot-remove-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = btn.getAttribute('data-remove');
+        const slot = findRosterSlot(name);
+        const party = slot?.kind === 'slot' ? ` from Party ${slot.gi + 1}` : '';
+        if (!confirm(`Remove ${name}${party}?\n\nThey stay signed up and show under "not in a group yet".`)) return;
+        moveFormedPlayer(name, 'waiting');
+      });
     });
 
     document.querySelectorAll('.view-member-stats-btn').forEach(btn => {
@@ -2160,6 +2245,8 @@
   function moveFormedPlayer(name, dest) {
     const person = findRosterPerson(name);
     if (!person || !dest) return;
+    const problem = moveProblem(name, dest);
+    if (problem) { showToast(problem); renderGroups(); return; }
     const origin = findRosterSlot(name);
     if (dest.startsWith('swapin:')) {
       const incomingName = decodeURIComponent(dest.slice('swapin:'.length));
@@ -2263,6 +2350,7 @@
       drag.ghost?.remove();
       drag.source?.classList.remove('is-drag-source');
       document.body.classList.remove('is-dragging-player');
+      document.querySelectorAll('.drop-invalid').forEach(el => el.classList.remove('drop-invalid'));
       clearHover();
       const dest = drop?.dataset.dest;
       const fromDest = drag.source?.dataset?.dest;
@@ -2276,7 +2364,7 @@
       const over = targetAt(drag.x, drag.y);
       if (over === drag.over) return;
       clearHover();
-      drag.over = over && over !== drag.source ? over : null;
+      drag.over = over && over !== drag.source && !over.classList.contains('drop-invalid') ? over : null;
       if (drag.over) drag.over.classList.add('drop-hover');
     }
     function autoScroll() {
@@ -2308,6 +2396,10 @@
         drag.ghost.textContent = drag.name;
         document.body.appendChild(drag.ghost);
         drag.source?.classList.add('is-drag-source');
+        // Grey out spots this class can't fill (e.g. a Hunter can only go in DPS spots).
+        document.querySelectorAll('[data-dest]').forEach(el => {
+          if (el.dataset.dest && moveProblem(drag.name, el.dataset.dest)) el.classList.add('drop-invalid');
+        });
         document.body.classList.add('is-dragging-player');
         drag.scrollFrame = requestAnimationFrame(autoScroll);
       }
@@ -3132,7 +3224,9 @@
       playSound('click');
     });
     document.getElementById('deselectAllBtn').addEventListener('click', () => {
-      bulkTargets('Un-mark').forEach(p => { p.attending = false; p.absent = true; p.touchedAt = new Date().toISOString(); });
+      const off = bulkTargets('Un-mark');
+      off.forEach(p => { p.attending = false; p.absent = true; p.attendingAt = null; p.touchedAt = new Date().toISOString(); });
+      unplacePlayers(off.map(p => p.name));
       savePlayers();
       renderRoster();
       playSound('click');
