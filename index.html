@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    // kithandk.in (and www) opens the guild landing page; the Mythic+ app lives at mplus.kithandk.in.
+    if (/^(www\.)?kithandk\.in$/i.test(location.hostname) && (location.pathname === '/' || location.pathname === '/index.html')) location.replace('/guild.html');
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kith and Kin — Mythic+ Night Group Generator</title>

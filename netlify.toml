@@ -50,20 +50,6 @@
   status = 404
   force = true
 
-# kithandk.in (and www) shows the guild landing page; the Mythic+ app lives at mplus.kithandk.in
-# and knkmplus.netlify.app. Rules match the host so the app keeps its normal home page.
-[[redirects]]
-  from = "https://kithandk.in/"
-  to = "/guild.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "https://www.kithandk.in/"
-  to = "/guild.html"
-  status = 200
-  force = true
-
 # These endpoints run as Netlify v2 functions (strongly consistent Blobs reads, so a save is never
 # merged against a stale copy and groups don't "pop back"). To roll back, delete these five
 # rules: the classic functions of the same name are still deployed and take over via /api/*.
