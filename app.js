@@ -1610,6 +1610,23 @@
     return changed;
   }
 
+  // Take someone out of tonight completely: unticked in the guild list, out of every party,
+  // the bench and the waiting list. Saved once, so the Discord card and player page follow.
+  function removeFromTonight(name) {
+    const key = String(name || '').toLowerCase();
+    const player = state.players.find(p => p.name.toLowerCase() === key);
+    if (player) {
+      player.attending = false;
+      player.absent = true;
+      player.attendingAt = null;
+      player.touchedAt = new Date().toISOString();
+    }
+    if (!unplacePlayers([name])) savePlayers();
+    renderRoster();
+    renderGroups();
+    showToast(`${name} removed from tonight.`);
+  }
+
   function typedKeyFor(member) {
     if (!member?.name) return '';
     const live = state.players.find(player => player.name.toLowerCase() === member.name.toLowerCase()) || member;
@@ -2065,16 +2082,6 @@
       select.addEventListener('click', (e) => e.stopPropagation());
     });
 
-    document.querySelectorAll('.slot-remove-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const name = btn.getAttribute('data-remove');
-        const slot = findRosterSlot(name);
-        const party = slot?.kind === 'slot' ? ` from Party ${slot.gi + 1}` : '';
-        if (!confirm(`Remove ${name}${party}?\n\nThey stay signed up and show under "not in a group yet".`)) return;
-        moveFormedPlayer(name, 'waiting');
-      });
-    });
 
     document.querySelectorAll('.view-member-stats-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -2169,7 +2176,7 @@
     }
     waitingBox.innerHTML = waiting.length
       ? `<div class="waiting-title">🆕 Signed up, not in a group yet (${waiting.length}) — drag into a party</div>` +
-        waiting.map(p => `<span class="waiting-chip" data-player="${escapeHtml(p.name)}"><span class="drag-handle" data-drag="${escapeHtml(p.name)}" aria-hidden="true">⠿</span><strong style="color:${(WOW_CLASSES[p.className] || { color: '#fff' }).color};">${escapeHtml(p.name)}</strong> <small>${escapeHtml((p.roles || []).join('/'))}</small></span>`).join('')
+        waiting.map(p => `<span class="waiting-chip" data-player="${escapeHtml(p.name)}"><span class="drag-handle" data-drag="${escapeHtml(p.name)}" aria-hidden="true">⠿</span><strong style="color:${(WOW_CLASSES[p.className] || { color: '#fff' }).color};">${escapeHtml(p.name)}</strong> <small>${escapeHtml((p.roles || []).join('/'))}</small><button type="button" class="slot-remove-btn" data-remove="${escapeHtml(p.name)}" title="Remove ${escapeHtml(p.name)} from tonight">✕</button></span>`).join('')
       : '';
     if ((state.benchedPlayers && state.benchedPlayers.length > 0) || waiting.length) {
       benchContainer.style.display = 'block';
@@ -2194,6 +2201,7 @@
           <span class="slot-stat-badge io" style="color: ${getIoColor(p.io)};">${(p.io || 0).toLocaleString()} IO</span>
           <span class="key-range-pill">+${p.keyMin}-+${p.keyMax}</span>
           ${moveMenu(p.name)}
+          <button type="button" class="slot-remove-btn" data-remove="${escapeHtml(p.name)}" title="Remove ${escapeHtml(p.name)} from tonight">✕</button>
         `;
         benchList.appendChild(pill);
       });
@@ -2341,6 +2349,16 @@
   // Pointer events (not the HTML5 drag API) so it works the same with a mouse and on phones.
   let groupDrag = null;
   function setupGroupDragAndDrop() {
+    // ✕ buttons on party rows, bench pills and waiting chips (one listener; they're redrawn often).
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('.slot-remove-btn');
+      if (!btn) return;
+      e.stopPropagation();
+      const name = btn.getAttribute('data-remove');
+      if (!confirm(`Remove ${name} from tonight?\n\nThey'll be taken out of their party and unticked in the guild list (Discord and the player page update too).\nTo just move them, drag them instead.`)) return;
+      removeFromTonight(name);
+    }, true);
+
     const DROP_SELECTOR = '[data-dest]';
     const clearHover = () => document.querySelectorAll('.drop-hover').forEach(el => el.classList.remove('drop-hover'));
     const targetAt = (x, y) => {
