@@ -201,14 +201,14 @@ function claimCharacter(state, userId, info) {
   return { player: target, note };
 }
 
-let signupCommandId = null;
+let signupCommandId = process.env.DISCORD_MPLUS_COMMAND_ID || null;
 // Clickable "/mplus signup" mention. Clicking it opens the command with live name search.
 async function signupCommandMention(interaction) {
   if (!signupCommandId && process.env.DISCORD_TOKEN && interaction.application_id) {
     const base = `https://discord.com/api/v10/applications/${interaction.application_id}`;
     for (const url of [interaction.guild_id && `${base}/guilds/${interaction.guild_id}/commands`, `${base}/commands`].filter(Boolean)) {
       try {
-        const res = await fetch(url, { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }, signal: AbortSignal.timeout(800) });
+        const res = await fetch(url, { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }, signal: AbortSignal.timeout(1500) });
         if (!res.ok) continue;
         const cmd = (await res.json()).find(c => c.name === 'mplus');
         if (cmd) { signupCommandId = cmd.id; break; }
@@ -221,9 +221,11 @@ async function signupCommandMention(interaction) {
 async function addCharacterMessage(interaction, intro = '') {
   const mention = await signupCommandMention(interaction);
   return {
-    content: `${intro}### ➕ Pick your character\nClick ${mention}, then start typing your name — your character shows up in the list as you type. Pick it and hit Enter.\n` +
-      `• **Not in the guild?** Type \`Name-Realm\` (e.g. \`Noxxicc-Korgath\`) and pick the 🔎 option — we look it up on Raider.IO.\n` +
-      `• On a phone and the list won't show? Use **Search by name** below.`,
+    content: `${intro}### ➕ Add a character\n` +
+      `**1.** Click 👉 ${mention}\n` +
+      `**2.** Start typing the name in the **character** box — guild characters pop up as you type.\n` +
+      `**3.** Pick yours and press Enter.\n` +
+      `-# Discord only does live type-ahead inside slash commands, so the link above opens one for you. Not in the guild? Type \`Name-Realm\` and pick the 🔎 option. On a phone, **Search by name** below works too.`,
     components: [{
       type: 1,
       components: [
