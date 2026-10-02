@@ -528,7 +528,7 @@
   // ---- View-only mode for non-officers ----
   // Things anyone may use: navigation, search/filters/sort, expanding rows, stats, copy buttons.
   const VIEWER_ALLOWED = [
-    'a[href]', '#manualSyncBtn', '#soundToggleBtn', '#officerLoginBtn', '#officerGate',
+    'a[href]', '#manualSyncBtn', '#soundToggleBtn', '#officerLoginBtn', '#navAccountBtn', '#officerGate',
     '#rosterSearchInput', '#clearSearchBtn', '#roleFilterSelect', '#attendFilterSelect', '#rosterSort',
     '#strategyToggle', '#rouletteToggle', '#copyDiscordBtn', '.copy-party-btn',
     '.player-toggle-trigger', '.slot-toggle-trigger', '.view-member-stats-btn', '.stats-player-btn',
@@ -542,6 +542,7 @@
 
   function applyViewerMode() {
     const officer = isOfficerMode();
+    if (window.kkAccountRefresh) window.kkAccountRefresh();
     document.body.classList.toggle('kk-viewer', !officer);
     document.body.classList.toggle('kk-officer', officer);
     const btn = document.getElementById('officerLoginBtn');

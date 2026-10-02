@@ -4398,3 +4398,28 @@ body.kk-viewer #generateGroupsBtn::after { content: ' 🔒'; }
 .officer-pass summary { cursor: pointer; color: var(--text-muted, #94a3b8); font-size: 0.85rem; }
 .officer-pass[open] { display: grid; gap: 0.5rem; }
 .officer-gate-card a:not(.btn) { color: var(--text-gold, #f5d061); }
+
+/* Log in / Log out in the top bar */
+.nav-account-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(245, 208, 97, 0.45);
+  background: rgba(245, 208, 97, 0.08);
+  color: var(--text-gold, #f5d061);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nav-account-btn:hover { background: rgba(245, 208, 97, 0.18); }
+.nav-account-btn[data-state="in"] .nav-account-name { color: #fff; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; }
+.nav-account-btn[data-state="in"] .nav-account-action { opacity: 0.8; font-weight: 600; }
+@media (max-width: 600px) {
+  .site-nav { flex-wrap: wrap; border-radius: 18px; }
+  .nav-account-btn { margin-left: 0; }
+  .nav-account-btn .nav-account-name { max-width: 6rem; }
+}
