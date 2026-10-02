@@ -1610,6 +1610,31 @@
     return changed;
   }
 
+  // Small 3-way popup for the ✕: take them out of the party only, or out of tonight completely.
+  function askRemoveChoice(name, inParty) {
+    return new Promise(resolve => {
+      const wrap = document.createElement('div');
+      wrap.className = 'kk-choice-backdrop';
+      wrap.innerHTML = `
+        <div class="kk-choice" role="dialog" aria-modal="true" aria-label="Remove ${escapeHtml(name)}">
+          <h4>Remove ${escapeHtml(name)}?</h4>
+          ${inParty ? `<button type="button" class="btn btn-secondary" data-choice="party">Out of party only<small>Stays signed up, moves to "not in a group yet"</small></button>` : ''}
+          <button type="button" class="btn btn-primary" data-choice="tonight">Remove from tonight<small>Unticked in the guild list, Discord card and player page</small></button>
+          <button type="button" class="btn btn-ghost" data-choice="">Cancel</button>
+        </div>`;
+      const done = choice => { wrap.remove(); document.removeEventListener('keydown', onKey, true); resolve(choice); };
+      const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); done(''); } };
+      wrap.addEventListener('click', e => {
+        const b = e.target.closest('[data-choice]');
+        if (b) done(b.dataset.choice);
+        else if (e.target === wrap) done('');
+      });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(wrap);
+      wrap.querySelector('[data-choice]').focus();
+    });
+  }
+
   // Take someone out of tonight completely: unticked in the guild list, out of every party,
   // the bench and the waiting list. Saved once, so the Discord card and player page follow.
   function removeFromTonight(name) {
@@ -2032,15 +2057,11 @@
         </div>
 
         <div class="party-utility-bar">
-          ${grp.hasLeader && grp.leaderName ? `<span class="party-util-badge ready" title="Designated Group Leader">👑 Leader: ${escapeHtml(grp.leaderName)}</span>` : ''}
-          <span class="party-util-badge ${grp.hasLust ? 'ready' : 'missing'}" title="${grp.hasLust ? 'Bloodlust/Heroism ready: ' + escapeHtml(grp.lustProvider) : 'No Bloodlust class in this group! Bring drums!'}">
-            ⚡ ${grp.hasLust ? 'Lust: ' + escapeHtml(grp.lustProvider) : 'Lust: Missing'}
-          </span>
-          <span class="party-util-badge ${grp.hasBrez ? 'ready' : 'missing'}" title="${grp.hasBrez ? 'Battle Rez ready: ' + escapeHtml(grp.brezProvider) : 'No Battle Rez class in this group!'}">
-            🔄 ${grp.hasBrez ? 'BRez: ' + escapeHtml(grp.brezProvider) : 'BRez: Missing'}
-          </span>
-          ${grp.isShitterGroup ? `<span class="party-util-badge shitter-group" title="Dedicated Shitter Alt Squad! (${grp.shitterCount} Shitters)">💩 Shitter Squad</span>` : ''}
-          ${grp.hasCarryMatch ? `<span class="party-util-badge carry-assist" title="Carry Match: ${escapeHtml(grp.willingCarryNames.join(', '))} carrying ${escapeHtml(grp.needCarryNames.join(', '))}">🎒 Carry Assisted</span>` : ''}
+          <span class="party-util-badge ${grp.hasLust ? 'ready' : 'missing'}" title="${grp.hasLust ? 'Bloodlust: ' + escapeHtml(grp.lustProvider) : 'No Bloodlust in this group. Bring drums!'}">⚡ Lust</span>
+          <span class="party-util-badge ${grp.hasBrez ? 'ready' : 'missing'}" title="${grp.hasBrez ? 'Battle rez: ' + escapeHtml(grp.brezProvider) : 'No battle rez in this group'}">🔄 BRez</span>
+          ${grp.hasLeader && grp.leaderName ? `<span class="party-util-badge ready" title="Leader: ${escapeHtml(grp.leaderName)}">👑 Lead</span>` : ''}
+          ${grp.hasCarryMatch ? `<span class="party-util-badge carry-assist" title="${escapeHtml(grp.willingCarryNames.join(', '))} carrying ${escapeHtml(grp.needCarryNames.join(', '))}">🎒 Carry</span>` : ''}
+          ${grp.isShitterGroup ? `<span class="party-util-badge shitter-group" title="Shitter alt squad (${grp.shitterCount})">💩</span>` : ''}
         </div>
 
         <div class="party-metrics-bar">
@@ -2355,8 +2376,11 @@
       if (!btn) return;
       e.stopPropagation();
       const name = btn.getAttribute('data-remove');
-      if (!confirm(`Remove ${name} from tonight?\n\nThey'll be taken out of their party and unticked in the guild list (Discord and the player page update too).\nTo just move them, drag them instead.`)) return;
-      removeFromTonight(name);
+      const inParty = findRosterSlot(name)?.kind === 'slot';
+      askRemoveChoice(name, inParty).then(choice => {
+        if (choice === 'party') moveFormedPlayer(name, 'waiting');
+        else if (choice === 'tonight') removeFromTonight(name);
+      });
     }, true);
 
     const DROP_SELECTOR = '[data-dest]';
