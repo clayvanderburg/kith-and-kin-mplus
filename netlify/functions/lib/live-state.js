@@ -153,6 +153,7 @@ function mergeStates(latest, incoming) {
     benchedPlayers,
     excludedDungeons: Array.isArray(next.excludedDungeons) ? next.excludedDungeons : (base.excludedDungeons || []),
     eventSettings,
+    accessSettings: next.accessSettings || base.accessSettings || null,
     groupsTouchedAt: useNextGroups ? next.groupsTouchedAt : (base.groupsTouchedAt || null),
     discordCard: next.discordCard || base.discordCard || null,
     deleted: mergeTombstones(base.deleted, next.deleted),
@@ -434,7 +435,7 @@ async function writeMergedState(event, incoming, source = null) {
   const merged = mergeStates(latest, incoming);
   const rosterChange = Boolean(
     incoming && (incoming.players || incoming.formedGroups || incoming.events || incoming.groupsTouchedAt ||
-      incoming.deleted || incoming.eventSettings || incoming.excludedDungeons)
+      incoming.deleted || incoming.eventSettings || incoming.accessSettings || incoming.excludedDungeons)
   );
   if (!rosterChange && latest?.lastUpdated) merged.lastUpdated = latest.lastUpdated;
   // Overlays and computed ids live elsewhere; don't copy them into the main document.

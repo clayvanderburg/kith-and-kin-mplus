@@ -4,7 +4,7 @@
  */
 
 const { readLiveState, writeMergedState, refreshDiscordCard } = require('../live-state');
-const { isOfficerRequest, publicState } = require('../auth');
+const { isOfficerRequest, publicState, officerLabel } = require('../auth');
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -178,13 +178,18 @@ async function applyOps(event, ops) {
     if (Array.isArray(meta.excludedDungeons)) incoming.excludedDungeons = meta.excludedDungeons;
     // Weekly night settings (day, time, time zone, host, name). Cleaned up in live-state.
     if (meta.eventSettings && typeof meta.eventSettings === 'object') incoming.eventSettings = meta.eventSettings;
+    if (meta.accessSettings && Array.isArray(meta.accessSettings.officerRanks)) {
+      const ranks = [...new Set(meta.accessSettings.officerRanks.map(Number).filter(r => Number.isInteger(r) && r >= 0 && r <= 9))].sort();
+      // Rank 0 (Guild Master) always stays an officer so nobody can lock the guild out.
+      incoming.accessSettings = { officerRanks: ranks.includes(0) ? ranks : [0, ...ranks] };
+    }
   }
 
   if (!Object.keys(incoming).length) {
     return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ ok: true, version: latest.version || null, groupsTouchedAt: latest.groupsTouchedAt || null }) };
   }
 
-  const saved = await writeMergedState(event, incoming, 'Officer (website)');
+  const saved = await writeMergedState(event, incoming, officerLabel(event));
   await refreshDiscordCard(saved, 2500, 'State');
   // Re-read so the version includes overlays, exactly as the next GET will report it.
   const fresh = await readLiveState(event);

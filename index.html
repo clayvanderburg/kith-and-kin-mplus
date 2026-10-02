@@ -41,6 +41,10 @@
           <span class="icon">🔄</span>
           <span class="btn-text">Sync</span>
         </button>
+        <button id="officerLoginBtn" class="btn-icon officer-login-btn" type="button" title="Officer login">
+          <span class="icon">🔒</span>
+          <span class="btn-text">Officer login</span>
+        </button>
         <button id="soundToggleBtn" class="btn-icon" title="Toggle Sound FX">
           <span class="icon">🔊</span>
           <span class="btn-text">Audio: ON</span>
@@ -77,6 +81,8 @@
           </label>
           <label>Host <input type="text" id="nightHost" class="form-input" maxlength="40" placeholder="Optional, e.g. your main's name"></label>
           <label>Name <input type="text" id="nightTitle" class="form-input" maxlength="60" placeholder="Friday Mythic+ Night"></label>
+          <label>Officer guild ranks <input type="text" id="officerRanksInput" class="form-input" maxlength="20" placeholder="0, 1, 2"></label>
+          <p class="night-help">Officer ranks: guild rank numbers allowed to change things after logging in with Battle.net. 0 = Guild Master, 1 = the rank below, and so on (same order as Guild Control in game). 0 always stays.</p>
           <p class="night-help">Repeats every week. Sign-ups and groups clear automatically about 9½ hours after the start time. Shown on the Discord card and the player page.</p>
           <div class="night-actions">
             <button type="submit" class="btn btn-sm btn-primary">Save</button>
@@ -699,16 +705,24 @@
   <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
-  <div id="officerGate" class="officer-gate" hidden style="display:none;">
-    <div class="card officer-gate-card">
-      <h2>Control Center</h2>
-      <p>This page can edit every signup, form groups, and reroll keys. Guild members should use the player signup instead.</p>
-      <p><a class="btn btn-primary" href="signup.html">I'm a player — take me to signup</a></p>
-      <label for="officerKeyInput">Officer passphrase</label>
-      <input id="officerKeyInput" class="form-input" type="password" autocomplete="current-password">
-      <button type="button" id="officerUnlockBtn" class="btn btn-accent">Unlock console</button>
-      <p id="officerGateMessage" class="player-lead"></p>
-    </div>
+  <div id="officerGate" class="officer-gate" hidden>
+    <form class="card officer-gate-card" id="officerGateForm">
+      <h2>🔒 Officer login</h2>
+      <p class="player-lead">Anyone can look around the Control Center. Changing sign-ups, groups or keys is for guild officers.</p>
+      <a href="/api/bnet-login?return=index" id="officerBnetBtn" class="btn btn-primary officer-bnet-btn">Log in with Battle.net</a>
+      <p class="player-lead" style="font-size:0.8rem;margin-top:-0.3rem;">Officer access follows your guild rank in game.</p>
+      <p id="officerGateMessage" class="player-lead" role="status"></p>
+      <details class="officer-pass">
+        <summary>Use the officer passphrase instead</summary>
+        <label for="officerKeyInput">Officer passphrase</label>
+        <input id="officerKeyInput" class="form-input" type="password" autocomplete="current-password">
+        <button type="submit" id="officerUnlockBtn" class="btn btn-secondary">Log in with passphrase</button>
+      </details>
+      <div class="officer-gate-actions">
+        <button type="button" id="officerGateCancel" class="btn btn-ghost">Keep browsing</button>
+      </div>
+      <p class="player-lead" style="font-size:0.8rem;">Want to sign up yourself? Use the <a href="signup.html">Player View</a> or the Discord card.</p>
+    </form>
   </div>
   <style>
     .officer-gate { position: fixed; inset: 0; z-index: 30; background: rgba(5, 7, 12, 0.82); display: grid; place-items: center; padding: 1rem; padding-top: 4.5rem; }
@@ -720,6 +734,6 @@
   <script src="run-matcher.js?v=chronicler-1"></script>
   <script src="chronicler.js?v=chronicler-1"></script>
   <script src="bot/schedule.js?v=night-1"></script>
-  <script src="app.js?v=night-1"></script>
+  <script src="app.js?v=bnet-1"></script>
 </body>
 </html>

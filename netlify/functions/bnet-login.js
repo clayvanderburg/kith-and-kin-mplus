@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { bnetConfigured, redirectUri, stateCookie } = require('./lib/player-session');
 
-exports.handler = async () => {
+exports.handler = async (event) => {
   if (!bnetConfigured()) {
     return {
       statusCode: 501,
@@ -28,8 +28,11 @@ exports.handler = async () => {
   return {
     statusCode: 302,
     headers: {
-      Location: `https://oauth.battle.net/authorize?${params.toString()}`,
-      'Set-Cookie': stateCookie(state)
+      Location: `https://oauth.battle.net/authorize?${params.toString()}`
+    },
+    multiValueHeaders: {
+      // Where to land after login: the Control Center (officer login) or the player page.
+      'Set-Cookie': [stateCookie(state), `bnet_return=${(event?.queryStringParameters || {}).return === 'index' ? 'index' : 'signup'}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`]
     },
     body: ''
   };

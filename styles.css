@@ -4385,3 +4385,16 @@ body.is-dragging-player, body.is-dragging-player * { cursor: grabbing !important
 .night-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; color: var(--text-gold, #f5d061); font-weight: 600; }
 .night-help { grid-column: 1 / -1; margin: 0; font-size: 0.78rem; color: var(--text-muted, #94a3b8); }
 .night-actions { grid-column: 1 / -1; display: flex; gap: 0.5rem; }
+
+/* View-only mode (not logged in as an officer) */
+.officer-gate-actions { display: flex; gap: 0.5rem; }
+.officer-login-btn { white-space: nowrap; }
+body.kk-viewer .drag-handle,
+body.kk-viewer .slot-remove-btn,
+body.kk-viewer .attend-checkbox,
+body.kk-viewer .move-player { opacity: 0.35; }
+body.kk-viewer #generateGroupsBtn::after { content: ' 🔒'; }
+.officer-bnet-btn { justify-content: center; text-decoration: none; background: #148eff; border-color: #148eff; }
+.officer-pass summary { cursor: pointer; color: var(--text-muted, #94a3b8); font-size: 0.85rem; }
+.officer-pass[open] { display: grid; gap: 0.5rem; }
+.officer-gate-card a:not(.btn) { color: var(--text-gold, #f5d061); }

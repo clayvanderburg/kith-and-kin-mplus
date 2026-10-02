@@ -40,6 +40,7 @@ function packSession(data) {
       bnetId: data.bnetId,
       battleTag: data.battleTag,
       characters,
+      guildChars: data.guildChars || [],
       exp: Date.now() + 30 * 24 * 60 * 60 * 1000
     })).toString('base64url');
     if (payload.length + sign(payload).length + 1 <= MAX_COOKIE || characters.length <= 8) break;

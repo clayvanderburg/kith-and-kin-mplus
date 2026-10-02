@@ -69,6 +69,8 @@
 
   // Interactive unlock prompt for notes
   async function promptOfficerUnlock() {
+    // On the Control Center, use the officer login box (Battle.net or passphrase).
+    if (window.kkOfficerLogin) { window.kkOfficerLogin(); return; }
     const key = prompt('Enter officer passphrase to unlock private run notes:');
     if (!key) return;
     try {

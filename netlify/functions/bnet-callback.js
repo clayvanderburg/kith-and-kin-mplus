@@ -1,4 +1,5 @@
 const { readCookies, createSession, redirectUri } = require('./lib/player-session');
+const { guildCharactersOf } = require('./lib/guild-ranks');
 
 function html(status, message) {
   return {
@@ -82,16 +83,26 @@ exports.handler = async (event) => {
   }
   characters.sort((a, b) => b.level - a.level || a.name.localeCompare(b.name));
 
+  // Which of their characters are in the guild, and at what rank (used for officer access).
+  let guildChars = [];
+  try {
+    guildChars = await guildCharactersOf(characters);
+  } catch (err) {
+    console.warn('[bnet-callback] guild rank lookup failed:', err.message);
+  }
+
   const session = await createSession(event, {
     bnetId: String(info.id || info.sub || ''),
     battleTag: info.battletag || 'Battle.net',
-    characters: characters.slice(0, 80)
+    characters: characters.slice(0, 80),
+    guildChars
   });
+  const page = cookies.bnet_return === 'index' ? 'index.html' : 'signup.html';
 
   return {
     statusCode: 302,
     headers: {
-      Location: `/signup.html#s=${encodeURIComponent(session.token)}`,
+      Location: `/${page}#s=${encodeURIComponent(session.token)}`,
       'Cache-Control': 'no-store'
     },
     multiValueHeaders: {

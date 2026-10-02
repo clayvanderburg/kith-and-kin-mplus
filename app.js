@@ -320,6 +320,7 @@
       document.getElementById('nightZone').value = s.timeZone;
       document.getElementById('nightHost').value = s.host;
       document.getElementById('nightTitle').value = s.title;
+      document.getElementById('officerRanksInput').value = (state.accessSettings?.officerRanks || [0, 1, 2]).join(', ');
     };
     document.getElementById('editNightBtn').addEventListener('click', () => { fill(); form.hidden = !form.hidden; });
     document.getElementById('nightCancel').addEventListener('click', () => { form.hidden = true; });
@@ -332,6 +333,8 @@
         host: document.getElementById('nightHost').value,
         title: document.getElementById('nightTitle').value
       });
+      const ranks = document.getElementById('officerRanksInput').value.split(/[^0-9]+/).filter(Boolean).map(Number).filter(n => n <= 9);
+      state.accessSettings = { officerRanks: [...new Set([0, ...ranks])].sort((a, b) => a - b) };
       form.hidden = true;
       renderNightBar();
       pushRemoteState();
@@ -516,23 +519,148 @@
     try { sessionStorage.removeItem('kk_officer_key'); } catch (e) {}
   }
 
-  // Viewing is open. Saving to the shared roster needs the officer passphrase once per browser session.
+  // Viewing is open to everyone. Changing anything needs the officer login (once per browser session).
   async function ensureOfficerKey() {
     if (officerKey()) return true;
-    if (unlockPromptOpen) return false;
-    unlockPromptOpen = true;
-    try {
-      const key = (window.prompt('Officer passphrase to save changes to the shared roster (asked once per session):') || '').trim();
-      if (!key) return false;
+    return openOfficerLogin();
+  }
+
+  // ---- View-only mode for non-officers ----
+  // Things anyone may use: navigation, search/filters/sort, expanding rows, stats, copy buttons.
+  const VIEWER_ALLOWED = [
+    'a[href]', '#manualSyncBtn', '#soundToggleBtn', '#officerLoginBtn', '#officerGate',
+    '#rosterSearchInput', '#clearSearchBtn', '#roleFilterSelect', '#attendFilterSelect', '#rosterSort',
+    '#strategyToggle', '#rouletteToggle', '#copyDiscordBtn', '.copy-party-btn',
+    '.player-toggle-trigger', '.slot-toggle-trigger', '.view-member-stats-btn', '.stats-player-btn',
+    '.stats-tab-btn', '.modal-close', '#closeStatsModalBtn2', '.roster-show-more', '#toast'
+  ].join(',');
+  const EDIT_CONTROLS = 'button, input, select, textarea, label, .drag-handle, .role-icon-mini, .slot-remove-btn';
+  let loginResolvers = [];
+
+  function isOfficerMode() { return !!officerKey(); }
+  window.kkOfficerLogin = () => openOfficerLogin();
+
+  function applyViewerMode() {
+    const officer = isOfficerMode();
+    document.body.classList.toggle('kk-viewer', !officer);
+    document.body.classList.toggle('kk-officer', officer);
+    const btn = document.getElementById('officerLoginBtn');
+    if (btn) {
+      btn.querySelector('.icon').textContent = officer ? '🔓' : '🔒';
+      btn.querySelector('.btn-text').textContent = officer ? `${officerName() || 'Officer'} · Log out` : 'Officer login';
+      btn.title = officer ? 'Log out of officer mode on this browser' : 'Officer login';
+    }
+  }
+
+  function openOfficerLogin(message = '') {
+    const gate = document.getElementById('officerGate');
+    if (!gate) return Promise.resolve(false);
+    gate.hidden = false;
+    document.getElementById('officerGateMessage').textContent = message;
+    const input = document.getElementById('officerKeyInput');
+    input.value = '';
+    setTimeout(() => document.getElementById('officerBnetBtn')?.focus(), 0);
+    return new Promise(resolve => loginResolvers.push(resolve));
+  }
+
+  function closeOfficerLogin(ok) {
+    const gate = document.getElementById('officerGate');
+    if (gate) gate.hidden = true;
+    const waiting = loginResolvers;
+    loginResolvers = [];
+    waiting.forEach(resolve => resolve(ok));
+  }
+
+  function setupViewerMode() {
+    const form = document.getElementById('officerGateForm');
+    form?.addEventListener('submit', async e => {
+      e.preventDefault();
+      const key = document.getElementById('officerKeyInput').value.trim();
+      const msg = document.getElementById('officerGateMessage');
+      if (!key) { msg.textContent = 'Type the passphrase, or use Battle.net.'; return; }
+      msg.textContent = 'Checking…';
       if (await verifyOfficerKey(key)) {
         rememberOfficerKey(key);
-        showToast('🔓 Officer editing unlocked for this session.');
-        return true;
+        rememberOfficerName('Officer');
+        applyViewerMode();
+        closeOfficerLogin(true);
+        showToast('🔓 Officer mode on for this browser session.');
+        fetchRemoteState(true, { force: true }); // officers also see private notes
+        renderGroups();
+      } else {
+        msg.textContent = '❌ That passphrase didn’t work. Try again.';
       }
-      showToast('❌ Wrong officer passphrase. Changes are only saved in this browser.');
-      return false;
-    } finally {
-      unlockPromptOpen = false;
+    });
+    document.getElementById('officerGateCancel')?.addEventListener('click', () => closeOfficerLogin(false));
+    // Close on a backdrop click, but only if the press also started on the backdrop (the press that
+    // opened the login lands its click there too).
+    let downOnBackdrop = false;
+    document.getElementById('officerGate')?.addEventListener('pointerdown', e => { downOnBackdrop = e.target.id === 'officerGate'; });
+    document.getElementById('officerGate')?.addEventListener('click', e => { if (e.target.id === 'officerGate' && downOnBackdrop) closeOfficerLogin(false); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !document.getElementById('officerGate')?.hidden) closeOfficerLogin(false);
+    });
+    document.getElementById('officerLoginBtn')?.addEventListener('click', () => {
+      if (isOfficerMode()) {
+        forgetOfficerKey();
+        rememberOfficerName('');
+        applyViewerMode();
+        renderGroups();
+        fetchRemoteState(true, { force: true });
+        showToast('Logged out of officer mode.');
+      } else {
+        openOfficerLogin();
+      }
+    });
+    // Viewers can click around freely; the first try at changing something asks for the login instead.
+    const guard = e => {
+      if (isOfficerMode()) return;
+      const t = e.target;
+      if (!(t instanceof Element) || t.closest(VIEWER_ALLOWED)) return;
+      if (!t.closest(EDIT_CONTROLS)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.type === 'click' || e.type === 'pointerdown') openOfficerLogin('Log in as an officer to make changes.');
+    };
+    ['pointerdown', 'mousedown', 'click', 'keydown'].forEach(type => {
+      document.addEventListener(type, e => {
+        if (type === 'keydown' && !(e.key === ' ' || e.key === 'Enter')) return;
+        guard(e);
+      }, true);
+    });
+    applyViewerMode();
+    finishBattleNetLogin();
+  }
+
+  function officerName() {
+    try { return sessionStorage.getItem('kk_officer_name') || ''; } catch (e) { return ''; }
+  }
+  function rememberOfficerName(name) {
+    try { name ? sessionStorage.setItem('kk_officer_name', name) : sessionStorage.removeItem('kk_officer_name'); } catch (e) {}
+  }
+
+  // Back from Battle.net (#s=<session>): ask the server whether this account holds an officer rank.
+  async function finishBattleNetLogin() {
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const session = hash.get('s');
+    if (!session) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    try { sessionStorage.setItem('kk_session', session); } catch (e) {}
+    try {
+      const res = await fetch('/api/officer-auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session }) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.token) {
+        rememberOfficerKey(data.token);
+        rememberOfficerName(data.name || 'Officer');
+        applyViewerMode();
+        renderGroups();
+        fetchRemoteState(true, { force: true });
+        showToast(`🔓 Welcome, ${data.name}. Officer mode is on for this browser session.`);
+      } else {
+        openOfficerLogin(`🔒 ${data.error || 'That Battle.net account isn’t an officer.'} You can keep browsing.`);
+      }
+    } catch (err) {
+      openOfficerLogin('Couldn’t finish the Battle.net login. Try again.');
     }
   }
 
@@ -589,7 +717,7 @@
 
   function metaJson() {
     const events = Object.values(state.events || {}).filter(Boolean).map(e => ({ id: e.id, name: e.name, date: e.date }));
-    return JSON.stringify({ x: state.excludedDungeons || [], s: state.eventSettings || null });
+    return JSON.stringify({ x: state.excludedDungeons || [], s: state.eventSettings || null, a: state.accessSettings || null });
   }
 
   function rememberSynced() {
@@ -616,7 +744,7 @@
     if (syncedMetaJson !== null && metaJson() !== syncedMetaJson) {
       const events = {};
       Object.values(state.events || {}).filter(Boolean).forEach(e => { events[e.id] = { id: e.id, name: e.name, date: e.date }; });
-      ops.push({ op: 'meta', excludedDungeons: state.excludedDungeons || [], ...(state.eventSettings ? { eventSettings: state.eventSettings } : {}) });
+      ops.push({ op: 'meta', excludedDungeons: state.excludedDungeons || [], ...(state.eventSettings ? { eventSettings: state.eventSettings } : {}), ...(state.accessSettings ? { accessSettings: state.accessSettings } : {}) });
     }
     return ops;
   }
@@ -663,6 +791,7 @@
     state.benchedPlayers = Array.isArray(data.benchedPlayers) ? data.benchedPlayers : [];
     if (Array.isArray(data.excludedDungeons)) state.excludedDungeons = data.excludedDungeons;
     state.eventSettings = data.eventSettings || null;
+    state.accessSettings = data.accessSettings || null;
     renderNightBar();
     state.groupsTouchedAt = data.groupsTouchedAt || null;
     state.nights = data.nights || {};
@@ -2304,6 +2433,7 @@
   function renderOfficerNotes() {
     const box = document.getElementById('officerNotes');
     if (!box) return;
+    if (!isOfficerMode()) { box.style.display = 'none'; return; } // private: officers only
     const entries = [];
     (state.players || []).forEach(player => {
       (player.runLog || []).forEach(entry => {
@@ -3203,13 +3333,11 @@
 
   async function setupOfficerGate() {
     const gate = document.getElementById('officerGate');
-    if (gate) {
-      gate.hidden = true;
-      gate.style.display = 'none';
-    }
+    if (gate) gate.hidden = true;
   }
 
   function init() {
+    setupViewerMode();
     setupGroupDragAndDrop();
     setupNightBar();
     loadState();
